@@ -98,7 +98,7 @@ export function productRepo() {
           shop: true,
           category: true,
           images: { orderBy: { sortOrder: "asc" } },
-          deliveryOptions: true,
+          deliveryOptions: { include: { logisticsPartner: { select: { id: true, name: true } } } },
           variants: true,
           _count: { select: { reviews: true } },
         },

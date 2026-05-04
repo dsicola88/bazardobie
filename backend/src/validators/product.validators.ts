@@ -2,13 +2,31 @@ import { z } from "zod";
 
 const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
 
-export const deliveryOptionSchema = z.object({
-  tipoEntrega,
-  custoEntrega: z.coerce.number().nonnegative(),
-  prazoEstimado: z.coerce.number().int().positive(),
-  areaProvincia: z.string().min(2),
-  areaCidade: z.string().min(2),
-});
+export const deliveryOptionSchema = z
+  .object({
+    tipoEntrega,
+    custoEntrega: z.coerce.number().nonnegative(),
+    prazoEstimado: z.coerce.number().int().positive(),
+    areaProvincia: z.string().min(2),
+    areaCidade: z.string().min(2),
+    logisticsPartnerId: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.union([z.string().cuid(), z.null()]).optional()
+    ),
+  })
+  .superRefine((d, ctx) => {
+    if (
+      d.tipoEntrega === "VENDEDOR" &&
+      d.logisticsPartnerId != null &&
+      d.logisticsPartnerId !== ""
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Transportadora parceira só se aplica ao envio BAZAR DO BIÉ (plataforma).",
+        path: ["logisticsPartnerId"],
+      });
+    }
+  });
 
 export const productVariantSchema = z.object({
   sku: z.string().min(1),

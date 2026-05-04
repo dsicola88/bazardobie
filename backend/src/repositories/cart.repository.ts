@@ -13,7 +13,11 @@ const cartWithItemsInclude = {
         },
       },
       variant: true,
-      productDeliveryOption: true,
+      productDeliveryOption: {
+        include: {
+          logisticsPartner: { select: { id: true, name: true } },
+        },
+      },
     },
   },
 } satisfies Prisma.CartInclude;
@@ -60,7 +64,11 @@ export function cartRepo() {
           cart: true,
           product: true,
           variant: true,
-          productDeliveryOption: true,
+          productDeliveryOption: {
+            include: {
+              logisticsPartner: { select: { id: true, name: true } },
+            },
+          },
         },
       });
     },

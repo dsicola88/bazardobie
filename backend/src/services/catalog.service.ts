@@ -1,11 +1,44 @@
+import { HttpError } from "../middlewares/errorHandler.js";
 import { prisma } from "../lib/prisma.js";
 import { slugify } from "../utils/slugify.js";
 import type { z } from "zod";
 import type { createCategorySchema, createBannerSchema } from "../validators/admin.validators.js";
-import { updateBannerSchema } from "../validators/admin.validators.js";
+import { updateBannerSchema, updateCategorySchema } from "../validators/admin.validators.js";
 
 type CatIn = z.infer<typeof createCategorySchema>;
+type CatUp = z.infer<typeof updateCategorySchema>;
 type BanIn = z.infer<typeof createBannerSchema>;
+
+async function uniqueSlugFromName(name: string, excludeCategoryId?: string) {
+  const base = slugify(name);
+  if (!base) throw new HttpError(400, "Nome não gera slug válido.");
+  let slug = base;
+  let n = 1;
+  while (true) {
+    const clash = await prisma.category.findUnique({ where: { slug } });
+    if (!clash || clash.id === excludeCategoryId) return slug;
+    slug = `${base}-${n++}`;
+  }
+}
+
+async function collectDescendantIds(rootId: string): Promise<Set<string>> {
+  const out = new Set<string>();
+  const q = [rootId];
+  while (q.length) {
+    const id = q.shift()!;
+    const children = await prisma.category.findMany({
+      where: { parentId: id },
+      select: { id: true },
+    });
+    for (const ch of children) {
+      if (!out.has(ch.id)) {
+        out.add(ch.id);
+        q.push(ch.id);
+      }
+    }
+  }
+  return out;
+}
 
 export const categoryService = {
   async listTree() {
@@ -14,21 +47,91 @@ export const categoryService = {
     });
   },
 
+  async listAdmin() {
+    const rows = await prisma.category.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: {
+        _count: { select: { products: true, children: true } },
+      },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      parentId: r.parentId,
+      sortOrder: r.sortOrder,
+      createdAt: r.createdAt,
+      productCount: r._count.products,
+      childCount: r._count.children,
+    }));
+  },
+
   async createAdmin(input: CatIn) {
-    const base = slugify(input.name);
-    let slug = base;
-    let n = 1;
-    while (await prisma.category.findUnique({ where: { slug } })) {
-      slug = `${base}-${n++}`;
+    if (input.parentId) {
+      const p = await prisma.category.findUnique({ where: { id: input.parentId } });
+      if (!p) throw new HttpError(404, "Categoria-pai não encontrada.");
     }
+    const slug = await uniqueSlugFromName(input.name);
     return prisma.category.create({
       data: {
-        name: input.name,
+        name: input.name.trim(),
         slug,
         parentId: input.parentId ?? undefined,
         sortOrder: input.sortOrder ?? 0,
       },
     });
+  },
+
+  async updateAdmin(id: string, input: CatUp) {
+    const row = await prisma.category.findUnique({ where: { id } });
+    if (!row) throw new HttpError(404, "Categoria não encontrada");
+
+    if (input.parentId !== undefined && input.parentId !== null) {
+      if (input.parentId === id) throw new HttpError(400, "A categoria não pode ser pai de si própria.");
+      const parentExists = await prisma.category.findUnique({ where: { id: input.parentId } });
+      if (!parentExists) throw new HttpError(404, "Categoria-pai não encontrada.");
+      const desc = await collectDescendantIds(id);
+      if (desc.has(input.parentId)) {
+        throw new HttpError(400, "Escolha de pai inválida (ciclo na árvore).");
+      }
+    }
+
+    let slug = row.slug;
+    if (input.name !== undefined) {
+      slug = await uniqueSlugFromName(input.name.trim(), id);
+    }
+
+    return prisma.category.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined ? { name: input.name.trim(), slug } : {}),
+        ...(input.parentId !== undefined
+          ? { parentId: input.parentId === null ? null : input.parentId }
+          : {}),
+        ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+      },
+    });
+  },
+
+  async deleteAdmin(id: string) {
+    const row = await prisma.category.findUnique({
+      where: { id },
+      include: { _count: { select: { children: true } } },
+    });
+    if (!row) throw new HttpError(404, "Categoria não encontrada");
+    if (row._count.children > 0) {
+      throw new HttpError(
+        400,
+        "Esta categoria tem subcategorias — apague ou mova-as antes de eliminar."
+      );
+    }
+    await prisma.$transaction([
+      prisma.product.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null },
+      }),
+      prisma.category.delete({ where: { id } }),
+    ]);
   },
 };
 

@@ -28,6 +28,61 @@ async function main() {
     create: { name: "Geral Angola", slug: catSlug },
   });
 
+  /** Transportadoras de demonstração (Admin → Transportadoras). Vendedores podem associá-las às opções PLATAFORMA. */
+  const demoCarriers = [
+    {
+      name: "Expresso BAZAR — Bié (demo)",
+      nif: "5000123456",
+      phone: "+244 999 000 111",
+      contactName: "Central de rota",
+      province: "Bié",
+      city: "Cuito",
+      notes: "Dados fictícios para ambiente de desenvolvimento / demonstração.",
+    },
+    {
+      name: "Última milha Cuito (demo)",
+      nif: "5000654321",
+      phone: "+244 923 000 222",
+      contactName: "Operações",
+      province: "Bié",
+      city: "Cuito",
+      notes: "Segundo parceiro demo — permite testar escolha no produto.",
+    },
+  ] as const;
+  for (const c of demoCarriers) {
+    const existing = await prisma.logisticsPartner.findFirst({
+      where: { name: c.name },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.logisticsPartner.update({
+        where: { id: existing.id },
+        data: {
+          nif: c.nif,
+          phone: c.phone,
+          contactName: c.contactName,
+          province: c.province,
+          city: c.city,
+          notes: c.notes,
+          active: true,
+        },
+      });
+    } else {
+      await prisma.logisticsPartner.create({
+        data: {
+          name: c.name,
+          nif: c.nif,
+          phone: c.phone,
+          contactName: c.contactName,
+          province: c.province,
+          city: c.city,
+          notes: c.notes,
+          active: true,
+        },
+      });
+    }
+  }
+
   const hasBanner = (await prisma.banner.count()) > 0;
   if (!hasBanner) {
     await prisma.banner.create({
@@ -46,6 +101,7 @@ async function main() {
   });
 
   console.log("Seed OK. Admin:", adminEmail);
+  console.log("Transportadoras demo: Expresso BAZAR — Bié · Última milha Cuito (lista em GET /shipping-carriers).");
   console.log("Textos públicos: /site-content (editar em Admin → Conteúdo do site).");
 }
 

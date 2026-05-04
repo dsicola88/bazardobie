@@ -28,6 +28,8 @@ type DelForm = {
   prazoEstimado: string;
   areaProvincia: string;
   areaCidade: string;
+  /** Só aplicável quando `tipoEntrega === "PLATAFORMA"` — empresas registadas pela administração. */
+  logisticsPartnerId: string;
 };
 
 type ProductLoaded = {
@@ -51,11 +53,14 @@ type ProductLoaded = {
     imageUrl?: string | null;
   }[];
   deliveryOptions: {
+    id?: string;
     tipoEntrega: string;
     custoEntrega: string;
     prazoEstimado: number;
     areaProvincia: string;
     areaCidade: string;
+    logisticsPartnerId?: string | null;
+    logisticsPartner?: { id: string; name: string } | null;
   }[];
 };
 
@@ -85,6 +90,7 @@ const emptyDel = (prov: string, city: string): DelForm => ({
   prazoEstimado: "3",
   areaProvincia: prov || "Bié",
   areaCidade: city || "Cuito",
+  logisticsPartnerId: "",
 });
 
 export default function VendorProductEditor() {
@@ -114,6 +120,7 @@ export default function VendorProductEditor() {
   const [deliveries, setDeliveries] = useState<DelForm[]>([emptyDel("", "")]);
   const [moderationStatus, setModerationStatus] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(!isNew);
+  const [shippingCarriers, setShippingCarriers] = useState<{ id: string; name: string }[]>([]);
 
   const catOptions = useMemo(() => flattenCats(cats), [cats]);
 
@@ -121,6 +128,12 @@ export default function VendorProductEditor() {
     void apiFetch<Cat[]>("/categories")
       .then(setCats)
       .catch(() => setCats([]));
+  }, []);
+
+  useEffect(() => {
+    void apiFetch<{ id: string; name: string }[]>("/shipping-carriers")
+      .then(setShippingCarriers)
+      .catch(() => setShippingCarriers([]));
   }, []);
 
   useEffect(() => {
@@ -174,6 +187,10 @@ export default function VendorProductEditor() {
             prazoEstimado: String(d.prazoEstimado),
             areaProvincia: d.areaProvincia,
             areaCidade: d.areaCidade,
+            logisticsPartnerId:
+              d.tipoEntrega === "VENDEDOR"
+                ? ""
+                : d.logisticsPartner?.id ?? d.logisticsPartnerId?.trim() ?? "",
           })),
         );
         setModerationStatus(p.moderationStatus);
@@ -229,13 +246,18 @@ export default function VendorProductEditor() {
         imageUrl: v.imageUrl.trim() || undefined,
       }));
 
-    const delPayload = deliveries.map((d) => ({
-      tipoEntrega: d.tipoEntrega,
-      custoEntrega: Number(d.custoEntrega) || 0,
-      prazoEstimado: Math.max(1, Math.floor(Number(d.prazoEstimado) || 1)),
-      areaProvincia: d.areaProvincia.trim(),
-      areaCidade: d.areaCidade.trim(),
-    }));
+    const delPayload = deliveries.map((d) => {
+      const base = {
+        tipoEntrega: d.tipoEntrega,
+        custoEntrega: Number(d.custoEntrega) || 0,
+        prazoEstimado: Math.max(1, Math.floor(Number(d.prazoEstimado) || 1)),
+        areaProvincia: d.areaProvincia.trim(),
+        areaCidade: d.areaCidade.trim(),
+      };
+      if (d.tipoEntrega !== "PLATAFORMA") return base;
+      const pid = d.logisticsPartnerId.trim();
+      return pid ? { ...base, logisticsPartnerId: pid } : base;
+    });
 
     return {
       name: name.trim(),
@@ -611,8 +633,9 @@ export default function VendorProductEditor() {
           <h2 className="ae-v-prod-sec__h">05 · Condições de expedição</h2>
           <p className="ae-v-prod-sec__lede">
             Indique pelo menos uma modalidade. Por defeito, seleccione a logística operada pela plataforma (BAZAR DO
-            BIÉ). O prazo indicado corresponde a dias úteis estimados para preparação e envio na área geográfica
-            definida.
+            BIÉ). Para cada expedición da plataforma pode associar uma transportadora activa já registada pelo
+            administrador (o cliente vê esse nome ao escolher o envio, ao estilo de marketplaces como AliExpress). O
+            prazo indicado corresponde a dias úteis estimados para preparação e envio na área definida.
             {allowSellerDelivery ? (
               <>
                 {" "}
@@ -636,7 +659,15 @@ export default function VendorProductEditor() {
                     value={d.tipoEntrega}
                     onChange={(e) =>
                       setDeliveries((p) =>
-                        p.map((x, i) => (i === ix ? { ...x, tipoEntrega: e.target.value as DelForm["tipoEntrega"] } : x)),
+                        p.map((x, i) => {
+                          if (i !== ix) return x;
+                          const tipo = e.target.value as DelForm["tipoEntrega"];
+                          return {
+                            ...x,
+                            tipoEntrega: tipo,
+                            logisticsPartnerId: tipo === "VENDEDOR" ? "" : x.logisticsPartnerId,
+                          };
+                        }),
                       )
                     }
                   >
@@ -664,6 +695,27 @@ export default function VendorProductEditor() {
                   />
                 </div>
               </div>
+              {d.tipoEntrega === "PLATAFORMA" ? (
+                <div>
+                  <label>Transportadora na última milha (opcional)</label>
+                  <select
+                    value={d.logisticsPartnerId}
+                    onChange={(e) =>
+                      setDeliveries((p) => p.map((x, i) => (i === ix ? { ...x, logisticsPartnerId: e.target.value } : x)))
+                    }
+                  >
+                    <option value="">Sem designação específica (equipa ou rota da plataforma)</option>
+                    {shippingCarriers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="ae-field-hint">
+                    Lista alimentada em Admin → Transportadoras. Apenas empresas activas aparecem aqui.
+                  </p>
+                </div>
+              ) : null}
               <div className="ae-field-grid-2">
                 <div>
                   <label>Província de cobertura</label>

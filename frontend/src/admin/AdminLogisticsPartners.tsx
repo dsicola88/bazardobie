@@ -142,18 +142,20 @@ export default function AdminLogisticsPartners() {
   }
 
   return (
-    <div>
-      <div className="ae-v-head">
+    <div className="ae-admin-pro">
+      <header className="ae-admin-pro__head">
         <div>
-          <h1 className="ae-v-title">Transportadoras parceiras</h1>
-          <p className="ae-muted" style={{ margin: "6px 0 0" }}>
-            Cadastro de empresas de última milha. Ligue contas <strong>LOGISTICA</strong> a um parceiro em{" "}
-            <strong>Lojas parceiras → Utilizadores</strong> e atribua encomendas BAZAR DO BIÉ no detalhe do pedido.
+          <h1 className="ae-admin-pro__title">Transportadoras parceiras</h1>
+          <p className="ae-admin-pro__sub">
+            Registo oficial de última milha (NIF, contactos). Os vendedores associam uma transportadora activa a cada
+            opção de envio da plataforma na ficha do produto; o cliente vê esse nome ao escolher a expedición. Ligue
+            contas <strong>LOGISTICA</strong> aos parceiros em <strong>Equipa e logística</strong> no menu lateral;
+            associe cada encomenda BAZAR DO BIÉ ao parceiro no detalhe da encomenda, quando necessário.
           </p>
         </div>
-      </div>
-      {err ? <p style={{ color: "crimson" }}>{err}</p> : null}
-      {msg ? <p style={{ color: "var(--ae-ok)" }}>{msg}</p> : null}
+      </header>
+      {err ? <p className="ae-admin-alert ae-admin-alert--err">{err}</p> : null}
+      {msg ? <p className="ae-admin-alert ae-admin-alert--ok">{msg}</p> : null}
 
       <div className="ae-panel" style={{ marginBottom: 18 }}>
         <h2 style={{ marginTop: 0 }}>{editId ? `Editar parceiro (${editId.slice(0, 8)}…)` : "Nova transportadora"}</h2>

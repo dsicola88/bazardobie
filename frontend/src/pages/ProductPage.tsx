@@ -16,6 +16,7 @@ type Delivery = {
   prazoEstimado: number;
   areaProvincia: string;
   areaCidade: string;
+  logisticsPartner?: { id: string; name: string } | null;
 };
 
 type ProductDetail = {
@@ -201,11 +202,15 @@ export default function ProductPage() {
             <div className="ae-field">
               <label>
                 Expedição — {meta?.tipoEntrega === "PLATAFORMA" ? "Operada pela plataforma" : "Operada pela loja parceira"}
+                {meta?.tipoEntrega === "PLATAFORMA" && meta.logisticsPartner ? ` · ${meta.logisticsPartner.name}` : ""}
               </label>
               <select value={deliveryId} onChange={(e) => setDeliveryId(e.target.value)}>
                 {product.deliveryOptions.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.areaCidade}, {d.areaProvincia} · {formatKz(d.custoEntrega)} · {d.prazoEstimado} dias
+                    {d.tipoEntrega === "PLATAFORMA" && d.logisticsPartner
+                      ? ` · ${d.logisticsPartner.name}`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -282,6 +287,9 @@ export default function ProductPage() {
             </p>
             <p className="ae-muted">
               Tipo: {meta?.tipoEntrega === "PLATAFORMA" ? "Logística da plataforma BAZAR DO BIÉ" : "Logística da loja parceira"}
+              {meta?.tipoEntrega === "PLATAFORMA" && meta.logisticsPartner
+                ? ` · Transportadora indicada: ${meta.logisticsPartner.name}`
+                : ""}
               .
             </p>
           </div>

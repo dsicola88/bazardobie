@@ -57,6 +57,7 @@ r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authControll
 r.get("/categories", catalogController.categories);
 r.get("/banners", catalogController.banners);
 r.get("/site-content", siteSettingsController.publicBundle);
+r.get("/shipping-carriers", logisticsPartnerController.shippingCarriers);
 
 r.get("/shops", shopController.list);
 r.get("/shops/:id", shopController.publicGet);
@@ -200,7 +201,11 @@ admin.patch("/shops/:id/approve", shopController.adminApprove);
 admin.get("/shops/credibility/queues", shopController.adminCredibilityQueues);
 admin.patch("/shops/:id/credibility", shopController.adminApplyCredibility);
 
+admin.get("/categories", catalogController.listCategoriesAdmin);
 admin.post("/categories", catalogController.createCategory);
+admin.patch("/categories/:id", catalogController.patchCategory);
+admin.delete("/categories/:id", catalogController.deleteCategory);
+
 admin.post("/banners", catalogController.createBanner);
 admin.get("/banners", catalogController.bannersAdmin);
 admin.patch("/banners/:id", catalogController.patchBanner);

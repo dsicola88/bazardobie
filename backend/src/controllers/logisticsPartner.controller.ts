@@ -5,6 +5,11 @@ import { userRepo } from "../repositories/user.repository.js";
 import { ensureLogisticsPartnerForUser, logisticsPartnerService } from "../services/logisticsPartner.service.js";
 
 export const logisticsPartnerController = {
+  shippingCarriers: asyncHandler(async (_req, res) => {
+    const items = await logisticsPartnerService.listActiveShippingCarriers();
+    res.json(items);
+  }),
+
   list: asyncHandler(async (_req, res) => {
     const items = await logisticsPartnerService.list();
     res.json(items);

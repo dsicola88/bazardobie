@@ -90,13 +90,26 @@ export default function AdminDashboard() {
           <div className="ae-v-metric__v">{stats.openReports}</div>
         </div>
       </div>
-      <p>
-        <Link to="/admin/sellers">Gerir lojas</Link>
-        {" · "}
-        <Link to="/admin/products">Moderação de produtos</Link>
-        {" · "}
-        <Link to="/admin/trust">Confiança</Link>
-      </p>
+      <div className="ae-panel" style={{ marginTop: 20 }}>
+        <strong style={{ display: "block", marginBottom: 10 }}>Áreas frequentes</strong>
+        <p style={{ margin: 0, lineHeight: 1.8 }}>
+          <Link to="/admin/categories">Categorias</Link>
+          {" · "}
+          <Link to="/admin/products">Produtos</Link>
+          {" · "}
+          <Link to="/admin/sellers">Lojas</Link>
+          {" · "}
+          <Link to="/admin/logistics-partners">Transportadoras</Link>
+          {" · "}
+          <Link to="/admin/team">Equipa LOGISTICA</Link>
+          {" · "}
+          <Link to="/admin/orders">Encomendas</Link>
+          {" · "}
+          <Link to="/admin/disputes">Disputas</Link>
+          {" · "}
+          <Link to="/admin/trust">Confiança</Link>
+        </p>
+      </div>
     </div>
   );
 }

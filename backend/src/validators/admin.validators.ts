@@ -6,6 +6,14 @@ export const createCategorySchema = z.object({
   sortOrder: z.number().int().optional(),
 });
 
+export const updateCategorySchema = z
+  .object({
+    name: z.string().min(2).optional(),
+    parentId: z.string().nullable().optional(),
+    sortOrder: z.number().int().optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, { message: "Nada a actualizar" });
+
 export const createBannerSchema = z.object({
   title: z.string().optional(),
   imageUrl: z.string().url(),

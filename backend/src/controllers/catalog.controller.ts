@@ -1,6 +1,11 @@
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { categoryService, bannerService } from "../services/catalog.service.js";
-import { createCategorySchema, createBannerSchema, updateBannerSchema } from "../validators/admin.validators.js";
+import {
+  createCategorySchema,
+  createBannerSchema,
+  updateBannerSchema,
+  updateCategorySchema,
+} from "../validators/admin.validators.js";
 
 export const catalogController = {
   categories: asyncHandler(async (_req, res) => {
@@ -17,6 +22,22 @@ export const catalogController = {
     const body = createCategorySchema.parse(req.body);
     const c = await categoryService.createAdmin(body);
     res.status(201).json(c);
+  }),
+
+  listCategoriesAdmin: asyncHandler(async (_req, res) => {
+    const list = await categoryService.listAdmin();
+    res.json(list);
+  }),
+
+  patchCategory: asyncHandler(async (req, res) => {
+    const body = updateCategorySchema.parse(req.body);
+    const c = await categoryService.updateAdmin(req.params.id, body);
+    res.json(c);
+  }),
+
+  deleteCategory: asyncHandler(async (req, res) => {
+    await categoryService.deleteAdmin(req.params.id);
+    res.status(204).send();
   }),
 
   createBanner: asyncHandler(async (req, res) => {

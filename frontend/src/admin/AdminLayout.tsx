@@ -1,5 +1,10 @@
+import { type ReactNode } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+
+function NavSep({ children }: { children: ReactNode }) {
+  return <div className="ae-v-nav__label">{children}</div>;
+}
 
 export default function AdminLayout() {
   const { user, loading } = useAuth();
@@ -20,40 +25,61 @@ export default function AdminLayout() {
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
           Administração
-          <small>Controlo total · BAZAR DO BIÉ</small>
+          <small>Painel corporativo · BAZAR DO BIÉ</small>
         </div>
-        <nav className="ae-v-nav">
-          <NavLink to="/admin/dashboard" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+        <nav className="ae-v-nav ae-v-nav--grouped">
+          <NavLink end to="/admin/dashboard" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Painel geral
           </NavLink>
+
+          <NavSep>Catálogo</NavSep>
+          <NavLink to="/admin/categories" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Categorias
+          </NavLink>
+          <NavLink to="/admin/products" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Produtos e moderação
+          </NavLink>
+
+          <NavSep>Parceiros e operação</NavSep>
           <NavLink to="/admin/sellers" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Lojas parceiras
           </NavLink>
           <NavLink to="/admin/logistics-partners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Transportadoras
           </NavLink>
-          <NavLink to="/admin/products" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Produtos e moderação
+          <NavLink to="/admin/team" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Equipa e logística
           </NavLink>
+
+          <NavSep>Encomendas</NavSep>
           <NavLink to="/admin/orders" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Encomendas
+            Todas as encomendas
           </NavLink>
+
+          <NavSep>Financeiro e escrow</NavSep>
           <NavLink to="/admin/finance" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Financeiro (escrow)
-          </NavLink>
-          <NavLink to="/admin/trust" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Confiança e relatórios
+            Financeiro
           </NavLink>
           <NavLink to="/admin/disputes" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Disputas (escrow)
+            Disputas
           </NavLink>
+
+          <NavSep>Segurança e confiança</NavSep>
+          <NavLink to="/admin/trust" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Relatórios e reputação
+          </NavLink>
+
+          <NavSep>Site público</NavSep>
           <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Conteúdo do site
+            Textos da loja
           </NavLink>
           <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Carrossel
+            Carrossel inicial
           </NavLink>
-          <Link to="/">← Voltar à loja</Link>
+
+          <div className="ae-v-nav__foot">
+            <Link to="/">← Voltar ao site público</Link>
+          </div>
         </nav>
       </aside>
       <main className="ae-v-main">

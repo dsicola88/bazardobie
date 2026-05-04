@@ -288,11 +288,15 @@ model ProductDeliveryOption {
   prazoEstimado   Int
   areaProvincia   String
   areaCidade      String
+  /// Operador de última milha (lista definida pela administração). Só faz sentido com envio pela plataforma.
+  logisticsPartnerId String?
+  logisticsPartner    LogisticsPartner? @relation(fields: [logisticsPartnerId], references: [id], onDelete: SetNull)
 
   product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems CartItem[]
 
   @@index([productId])
+  @@index([logisticsPartnerId])
 }
 
 model Cart {
@@ -547,8 +551,9 @@ model LogisticsPartner {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  staff  User[]
-  orders Order[]
+  staff                   User[]
+  orders                  Order[]
+  productDeliveryOptions  ProductDeliveryOption[]
 
   @@index([active])
 }

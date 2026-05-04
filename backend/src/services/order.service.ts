@@ -258,6 +258,22 @@ export const orderService = {
             );
           }
 
+          const carrierId = item.productDeliveryOption.logisticsPartnerId;
+          if (
+            item.productDeliveryOption.tipoEntrega === "PLATAFORMA" &&
+            carrierId &&
+            !(await tx.logisticsPartner.findFirst({
+              where: { id: carrierId, active: true },
+              select: { id: true },
+            }))
+          ) {
+            throw new HttpError(
+              400,
+              "A transportadora de uma ou mais linhas já não está disponível. Actualize o carrinho.",
+              { code: "SHIPPING_PARTNER_INACTIVE" }
+            );
+          }
+
           const lojaCheckout = await tx.shop.findUnique({
             where: { id: product.shopId },
             select: {
@@ -321,6 +337,23 @@ export const orderService = {
           );
         }
 
+        const firstTipo = lines[0]!.productDeliveryOption.tipoEntrega;
+        let orderLogisticsPartnerId: string | null = null;
+        if (firstTipo === "PLATAFORMA") {
+          const carrierIds = lines
+            .map((ln) => ln.productDeliveryOption.logisticsPartnerId)
+            .filter((x): x is string => Boolean(x));
+          const uniqCarriers = [...new Set(carrierIds)];
+          if (uniqCarriers.length > 1) {
+            throw new HttpError(
+              400,
+              "Não pode fechar o pedido com artigos que usam transportadoras diferentes. Ajuste o carrinho ou separe encomendas.",
+              { code: "MIXED_SHIPPING_CARRIERS" }
+            );
+          }
+          orderLogisticsPartnerId = uniqCarriers[0] ?? null;
+        }
+
         const grandTotal = subtotal.plus(deliveryTotal);
 
         const gatewayDefaults =
@@ -348,6 +381,7 @@ export const orderService = {
             subtotal: subtotal.toString(),
             deliveryTotal: deliveryTotal.toString(),
             grandTotal: grandTotal.toString(),
+            logisticsPartnerId: orderLogisticsPartnerId,
             items: { create: orderItemsCreate },
           },
           include: { items: { include: { shop: true } } },

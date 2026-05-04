@@ -94,6 +94,21 @@ export const cartService = {
     const opt = product.deliveryOptions.find((o) => o.id === input.productDeliveryOptionId);
     if (!opt) throw new HttpError(400, "Opção de entrega inválida para este produto");
 
+    if (
+      opt.tipoEntrega === "PLATAFORMA" &&
+      opt.logisticsPartnerId &&
+      !(await prisma.logisticsPartner.findFirst({
+        where: { id: opt.logisticsPartnerId, active: true },
+        select: { id: true },
+      }))
+    ) {
+      throw new HttpError(
+        400,
+        "A transportadora desta opção de envio já não está disponível. Actualize o carrinho escolhendo outra expedición.",
+        { code: "SHIPPING_PARTNER_INACTIVE" }
+      );
+    }
+
     if (opt.tipoEntrega === "VENDEDOR" && !(await siteSettingsService.isSellerDeliveryAllowed())) {
       throw new HttpError(
         400,
@@ -129,7 +144,11 @@ export const cartService = {
         include: {
           product: { include: { images: true, shop: true } },
           variant: true,
-          productDeliveryOption: true,
+          productDeliveryOption: {
+            include: {
+              logisticsPartner: { select: { id: true, name: true } },
+            },
+          },
         },
       });
     }
@@ -145,7 +164,11 @@ export const cartService = {
       include: {
         product: { include: { images: true, shop: true } },
         variant: true,
-        productDeliveryOption: true,
+        productDeliveryOption: {
+          include: {
+            logisticsPartner: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   },

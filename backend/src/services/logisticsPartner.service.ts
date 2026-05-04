@@ -19,6 +19,14 @@ export const logisticsPartnerService = {
     return prisma.logisticsPartner.findMany({ orderBy: { name: "asc" } });
   },
 
+  listActiveShippingCarriers() {
+    return prisma.logisticsPartner.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    });
+  },
+
   create(raw: unknown) {
     const input = partnerUpsertSchema.omit({ active: true }).parse(raw);
     return prisma.logisticsPartner.create({

@@ -13,6 +13,7 @@ type CartItem = {
     tipoEntrega: string;
     custoEntrega: string;
     prazoEstimado: number;
+    logisticsPartner?: { id: string; name: string } | null;
   };
 };
 
@@ -86,12 +87,14 @@ export default function CartPage() {
                     <td>
                       <div style={{ fontSize: 13 }}>
                         {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
-                          ? "Plataforma"
-                          : "Parceiro"}{" "}
+                          ? item.productDeliveryOption.logisticsPartner
+                            ? `Plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
+                            : "Plataforma (BAZAR DO BIÉ)"
+                          : "Loja parceira"}{" "}
                         · {formatKz(item.productDeliveryOption.custoEntrega)}
                       </div>
                       <div className="ae-muted" style={{ fontSize: 12 }}>
-                        {item.productDeliveryOption.prazoEstimado} dias
+                        {item.productDeliveryOption.prazoEstimado} dias úteis
                       </div>
                     </td>
                     <td>{item.quantity}</td>

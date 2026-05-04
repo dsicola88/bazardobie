@@ -14,6 +14,10 @@ import {
 import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 
+const deliveryOptionsPublicInclude = {
+  include: { logisticsPartner: { select: { id: true, name: true } } },
+} as const;
+
 type CreateProduct = z.infer<typeof createProductSchema>;
 type UpdateProduct = z.infer<typeof updateProductSchema>;
 type ProductListQuery = z.infer<typeof productListQuerySchema>;
@@ -35,6 +39,33 @@ async function assertSellerDeliveryAllowedForWrites(options: { tipoEntrega: Tipo
   }
 }
 
+async function assertDeliveryPartnersRegistered(
+  options: { tipoEntrega: TipoEntrega; logisticsPartnerId?: string | null | undefined }[]
+) {
+  for (const d of options) {
+    if (d.tipoEntrega !== "PLATAFORMA") continue;
+    const pid = d.logisticsPartnerId?.trim();
+    if (!pid) continue;
+    const ok = await prisma.logisticsPartner.findFirst({ where: { id: pid, active: true } });
+    if (!ok) {
+      throw new HttpError(
+        400,
+        "Transportadora inválida ou inactiva — utilize apenas empresas activas registadas pela administração.",
+        { code: "INVALID_LOGISTICS_PARTNER" }
+      );
+    }
+  }
+}
+
+function optionPartnerForWrite(d: {
+  tipoEntrega: TipoEntrega;
+  logisticsPartnerId?: string | null;
+}): string | null {
+  if (d.tipoEntrega !== "PLATAFORMA") return null;
+  const t = d.logisticsPartnerId?.trim();
+  return t || null;
+}
+
 export const productService = {
   async create(shopUserId: string, input: CreateProduct) {
     const shops = shopRepo();
@@ -50,6 +81,7 @@ export const productService = {
     if (skuTaken) throw new HttpError(409, "SKU já existente nesta loja");
 
     await assertSellerDeliveryAllowedForWrites(input.deliveryOptions);
+    await assertDeliveryPartnersRegistered(input.deliveryOptions);
 
     const displayPrice = displayPriceFrom(input.price, input.promoPrice ?? undefined);
 
@@ -92,6 +124,7 @@ export const productService = {
           prazoEstimado: d.prazoEstimado,
           areaProvincia: d.areaProvincia,
           areaCidade: d.areaCidade,
+          logisticsPartnerId: optionPartnerForWrite(d),
         })),
       },
     };
@@ -101,7 +134,7 @@ export const productService = {
       include: {
         images: true,
         variants: true,
-        deliveryOptions: true,
+        deliveryOptions: deliveryOptionsPublicInclude,
         category: true,
         shop: true,
       },
@@ -118,7 +151,7 @@ export const productService = {
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         variants: true,
-        deliveryOptions: true,
+        deliveryOptions: deliveryOptionsPublicInclude,
         category: true,
       },
     });
@@ -157,6 +190,7 @@ export const productService = {
 
     if (input.deliveryOptions !== undefined) {
       await assertSellerDeliveryAllowedForWrites(input.deliveryOptions);
+      await assertDeliveryPartnersRegistered(input.deliveryOptions);
     }
 
     const substantiveForRemod =
@@ -219,6 +253,7 @@ export const productService = {
               prazoEstimado: d.prazoEstimado,
               areaProvincia: d.areaProvincia,
               areaCidade: d.areaCidade,
+              logisticsPartnerId: optionPartnerForWrite(d),
             },
           });
         }
@@ -250,7 +285,7 @@ export const productService = {
 
     return prisma.product.findFirstOrThrow({
       where: { id: productId },
-      include: { images: true, variants: true, deliveryOptions: true, category: true },
+      include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
     });
   },
 
@@ -262,7 +297,7 @@ export const productService = {
     return prisma.product.findMany({
       where: { shopId: shop.id },
       orderBy: { createdAt: "desc" },
-      include: { images: true, variants: true, deliveryOptions: true, category: true },
+      include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
     });
   },
 
@@ -279,7 +314,7 @@ export const productService = {
         category: true,
         images: { orderBy: { sortOrder: "asc" } },
         variants: true,
-        deliveryOptions: true,
+        deliveryOptions: deliveryOptionsPublicInclude,
         reviews: {
           take: 20,
           orderBy: { createdAt: "desc" },

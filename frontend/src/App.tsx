@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminBanners from "./admin/AdminBanners.js";
+import AdminCategories from "./admin/AdminCategories.js";
 import AdminDashboard from "./admin/AdminDashboard.js";
 import AdminDisputes from "./admin/AdminDisputes.js";
 import AdminFinance from "./admin/AdminFinance.js";
@@ -9,6 +10,7 @@ import AdminOrderDetail from "./admin/AdminOrderDetail.js";
 import AdminOrders from "./admin/AdminOrders.js";
 import AdminProducts from "./admin/AdminProducts.js";
 import AdminSellers from "./admin/AdminSellers.js";
+import AdminTeam from "./admin/AdminTeam.js";
 import AdminSiteContent from "./admin/AdminSiteContent.js";
 import AdminTrust from "./admin/AdminTrust.js";
 import Layout from "./Layout.js";
@@ -52,8 +54,10 @@ export default function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="categories" element={<AdminCategories />} />
         <Route path="sellers" element={<AdminSellers />} />
         <Route path="logistics-partners" element={<AdminLogisticsPartners />} />
+        <Route path="team" element={<AdminTeam />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="orders/:orderId" element={<AdminOrderDetail />} />

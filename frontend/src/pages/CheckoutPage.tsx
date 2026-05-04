@@ -20,6 +20,7 @@ type CheckoutCartItem = {
     tipoEntrega: string;
     custoEntrega: string;
     prazoEstimado: number;
+    logisticsPartner?: { id: string; name: string } | null;
   };
 };
 
@@ -558,9 +559,13 @@ export default function CheckoutPage() {
                       <div className="ae-checkout-sum-line__meta">
                         <div className="ae-checkout-sum-line__name">{it.product.name}</div>
                         <div className="ae-muted" style={{ fontSize: 12 }}>
-                          Qtd. {it.quantity} · expedição{" "}
-                          {it.productDeliveryOption.tipoEntrega === "PLATAFORMA" ? "plataforma" : "parceiro"} ·{" "}
-                          {it.productDeliveryOption.prazoEstimado}d
+                          Qtd. {it.quantity} · envio{" "}
+                          {it.productDeliveryOption.tipoEntrega === "PLATAFORMA"
+                            ? it.productDeliveryOption.logisticsPartner
+                              ? `plataforma · ${it.productDeliveryOption.logisticsPartner.name}`
+                              : "plataforma (BAZAR DO BIÉ)"
+                            : "loja parceira"}{" "}
+                          · {it.productDeliveryOption.prazoEstimado}d
                           {it.variant?.name ? ` · ${it.variant.name}` : ""}
                         </div>
                         <div className="ae-checkout-sum-line__pr">
