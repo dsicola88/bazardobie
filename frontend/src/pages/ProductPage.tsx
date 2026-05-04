@@ -43,6 +43,12 @@ type ProductDetail = {
       seloVerificado: boolean;
       seloPremium: boolean;
       prioridadePesquisa: number;
+      garantiasAoComprador?: {
+        identidadeRevistaPelaPlataforma: boolean;
+        empresaFormalmenteRevistaPelaPlataforma: boolean;
+        fachadaParceiraUrl: string | null;
+        textoChips: string[];
+      };
     };
   };
   reviews: { rating: number; comment?: string | null; photoUrls?: string[]; user?: { name: string } }[];
@@ -107,6 +113,9 @@ export default function ProductPage() {
   if (err) return <div className="page-panel" style={{ color: "#c00" }}>{err}</div>;
   if (!product) return <p className="ae-muted">A carregar ficha de produto…</p>;
 
+  const trust = product.shop?.credibilidade;
+  const guarantees = trust?.garantiasAoComprador;
+
   return (
     <>
       {showReport && product ? (
@@ -165,20 +174,23 @@ export default function ProductPage() {
             <div className="ae-buybox__trust">
               <span className="ae-buybox__chip">Transacção segura</span>
               <span className="ae-buybox__chip">Pagamento à entrega (COD)</span>
-              {product.shop?.credibilidade?.seloVerificado || product.shop?.credibilidade?.seloPremium ? (
-                <span className="ae-buybox__chip">Parceiro verificado</span>
+              {trust?.seloPremium ? (
+                <span className="ae-buybox__chip ae-buybox__chip--premium">Parceiro premium</span>
+              ) : null}
+              {trust?.seloVerificado && !trust?.seloPremium ? (
+                <span className="ae-buybox__chip ae-buybox__chip--verified">Parceiro verificado</span>
               ) : null}
             </div>
 
             {product.shop ? (
               <p className="ae-muted" style={{ fontSize: 12 }}>
                 Loja parceira: <strong>{product.shop.name}</strong>
-                {product.shop.credibilidade?.seloPremium ? (
-                <span style={{ marginLeft: 8, fontWeight: 600, color: "#1a56a8" }}>Parceiro premium</span>
-                ) : null}
-                {product.shop.credibilidade?.seloVerificado &&
-                !product.shop.credibilidade?.seloPremium ? (
-                  <span style={{ marginLeft: 8, fontWeight: 600, color: "#0d7d3e" }}>VERIFICADO</span>
+                {guarantees?.textoChips?.length ? (
+                  <span className="ae-pdp-trust-inline" title={guarantees.textoChips.join(" ")}>
+                    {" "}
+                    · {guarantees.textoChips[0]}
+                    {guarantees.textoChips.length > 1 ? " (+info na visão geral)" : ""}
+                  </span>
                 ) : null}
                 {" · "}
                 {product.shop.city}, {product.shop.province}
@@ -271,8 +283,28 @@ export default function ProductPage() {
           </button>
         </div>
         {tab === "overview" ? (
-          <div className="ae-tab-panel" style={{ whiteSpace: "pre-wrap" }}>
-            {product.description}
+          <div className="ae-tab-panel">
+            <div className="ae-pdp-overview">
+              <div style={{ whiteSpace: "pre-wrap" }}>{product.description}</div>
+              {guarantees && (guarantees.textoChips.length > 0 || guarantees.fachadaParceiraUrl) ? (
+                <aside className="ae-pdp-trust-box" aria-label="Confiança no parceiro">
+                  <h3 className="ae-pdp-trust-box__title">Este parceiro na BAZAR DO BIÉ</h3>
+                  {guarantees.fachadaParceiraUrl ? (
+                    <figure className="ae-pdp-trust-box__photo">
+                      <img src={guarantees.fachadaParceiraUrl} alt="Fachada ou actividade do parceiro, revista pela plataforma" />
+                      <figcaption className="ae-muted">Imagem facultada pelo parceiro e aceite após revisão da equipa.</figcaption>
+                    </figure>
+                  ) : null}
+                  {guarantees.textoChips.length > 0 ? (
+                    <ul className="ae-pdp-trust-chips">
+                      {guarantees.textoChips.map((t) => (
+                        <li key={t}>{t}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </aside>
+              ) : null}
+            </div>
           </div>
         ) : null}
         {tab === "ship" ? (

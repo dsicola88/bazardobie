@@ -16,17 +16,41 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
+const allowedMime = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+
+export const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const m = String(file.mimetype || "").toLowerCase();
+    if (allowedMime.has(m)) {
+      cb(null, true);
+      return;
+    }
+    cb(new HttpError(400, "Formato não suportado — use JPG, PNG, WebP, GIF ou PDF (máx. 5 MB)."));
+  },
 }).single("file");
 
 export function runUpload(req: Request, res: Response, next: NextFunction): void {
   upload(req, res, (err: unknown) => {
-    if (err) {
-      next(Object.assign(new HttpError(400, "Upload inválido"), { cause: err }));
+    if (!err) {
+      next();
       return;
     }
-    next();
+    if (err instanceof HttpError) {
+      next(err);
+      return;
+    }
+    if (err instanceof Error && err.message.includes("Limite")) {
+      next(new HttpError(400, "Ficheiro demasiado grande (máx. 5 MB)."));
+      return;
+    }
+    next(new HttpError(400, "Upload inválido — verifique o formato e o tamanho.", { cause: err }));
   });
 }

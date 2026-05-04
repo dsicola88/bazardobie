@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminBanners from "./admin/AdminBanners.js";
+import AdminCredibility from "./admin/AdminCredibility.js";
 import AdminCategories from "./admin/AdminCategories.js";
 import AdminDashboard from "./admin/AdminDashboard.js";
 import AdminDisputes from "./admin/AdminDisputes.js";
@@ -30,6 +31,7 @@ import OrdersPage from "./pages/OrdersPage.js";
 import OrderTrackPage from "./pages/OrderTrackPage.js";
 import UnauthorizedPage from "./pages/UnauthorizedPage.js";
 import VendorLayout from "./vendor/VendorLayout.js";
+import VendorCredibility from "./vendor/VendorCredibility.js";
 import VendorDashboard from "./vendor/VendorDashboard.js";
 import VendorProductEditor from "./vendor/VendorProductEditor.js";
 import VendorOrders from "./vendor/VendorOrders.js";
@@ -49,6 +51,7 @@ export default function App() {
         <Route path="products/:productId/edit" element={<VendorProductEditor />} />
         <Route path="products" element={<VendorProducts />} />
         <Route path="orders" element={<VendorOrders />} />
+        <Route path="credibility" element={<VendorCredibility />} />
         <Route path="loja" element={<VendorShopSetup />} />
       </Route>
 
@@ -65,6 +68,7 @@ export default function App() {
         <Route path="orders/:orderId" element={<AdminOrderDetail />} />
         <Route path="finance" element={<AdminFinance />} />
         <Route path="trust" element={<AdminTrust />} />
+        <Route path="credibility" element={<AdminCredibility />} />
         <Route path="disputes" element={<AdminDisputes />} />
         <Route path="content" element={<AdminSiteContent />} />
         <Route path="banners" element={<AdminBanners />} />

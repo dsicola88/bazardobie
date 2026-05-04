@@ -71,6 +71,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/trust" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Relatórios e reputação
           </NavLink>
+          <NavLink to="/admin/credibility" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Filas BI / credibilidade
+          </NavLink>
 
           <NavSep>Site público</NavSep>
           <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>

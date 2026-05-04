@@ -32,6 +32,9 @@ export default function VendorLayout() {
           <NavLink to="/vendor/loja" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Dados da loja
           </NavLink>
+          <NavLink to="/vendor/credibility" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Credibilidade
+          </NavLink>
           <NavLink to="/vendor/products/new" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Nova referência
           </NavLink>

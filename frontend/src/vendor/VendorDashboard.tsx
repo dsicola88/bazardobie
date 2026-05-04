@@ -24,6 +24,17 @@ type OrderMini = {
 type ProductMine = { items: ProductRow[]; total: number };
 type OrderPage = { items: OrderMini[]; total: number };
 
+type ShopMeBrief = {
+  isApproved: boolean;
+  tier1CompletedAt?: string | null;
+  tier2ApprovedAt?: string | null;
+  tier2SubmittedAt?: string | null;
+  tier2RejectedReason?: string | null;
+  tier3ApprovedAt?: string | null;
+  tier3SubmittedAt?: string | null;
+  tier3RejectedReason?: string | null;
+};
+
 export default function VendorDashboard() {
   const { token } = useAuth();
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -31,16 +42,25 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState<OrderMini[]>([]);
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [shopStatus, setShopStatus] = useState<"load" | "missing" | "pending" | "ok" | "err">("load");
+  const [shopMe, setShopMe] = useState<ShopMeBrief | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    void apiFetch<{ isApproved: boolean }>("/vendor/shop/me", { token })
-      .then((s) => setShopStatus(s.isApproved ? "ok" : "pending"))
+    void apiFetch<ShopMeBrief>("/vendor/shop/me", { token })
+      .then((s) => {
+        setShopMe(s);
+        setShopStatus(s.isApproved ? "ok" : "pending");
+      })
       .catch((e: unknown) => {
         const st =
           e && typeof e === "object" && "status" in e ? Number((e as { status: number }).status) : 0;
-        if (st === 404) setShopStatus("missing");
-        else setShopStatus("err");
+        if (st === 404) {
+          setShopMe(null);
+          setShopStatus("missing");
+        } else {
+          setShopStatus("err");
+          setShopMe(null);
+        }
       });
   }, [token]);
 
@@ -113,6 +133,75 @@ export default function VendorDashboard() {
           </div>
           <Link to="/vendor/loja" className="btn btn-primary">
             Ver estado da loja
+          </Link>
+        </div>
+      ) : null}
+
+      {shopStatus === "ok" && shopMe?.tier1CompletedAt && !shopMe.tier2ApprovedAt ? (
+        <div
+          className="ae-admin-next"
+          style={{
+            marginBottom: 20,
+            borderColor: shopMe.tier2RejectedReason ? "#f0b4b4" : "#b8d4ec",
+            background: shopMe.tier2RejectedReason
+              ? "linear-gradient(135deg, #fff5f5 0%, #fff 100%)"
+              : "linear-gradient(135deg, #f0f7ff 0%, #fff 100%)",
+          }}
+        >
+          <div>
+            <h2>Credibilidade — selo «VERIFICADO»</h2>
+            {shopMe.tier2SubmittedAt && !shopMe.tier2RejectedReason ? (
+              <p>
+                Os seus ficheiros de identidade estão <strong>em análise</strong>. Será notificado quando a equipa
+                concluir a revisão.
+              </p>
+            ) : shopMe.tier2RejectedReason ? (
+              <p>
+                O último envio de nível 2 foi <strong>reprovado</strong>: {shopMe.tier2RejectedReason} Corrija os
+                ficheiros e volte a submeter.
+              </p>
+            ) : (
+              <p>
+                A sua loja está aprovada. Envie fotografia legível do bilhete e uma selfie segurando o mesmo documento
+                para mostrar aos compradores o selo de parceiro verificado.
+              </p>
+            )}
+          </div>
+          <Link to="/vendor/credibility" className="btn btn-primary">
+            Abrir credibilidade
+          </Link>
+        </div>
+      ) : null}
+
+      {shopStatus === "ok" && shopMe?.tier2ApprovedAt && !shopMe.tier3ApprovedAt ? (
+        <div
+          className="ae-admin-next"
+          style={{
+            marginBottom: 20,
+            borderColor: "#e8d48b",
+            background: "linear-gradient(135deg, #fdfbf5 0%, #fff 100%)",
+          }}
+        >
+          <div>
+            <h2>Credibilidade avançada — selo premium</h2>
+            {shopMe.tier3SubmittedAt && !shopMe.tier3RejectedReason ? (
+              <p>
+                Pedido de nível 3 <strong>em análise</strong> (NIF / dados de liquidação). Os compradores apenas verão o
+                selo após aprovação.
+              </p>
+            ) : shopMe.tier3RejectedReason ? (
+              <p>
+                Nível 3 reprovado: <strong>{shopMe.tier3RejectedReason}</strong> Actualize os dados e reenvie.
+              </p>
+            ) : (
+              <p>
+                O nível 2 está concluído. Pode submeter contribuinte, IBAN e documentação registal opcional para o máximo de
+                visibilidade e confiança na plataforma.
+              </p>
+            )}
+          </div>
+          <Link to="/vendor/credibility" className="btn btn-primary">
+            Nível 3 · credibilidade
           </Link>
         </div>
       ) : null}

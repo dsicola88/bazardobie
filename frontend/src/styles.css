@@ -2460,3 +2460,226 @@ a:hover {
   background: #f8fafc;
   border: 1px dashed var(--ae-line);
 }
+
+/* Fluxo credibilidade (vendedor & admin) + PDP confiança */
+.ae-cred-flow header.ae-v-head {
+  align-items: flex-start;
+}
+
+.ae-cred-banner h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+.ae-cred-tier {
+  margin-bottom: 20px;
+}
+
+.ae-cred-tier--dim {
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.ae-cred-tier__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ae-cred-tier__head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.ae-cred-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  color: #1b5e20;
+  border: 1px solid rgb(46 125 50 / 0.25);
+}
+
+.ae-cred-badge--gold {
+  background: linear-gradient(135deg, #fff8e1, #ffecb3);
+  color: #6d4c00;
+  border-color: rgb(255 193 7 / 0.45);
+}
+
+.ae-cred-list {
+  margin: 0 0 16px;
+  padding-left: 1.2rem;
+  font-size: 13px;
+  color: var(--ae-dim);
+  line-height: 1.45;
+}
+
+.ae-cred-upload {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--ae-line);
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.ae-cred-upload__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.ae-cred-upload__row input[type="text"] {
+  flex: 1 1 200px;
+  min-width: 0;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--ae-line);
+  border-radius: 6px;
+}
+
+.ae-cred-admin__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 960px) {
+  .ae-cred-admin__grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.ae-cred-admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ae-cred-admin-card {
+  border: 1px solid var(--ae-line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--ae-card);
+}
+
+.ae-cred-admin-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ae-cred-admin-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ae-cred-admin-docs {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 13px;
+}
+
+.ae-cred-admin-dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.ae-cred-admin-dl dt {
+  font-weight: 700;
+  color: var(--ae-hint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ae-cred-admin-dl dd {
+  margin: 2px 0 0;
+}
+
+.ae-buybox__chip--verified {
+  border-color: rgb(13 125 62 / 0.35);
+  background: linear-gradient(180deg, #f1faf4, #e8f5ec);
+  color: #0d5c2e;
+  font-weight: 700;
+}
+
+.ae-buybox__chip--premium {
+  border-color: rgb(26 86 168 / 0.35);
+  background: linear-gradient(180deg, #f3f7ff, #e8eef9);
+  color: #1a56a8;
+  font-weight: 700;
+}
+
+.ae-pdp-trust-inline {
+  color: var(--ae-dim);
+}
+
+.ae-pdp-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .ae-pdp-overview {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    align-items: start;
+  }
+}
+
+.ae-pdp-trust-box {
+  border: 1px solid var(--ae-line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #fafbfd, #fff);
+}
+
+.ae-pdp-trust-box__title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ae-deep);
+}
+
+.ae-pdp-trust-box__photo {
+  margin: 0 0 12px;
+}
+
+.ae-pdp-trust-box__photo img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--ae-line);
+}
+
+.ae-pdp-trust-box__photo figcaption {
+  font-size: 11px;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.ae-pdp-trust-chips {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ae-dim);
+}
