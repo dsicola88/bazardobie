@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, apiErrorDetailsCode, cartSessionHeaders, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
-import { formatKz } from "../utils/format.js";
+import { formatKz, formatFreteKz } from "../utils/format.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -570,7 +570,11 @@ export default function CheckoutPage() {
                         </div>
                         <div className="ae-checkout-sum-line__pr">
                           <span>{formatKz(line)}</span>
-                          <span className="ae-muted"> + {formatKz(ship)} portes</span>
+                          {ship > 0 ? (
+                            <span className="ae-muted"> + {formatKz(ship)} portes</span>
+                          ) : (
+                            <span className="ae-muted"> · portes grátis</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -585,7 +589,7 @@ export default function CheckoutPage() {
               </div>
               <div className="ae-checkout-sum-row">
                 <span>Portes (por linha)</span>
-                <span>{formatKz(shipping)}</span>
+                <span>{formatFreteKz(shipping)}</span>
               </div>
               <div className="ae-checkout-sum-row ae-checkout-sum-row--bold">
                 <span>Total</span>

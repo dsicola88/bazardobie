@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { FavoriteToggle } from "../components/FavoriteToggle.js";
 import { ProductReportModal } from "../components/ProductReportModal.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
-import { formatKz } from "../utils/format.js";
+import { formatKz, formatFreteKz } from "../utils/format.js";
 
 type Img = { url: string };
 type Variant = { id: string; sku: string; name?: string | null; stock: number };
@@ -207,7 +207,7 @@ export default function ProductPage() {
               <select value={deliveryId} onChange={(e) => setDeliveryId(e.target.value)}>
                 {product.deliveryOptions.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.areaCidade}, {d.areaProvincia} · {formatKz(d.custoEntrega)} · {d.prazoEstimado} dias
+                    {d.areaCidade}, {d.areaProvincia} · {formatFreteKz(d.custoEntrega)} · {d.prazoEstimado} dias
                     {d.tipoEntrega === "PLATAFORMA" && d.logisticsPartner
                       ? ` · ${d.logisticsPartner.name}`
                       : ""}
@@ -284,6 +284,9 @@ export default function ProductPage() {
             <p className="ae-muted">
               Prazo indicado: <strong>{meta?.prazoEstimado}</strong> dias úteis após confirmação da encomenda. Os prazos
               efectivos dependem da rota logística e podem variar.
+            </p>
+            <p className="ae-muted">
+              Portes desta opção: <strong>{meta ? formatFreteKz(meta.custoEntrega) : "—"}</strong>
             </p>
             <p className="ae-muted">
               Tipo: {meta?.tipoEntrega === "PLATAFORMA" ? "Logística da plataforma BAZAR DO BIÉ" : "Logística da loja parceira"}

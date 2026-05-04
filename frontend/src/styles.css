@@ -41,6 +41,8 @@ a:hover {
   max-width: 1320px;
   margin: 0 auto;
   padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 .ae-page {
   padding: 12px 0 32px;
@@ -614,6 +616,12 @@ a:hover {
   background: linear-gradient(180deg, #fffefb, var(--ae-card));
   position: sticky;
   top: 110px;
+}
+@media (max-width: 1024px) {
+  .ae-buybox {
+    position: static;
+    top: auto;
+  }
 }
 .ae-buybox__now {
   font-size: 28px;
@@ -1342,6 +1350,14 @@ a:hover {
   border-top: 1px solid var(--ae-line);
 }
 
+/* Painel vendedor / admin / logística — grelha lateral + conteúdo (base em desktop) */
+.ae-vendor-shell {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  min-height: 100vh;
+  align-items: stretch;
+}
+
 .ae-admin-shell .ae-vendor-side {
   background: linear-gradient(195deg, #141c2b 0%, #1e2738 48%, #182030 100%);
 }
@@ -1417,6 +1433,7 @@ a:hover {
 .ae-v-main {
   background: #eceff3;
   padding: 22px;
+  min-width: 0;
 }
 .ae-v-head {
   display: flex;
@@ -1548,6 +1565,9 @@ a:hover {
   white-space: nowrap;
 }
 @media (max-width: 640px) {
+  .ae-table-cart td:nth-child(2) {
+    white-space: normal;
+  }
   .ae-table-cart {
     min-width: 520px;
   }
@@ -1715,6 +1735,13 @@ a:hover {
 
 .ae-admin-pro {
   max-width: 1100px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ae-admin-pro .ae-panel:has(.ae-data-table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .ae-admin-pro__head {
   display: flex;

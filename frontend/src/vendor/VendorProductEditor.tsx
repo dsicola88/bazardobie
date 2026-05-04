@@ -684,6 +684,7 @@ export default function VendorProductEditor() {
                     value={d.custoEntrega}
                     onChange={(e) => setDeliveries((p) => p.map((x, i) => (i === ix ? { ...x, custoEntrega: e.target.value } : x)))}
                   />
+                  <p className="ae-field-hint">0 = portes grátis para esta modalidade e zona.</p>
                 </div>
                 <div>
                   <label>Prazo estimado (dias úteis)</label>

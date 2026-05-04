@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
-import { formatKz } from "../utils/format.js";
+import { formatKz, formatFreteKz } from "../utils/format.js";
 
 type CartItem = {
   id: string;
@@ -91,7 +91,7 @@ export default function CartPage() {
                             ? `Plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
                             : "Plataforma (BAZAR DO BIÉ)"
                           : "Loja parceira"}{" "}
-                        · {formatKz(item.productDeliveryOption.custoEntrega)}
+                        · {formatFreteKz(item.productDeliveryOption.custoEntrega)}
                       </div>
                       <div className="ae-muted" style={{ fontSize: 12 }}>
                         {item.productDeliveryOption.prazoEstimado} dias úteis
