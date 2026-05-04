@@ -17,8 +17,8 @@ export const orderController = {
   myOrders: asyncHandler(async (req, res) => {
     const userId = req.user?.sub;
     if (!userId) throw new HttpError(401, "Autenticação necessária");
-    const skip = Number(req.query.skip) || 0;
-    const take = Number(req.query.take) || 20;
+    const skip = Math.max(0, Number(req.query.skip) || 0);
+    const take = Math.min(Math.max(Number(req.query.take) || 25, 1), 100);
     const list = await orderService.myOrders(userId, skip, take);
     res.json(list);
   }),
@@ -33,8 +33,8 @@ export const orderController = {
   sellerOrders: asyncHandler(async (req, res) => {
     const userId = req.user?.sub;
     if (!userId) throw new HttpError(401, "Autenticação necessária");
-    const skip = Number(req.query.skip) || 0;
-    const take = Number(req.query.take) || 20;
+    const skip = Math.max(0, Number(req.query.skip) || 0);
+    const take = Math.min(Math.max(Number(req.query.take) || 30, 1), 150);
     const list = await orderService.sellerOrders(userId, skip, take);
     res.json(list);
   }),

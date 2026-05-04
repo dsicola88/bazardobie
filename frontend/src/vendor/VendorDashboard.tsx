@@ -4,6 +4,9 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz } from "../utils/format.js";
 
+const DASH_PRODUCT_SAMPLE = 300;
+const DASH_ORD_SAMPLE = 24;
+
 type ProductRow = {
   id: string;
   name: string;
@@ -18,10 +21,15 @@ type OrderMini = {
   createdAt: string;
 };
 
+type ProductMine = { items: ProductRow[]; total: number };
+type OrderPage = { items: OrderMini[]; total: number };
+
 export default function VendorDashboard() {
   const { token } = useAuth();
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [productTotal, setProductTotal] = useState(0);
   const [orders, setOrders] = useState<OrderMini[]>([]);
+  const [ordersTotal, setOrdersTotal] = useState(0);
   const [shopStatus, setShopStatus] = useState<"load" | "missing" | "pending" | "ok" | "err">("load");
 
   useEffect(() => {
@@ -38,18 +46,28 @@ export default function VendorDashboard() {
 
   useEffect(() => {
     if (!token) return;
-    void apiFetch<ProductRow[]>("/vendor/products/mine", { token })
-      .then(setProducts)
+    void apiFetch<ProductMine>(`/vendor/products/mine?take=${DASH_PRODUCT_SAMPLE}&skip=0`, { token })
+      .then((mine) => {
+        setProducts(mine.items);
+        setProductTotal(mine.total);
+      })
       .catch(() => {
         setProducts([]);
+        setProductTotal(0);
       });
   }, [token]);
 
   useEffect(() => {
     if (!token) return;
-    void apiFetch<OrderMini[]>("/vendor/orders", { token })
-      .then(setOrders)
-      .catch(() => setOrders([]));
+    void apiFetch<OrderPage>(`/vendor/orders?take=${DASH_ORD_SAMPLE}&skip=0`, { token })
+      .then((o) => {
+        setOrders(o.items);
+        setOrdersTotal(o.total);
+      })
+      .catch(() => {
+        setOrders([]);
+        setOrdersTotal(0);
+      });
   }, [token]);
 
   const active = products.filter((p) => p.isActive).length;
@@ -114,16 +132,30 @@ export default function VendorDashboard() {
 
       <div className="ae-v-metrics">
         <div className="ae-v-metric">
-          <div className="ae-v-metric__v">{products.length}</div>
-          <div className="ae-v-metric__l">Referências no catálogo</div>
+          <div className="ae-v-metric__v">{productTotal}</div>
+          <div className="ae-v-metric__l">Referências no catálogo (total na base)</div>
         </div>
         <div className="ae-v-metric">
           <div className="ae-v-metric__v">{active}</div>
-          <div className="ae-v-metric__l">Activas na vitrine ({inactive} inactivas)</div>
+          <div className="ae-v-metric__l">
+            Activos na amostra carregada ({inactive} inactivos)
+            {productTotal > products.length ? (
+              <span className="ae-muted" style={{ display: "block", fontSize: 11, marginTop: 6, fontWeight: 500 }}>
+                Amostra: primeiros {products.length} SKU (mais recentes). Detalhes no catálogo.
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="ae-v-metric">
           <div className="ae-v-metric__v">{pend}</div>
-          <div className="ae-v-metric__l">Encomendas na fila de tratamento</div>
+          <div className="ae-v-metric__l">
+            Encomendas pendentes/confirmadas (últimos {Math.min(DASH_ORD_SAMPLE, orders.length)} pedidos na amostra)
+            {ordersTotal > orders.length ? (
+              <span className="ae-muted" style={{ display: "block", fontSize: 11, marginTop: 6, fontWeight: 500 }}>
+                Total de encomendas com a sua loja: {ordersTotal} — vista completa na secção «Encomendas».
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 

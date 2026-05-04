@@ -289,16 +289,35 @@ export const productService = {
     });
   },
 
-  async listMine(shopUserId: string) {
+  async listMine(shopUserId: string, skip = 0, take = 80, search?: string) {
     const shops = shopRepo();
     const shop = await shops.findByUserId(shopUserId);
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
-    return prisma.product.findMany({
-      where: { shopId: shop.id },
-      orderBy: { createdAt: "desc" },
-      include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
-    });
+    const q = search?.trim();
+    const where: Prisma.ProductWhereInput = {
+      shopId: shop.id,
+      ...(q && q.length >= 1
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { sku: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+      }),
+      prisma.product.count({ where }),
+    ]);
+    return { items, total, skip, take };
   },
 
   async getPublic(id: string) {

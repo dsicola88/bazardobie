@@ -11,12 +11,15 @@ type ModItem = {
   shop: { id: string; name: string; userId: string };
 };
 
-type ModList = { items: ModItem[]; total: number };
+type ModList = { items: ModItem[]; total: number; skip?: number; take?: number };
+
+const MOD_PAGE = 50;
 
 export default function AdminProducts() {
   const { token } = useAuth();
   const [status, setStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [data, setData] = useState<ModList | null>(null);
+  const [page, setPage] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -24,12 +27,20 @@ export default function AdminProducts() {
     if (!token) return;
     setErr(null);
     try {
-      const q = await apiFetch<ModList>(`/admin/products/moderation?status=${status}&take=60`, { token });
+      const skip = page * MOD_PAGE;
+      const q = await apiFetch<ModList>(
+        `/admin/products/moderation?status=${status}&take=${MOD_PAGE}&skip=${skip}`,
+        { token },
+      );
       setData(q);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro");
     }
-  }, [token, status]);
+  }, [token, status, page]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [status]);
 
   useEffect(() => {
     void load();
@@ -144,7 +155,29 @@ export default function AdminProducts() {
           ))}
         </tbody>
       </table>
-      <p className="ae-muted">Total: {data?.total ?? 0}</p>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+        <p className="ae-muted" style={{ margin: 0 }}>
+          Total na base: <strong>{data?.total ?? 0}</strong>
+          {data?.total ? (
+            <>
+              {" "}
+              · Página <strong>{page + 1}</strong> /{" "}
+              {Math.max(1, Math.ceil((data?.total ?? 0) / MOD_PAGE))} ({MOD_PAGE} por página)
+            </>
+          ) : null}
+        </p>
+        <button type="button" className="btn" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+          ← Anterior
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!data?.total || (page + 1) * MOD_PAGE >= data.total}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Seguinte →
+        </button>
+      </div>
     </div>
   );
 }

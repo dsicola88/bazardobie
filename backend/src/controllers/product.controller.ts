@@ -39,7 +39,10 @@ export const productController = {
   mine: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");
-    const list = await productService.listMine(uid);
+    const skip = Math.max(0, Number(req.query.skip) || 0);
+    const take = Math.min(Math.max(Number(req.query.take) || 80, 1), 200);
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const list = await productService.listMine(uid, skip, take, q);
     res.json(list);
   }),
 

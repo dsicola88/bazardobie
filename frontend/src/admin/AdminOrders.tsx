@@ -22,13 +22,15 @@ export default function AdminOrders() {
   const { token } = useAuth();
   const [data, setData] = useState<OrderList | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE = 80;
 
   useEffect(() => {
     if (!token) return;
-    void apiFetch<OrderList>("/admin/orders?take=80", { token })
+    void apiFetch<OrderList>(`/admin/orders?take=${PAGE}&skip=${page * PAGE}`, { token })
       .then(setData)
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Erro"));
-  }, [token]);
+  }, [token, page]);
 
   if (err) return <p style={{ color: "crimson" }}>{err}</p>;
 
@@ -82,7 +84,28 @@ export default function AdminOrders() {
           ))}
         </tbody>
       </table>
-      <p className="ae-muted">Total na base: {data?.total ?? 0}</p>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+        <p className="ae-muted" style={{ margin: 0 }}>
+          Total na base: <strong>{data?.total ?? 0}</strong>
+          {data?.total ? (
+            <>
+              {" "}
+              · Página <strong>{page + 1}</strong> / {Math.max(1, Math.ceil((data?.total ?? 0) / PAGE))} ({PAGE} por página)
+            </>
+          ) : null}
+        </p>
+        <button type="button" className="btn" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+          ← Anterior
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!data?.total || (page + 1) * PAGE >= data.total}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Seguinte →
+        </button>
+      </div>
     </div>
   );
 }

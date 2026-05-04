@@ -422,17 +422,22 @@ export const orderService = {
   },
 
   async myOrders(userId: string, skip = 0, take = 20) {
-    return prisma.order.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-      include: {
-        items: {
-          include: { shop: true, product: { include: { images: { take: 1 } } } },
+    const where = { userId };
+    const [items, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        include: {
+          items: {
+            include: { shop: true, product: { include: { images: { take: 1 } } } },
+          },
         },
-      },
-    });
+      }),
+      prisma.order.count({ where }),
+    ]);
+    return { items, total, skip, take };
   },
 
   async getMyOrder(orderId: string, userId: string) {
@@ -453,19 +458,24 @@ export const orderService = {
     const shop = await prisma.shop.findUnique({ where: { userId: vendorUserId } });
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
-    return prisma.order.findMany({
-      where: { items: { some: { shopId: shop.id } } },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-      include: {
-        items: {
-          where: { shopId: shop.id },
-          include: { product: { include: { images: true } } },
+    const where = { items: { some: { shopId: shop.id } } };
+    const [items, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        include: {
+          items: {
+            where: { shopId: shop.id },
+            include: { product: { include: { images: true } } },
+          },
+          user: { select: { id: true, name: true, email: true, phone: true } },
         },
-        user: { select: { id: true, name: true, email: true, phone: true } },
-      },
-    });
+      }),
+      prisma.order.count({ where }),
+    ]);
+    return { items, total, skip, take };
   },
 
   async updateStatus(orderId: string, status: OrderStatus, actor: { userId: string; role: UserRole }) {

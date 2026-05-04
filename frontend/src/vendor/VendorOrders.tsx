@@ -31,26 +31,49 @@ function logisticsLabel(kind: LogisticsKind) {
   return kind === "PLATAFORMA" ? "Envio BAZAR DO BIÉ (plataforma)" : "Envio pela loja";
 }
 
+type OrderPageResp = {
+  items: Row[];
+  total: number;
+  skip: number;
+  take: number;
+};
+
+const PAGE_SIZE = 35;
+
 export default function VendorOrders() {
   const { token } = useAuth();
-  const [orders, setOrders] = useState<Row[]>([]);
+  const [bundle, setBundle] = useState<OrderPageResp | null>(null);
+  const [page, setPage] = useState(0);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [patchErr, setPatchErr] = useState<string | null>(null);
 
   async function reload() {
     if (!token) return;
-    const list = await apiFetch<Row[]>("/vendor/orders", { token });
-    setOrders(list);
+    setLoadErr(null);
+    try {
+      const res = await apiFetch<OrderPageResp>(
+        `/vendor/orders?take=${PAGE_SIZE}&skip=${page * PAGE_SIZE}`,
+        { token }
+      );
+      setBundle(res);
+    } catch {
+      setBundle(null);
+      setLoadErr("Não foi possível carregar as encomendas.");
+    }
   }
 
   useEffect(() => {
-    void reload().catch(() => setOrders([]));
-  }, [token]);
+    void reload().catch(() => {});
+  }, [token, page]);
 
+  const orders = bundle?.items ?? [];
   const filtered = orders.filter((o) => {
     const blob = `${o.id} ${o.user?.name ?? ""} ${o.items.map((i) => i.productNameSnapshot).join(" ")}`.toLowerCase();
     return !q.trim() || blob.includes(q.trim().toLowerCase());
   });
+
+  const totalPages = bundle ? Math.max(1, Math.ceil(bundle.total / PAGE_SIZE)) : 1;
 
   async function setStatus(orderId: string, status: string) {
     if (!token) return;
@@ -80,7 +103,7 @@ export default function VendorOrders() {
         </div>
         <input
           type="search"
-          placeholder="Pesquisar encomenda ou comprador…"
+          placeholder="Filtrar na página actual (referência ou comprador)…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           style={{ padding: "8px 10px", minWidth: 240, border: "1px solid var(--ae-line)", borderRadius: 4 }}
@@ -91,6 +114,34 @@ export default function VendorOrders() {
         <p className="ae-admin-alert ae-admin-alert--err" role="alert">
           {patchErr}
         </p>
+      ) : null}
+
+      {loadErr ? (
+        <p className="ae-admin-alert ae-admin-alert--err" role="alert">
+          {loadErr}
+        </p>
+      ) : null}
+
+      {bundle != null && bundle.total > 0 ? (
+        <>
+          <p className="ae-muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+            Total na loja: <strong>{bundle.total}</strong> · Página <strong>{page + 1}</strong> / {totalPages} (
+            {PAGE_SIZE} por página)
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+            <button type="button" className="btn" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+              ← Anterior
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Seguinte →
+            </button>
+          </div>
+        </>
       ) : null}
 
       {filtered.map((o) => {
@@ -185,8 +236,11 @@ export default function VendorOrders() {
         );
       })}
 
-      {filtered.length === 0 ? (
-        <div className="page-panel ae-empty-center">Nenhuma encomenda encontrada.</div>
+      {bundle != null && bundle.total === 0 ? (
+        <div className="page-panel ae-empty-center">Ainda não existem encomendas com produtos da sua loja.</div>
+      ) : null}
+      {bundle != null && bundle.total > 0 && filtered.length === 0 ? (
+        <div className="page-panel ae-muted ae-empty-center">Nenhum resultado nesta página com este filtro local.</div>
       ) : null}
     </>
   );

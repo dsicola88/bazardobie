@@ -39,9 +39,14 @@ type Order = {
   trackingUrl?: string | null;
 };
 
+type OrdersMineResp = { items: Order[]; total: number; skip: number; take: number };
+
+const BUYER_ORDER_PAGE = 35;
+
 export default function OrdersPage() {
   const { token, user } = useAuth();
   const [list, setList] = useState<Order[]>([]);
+  const [ordersTotal, setOrdersTotal] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const gatewayFlash = searchParams.get("gateway");
   const gatewayGid = searchParams.get("gid");
@@ -89,8 +94,26 @@ export default function OrdersPage() {
 
   const reload = useCallback(() => {
     if (!token || user?.role !== "CLIENTE") return;
-    void apiFetch<Order[]>("/orders/my", { token }).then(setList).catch(() => setList([]));
+    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=0`, { token })
+      .then((res) => {
+        setList(res.items);
+        setOrdersTotal(res.total);
+      })
+      .catch(() => {
+        setList([]);
+        setOrdersTotal(0);
+      });
   }, [token, user]);
+
+  const loadMore = useCallback(() => {
+    if (!token || user?.role !== "CLIENTE") return;
+    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=${list.length}`, { token })
+      .then((res) => {
+        setList((prev) => [...prev, ...res.items]);
+        setOrdersTotal(res.total);
+      })
+      .catch(() => {});
+  }, [token, user, list.length]);
 
   const resumePay = useCallback(
     async (checkoutGroupId: string) => {
@@ -199,6 +222,18 @@ export default function OrdersPage() {
       </nav>
       <p className="ae-muted" style={{ fontSize: 12, margin: "-6px 0 14px" }}>
         Fluxo: pagamento → confirmação da loja → preparação → trânsito → entregue. Depois de «Entregue», pode avaliar cada artigo com fotos.
+      </p>
+      <p className="ae-muted" style={{ fontSize: 12, margin: "-8px 0 14px" }}>
+        {ordersTotal > list.length ? (
+          <>
+            Mostradas <strong>{list.length}</strong> de <strong>{ordersTotal}</strong> encomendas — use «Carregar mais» para ampliar o histórico.
+            Os badges nos separadores reflectem só o que já está carregado.
+          </>
+        ) : ordersTotal > 0 ? (
+          <>
+            <strong>{list.length}</strong> encomenda(s) carregada(s).
+          </>
+        ) : null}
       </p>
 
       <ReviewOrderModal
@@ -313,6 +348,13 @@ export default function OrdersPage() {
           </li>
         ))}
       </ul>
+      {ordersTotal > list.length ? (
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "center" }}>
+          <button type="button" className="btn btn-primary" onClick={() => void loadMore()}>
+            Carregar mais encomendas ({list.length}/{ordersTotal})
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

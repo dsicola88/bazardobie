@@ -17,30 +17,48 @@ type Row = {
   images: { url: string }[];
 };
 
+type MineList = { items: Row[]; total: number; skip: number; take: number };
+
+const PAGE_SIZE = 50;
+
 export default function VendorProducts() {
   const { token } = useAuth();
   const location = useLocation();
-  const [items, setItems] = useState<Row[]>([]);
+  const [bundle, setBundle] = useState<MineList | null>(null);
   const [listErr, setListErr] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
-  const [q, setQ] = useState("");
+  const [qInput, setQInput] = useState("");
+  const [qDeb, setQDeb] = useState("");
+  const [page, setPage] = useState(0);
   const [f, setF] = useState<"a" | "l" | "o">("a");
   const [patchErr, setPatchErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const h = window.setTimeout(() => setQDeb(qInput.trim()), 360);
+    return () => window.clearTimeout(h);
+  }, [qInput]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [qDeb]);
 
   const load = useCallback(() => {
     if (!token) return Promise.resolve();
     setListErr(null);
     setListLoading(true);
-    return apiFetch<Row[]>("/vendor/products/mine", { token })
-      .then((rows) => {
-        setItems(rows);
-      })
+    const qs = new URLSearchParams({
+      take: String(PAGE_SIZE),
+      skip: String(page * PAGE_SIZE),
+    });
+    if (qDeb.length >= 1) qs.set("q", qDeb);
+    return apiFetch<MineList>(`/vendor/products/mine?${qs}`, { token })
+      .then(setBundle)
       .catch((e: unknown) => {
-        setItems([]);
+        setBundle(null);
         setListErr(e instanceof Error ? e.message : "Não foi possível carregar os seus produtos.");
       })
       .finally(() => setListLoading(false));
-  }, [token]);
+  }, [token, page, qDeb]);
 
   useEffect(() => {
     if (!token) {
@@ -51,13 +69,15 @@ export default function VendorProducts() {
   }, [token, location.key, load]);
 
   const rows = useMemo(() => {
-    return items.filter((p) => {
+    const raw = bundle?.items ?? [];
+    return raw.filter((p) => {
       if (f === "l" && !p.isActive) return false;
       if (f === "o" && p.isActive) return false;
-      const s = `${p.name} ${p.sku}`.toLowerCase();
-      return !q.trim() || s.includes(q.trim().toLowerCase());
+      return true;
     });
-  }, [items, q, f]);
+  }, [bundle, f]);
+
+  const totalPages = bundle ? Math.max(1, Math.ceil(bundle.total / PAGE_SIZE)) : 1;
 
   async function patch(id: string, isActive: boolean) {
     setPatchErr(null);
@@ -87,9 +107,9 @@ export default function VendorProducts() {
         <div>
           <h1 className="ae-v-title">Catálogo de produtos</h1>
           <p className="ae-muted" style={{ margin: "4px 0 0", maxWidth: "40rem", lineHeight: 1.5 }}>
-            Visão consolidada das suas referências, estados de validação e disponibilidade na vitrine. Novos artigos
-            permanecem sob escrutínio da equipa até homologação; após aprovação passam a ser pesquisáveis na loja
-            pública.
+            Visão consolidada das suas referências, estados de validação e disponibilidade na vitrine. A pesquisa e a
+            paginação comunicam com o servidor (suporta catálogos grandes). Novos artigos permanecem sob escrutínio até
+            homologação.
           </p>
         </div>
         <Link to="/vendor/products/new" className="btn btn-primary">
@@ -101,9 +121,9 @@ export default function VendorProducts() {
         style={{ marginBottom: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}
       >
         <input
-          placeholder="Pesquisar por designação ou SKU…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          placeholder="Pesquisar por designação ou SKU (servidor)…"
+          value={qInput}
+          onChange={(e) => setQInput(e.target.value)}
           style={{ flex: "1 200px", padding: "8px 10px", borderRadius: 4, border: "1px solid var(--ae-line)" }}
         />
         <div className="ae-sort">
@@ -120,6 +140,34 @@ export default function VendorProducts() {
           ))}
         </div>
       </div>
+      {!listLoading && bundle != null ? (
+        <p className="ae-muted" style={{ fontSize: 13, margin: "0 0 12px" }}>
+          Total na loja: <strong>{bundle.total}</strong>
+          {bundle.total ? (
+            <>
+              {" "}
+              · Página <strong>{page + 1}</strong> / {totalPages} ({PAGE_SIZE} por página)
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {!listLoading && bundle != null && bundle.total > 0 ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          <button type="button" className="btn" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            ← Anterior
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Seguinte →
+          </button>
+        </div>
+      ) : null}
+
       {listLoading ? <p className="ae-muted">A carregar produtos…</p> : null}
       {listErr ? (
         <p className="ae-admin-alert ae-admin-alert--err" role="alert">
@@ -177,7 +225,11 @@ export default function VendorProducts() {
                   ) : null}
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <Link to={`/vendor/products/${p.id}/edit`} className="ae-mini-btn" style={{ textDecoration: "none", display: "inline-block", marginRight: 6 }}>
+                  <Link
+                    to={`/vendor/products/${p.id}/edit`}
+                    className="ae-mini-btn"
+                    style={{ textDecoration: "none", display: "inline-block", marginRight: 6 }}
+                  >
                     Editar ficha
                   </Link>
                   <button type="button" className="ae-mini-btn" onClick={() => void patch(p.id, !p.isActive)}>
@@ -188,9 +240,15 @@ export default function VendorProducts() {
             ))}
           </tbody>
         </table>
-        {!listLoading && !listErr && rows.length === 0 ? (
+        {!listLoading && !listErr && bundle?.total === 0 ? (
           <div className="ae-empty-center">
-            Não existem referências registadas. Utilize «Nova referência» para criar a primeira ficha de produto.
+            Não existem referências registadas{qDeb ? " com este critério" : ""}. Utilize «Nova referência» para criar a
+            primeira ficha de produto.
+          </div>
+        ) : null}
+        {!listLoading && bundle != null && bundle.total > 0 && rows.length === 0 ? (
+          <div className="ae-empty-center ae-muted">
+            Nenhuma referência nesta página corresponde ao filtro Activos/Inactivos. Mude de página ou ajuste os filtros.
           </div>
         ) : null}
       </div>
