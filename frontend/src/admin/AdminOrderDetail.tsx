@@ -51,7 +51,8 @@ type AdminOrder = {
   shippingPhone: string;
   shippingProvince: string;
   shippingCity: string;
-  shippingAddress: string;
+  shippingAddress: string | null;
+  shippingPickupPoint?: { id: string; namePt: string; refCode?: string | null } | null;
   notes?: string | null;
   user: { id: string; email: string; name: string; phone?: string | null };
   items: {
@@ -363,8 +364,17 @@ export default function AdminOrderDetail() {
           {order.shippingName} · {order.shippingPhone}
           <br />
           {order.shippingProvince}, {order.shippingCity}
+          {order.shippingPickupPoint?.namePt ? (
+            <>
+              <br />
+              <strong>Ponto:</strong> {order.shippingPickupPoint.namePt}
+              {order.shippingPickupPoint.refCode ? ` (${order.shippingPickupPoint.refCode})` : ""}
+            </>
+          ) : null}
           <br />
-          {order.shippingAddress}
+          {(order.shippingAddress ?? "").trim() || (
+            <span className="ae-muted">Sem instruções textuais · destino estruturado via catálogo.</span>
+          )}
         </p>
         {order.notes?.trim() ? (
           <p className="ae-muted" style={{ marginTop: 10, whiteSpace: "pre-wrap", fontSize: 13 }}>

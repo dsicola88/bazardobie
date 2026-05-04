@@ -24,6 +24,36 @@ type CheckoutCartItem = {
   };
 };
 
+type FreightLocalityDto = {
+  id: string;
+  label: string;
+  province: string;
+  city: string;
+  municipalityId?: string | null;
+};
+
+type GeoProvinceDto = { id: string; code: string; namePt: string; sortOrder: number };
+type GeoMunicipalityDto = {
+  id: string;
+  code: string;
+  namePt: string;
+  provinceId: string;
+  sortOrder: number;
+};
+type PickupDto = { id: string; namePt: string; refCode?: string | null };
+
+type FreightMode = "ZONE" | "DISTANCE" | "NONE";
+
+type FreightMetaResponse = {
+  freightMode?: string;
+};
+
+function coerceFreightMode(raw: unknown): FreightMode {
+  if (raw === "ZONE") return "ZONE";
+  if (raw === "DISTANCE") return "DISTANCE";
+  return "NONE";
+}
+
 function unitPriceKz(it: CheckoutCartItem): number {
   const p = it.product;
   const promo =
@@ -67,8 +97,13 @@ export default function CheckoutPage() {
 
   const [shippingName, setShippingName] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
-  const [shippingProvince, setShippingProvince] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
+  const [geoProvinces, setGeoProvinces] = useState<GeoProvinceDto[]>([]);
+  const [geoProvinceId, setGeoProvinceId] = useState("");
+  const [geoMunicipalities, setGeoMunicipalities] = useState<GeoMunicipalityDto[]>([]);
+  const [geoMunicipalityId, setGeoMunicipalityId] = useState("");
+  const [pickupPoints, setPickupPoints] = useState<PickupDto[]>([]);
+  const [shippingPickupPointId, setShippingPickupPointId] = useState("");
+  const [shippingNeighborhood, setShippingNeighborhood] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PayMethod>("COD");
@@ -76,6 +111,15 @@ export default function CheckoutPage() {
   const [proofUploading, setProofUploading] = useState(false);
   const paymentProofFileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+
+  const [freightMode, setFreightMode] = useState<FreightMode>("NONE");
+  const [freightLocals, setFreightLocals] = useState<FreightLocalityDto[]>([]);
+  const [freightLocalityId, setFreightLocalityId] = useState("");
+
+  const [zoneFreightMatched, setZoneFreightMatched] = useState(false);
+  const [zoneFreightPrice, setZoneFreightPrice] = useState<number | null>(null);
+  const [zoneFreightHint, setZoneFreightHint] = useState<string | null>(null);
+  const [zoneFreightLoading, setZoneFreightLoading] = useState(false);
 
   const [done, setDone] = useState<{
     checkoutGroupId: string;
@@ -98,6 +142,128 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!token || user?.role !== "CLIENTE") {
+      setFreightMode("NONE");
+      setFreightLocals([]);
+      setFreightLocalityId("");
+      setGeoProvinces([]);
+      setGeoProvinceId("");
+      setGeoMunicipalities([]);
+      setGeoMunicipalityId("");
+      return;
+    }
+    void apiFetch<FreightMetaResponse>("/freight/meta")
+      .then((m) => setFreightMode(coerceFreightMode(m.freightMode)))
+      .catch(() => setFreightMode("NONE"));
+  }, [token, user]);
+
+  useEffect(() => {
+    if (!token || user?.role !== "CLIENTE") return;
+    void apiFetch<{ items: GeoProvinceDto[] }>("/shipping/geo/provinces")
+      .then((r) => setGeoProvinces(r.items ?? []))
+      .catch(() => setGeoProvinces([]));
+  }, [token, user]);
+
+  useEffect(() => {
+    if (!geoProvinceId) {
+      setGeoMunicipalities([]);
+      return;
+    }
+    void apiFetch<{ items: GeoMunicipalityDto[] }>(
+      `/shipping/geo/municipalities?provinceId=${encodeURIComponent(geoProvinceId)}`
+    )
+      .then((r) => setGeoMunicipalities(r.items ?? []))
+      .catch(() => setGeoMunicipalities([]));
+  }, [geoProvinceId]);
+
+  useEffect(() => {
+    if (!geoMunicipalityId) {
+      setPickupPoints([]);
+      setShippingPickupPointId("");
+      return;
+    }
+    void apiFetch<{ items: PickupDto[] }>(
+      `/shipping/geo/pickup-points?municipalityId=${encodeURIComponent(geoMunicipalityId)}`
+    )
+      .then((r) => setPickupPoints(r.items ?? []))
+      .catch(() => setPickupPoints([]));
+  }, [geoMunicipalityId]);
+
+  useEffect(() => {
+    if (freightMode !== "DISTANCE") {
+      setFreightLocals([]);
+      setFreightLocalityId("");
+      return;
+    }
+    if (!geoMunicipalityId) {
+      setFreightLocals([]);
+      setFreightLocalityId("");
+      return;
+    }
+    void apiFetch<{ items: FreightLocalityDto[] }>(
+      `/freight/localities?municipalityId=${encodeURIComponent(geoMunicipalityId)}`
+    )
+      .then((r) => setFreightLocals(r.items ?? []))
+      .catch(() => setFreightLocals([]));
+  }, [freightMode, geoMunicipalityId]);
+
+  useEffect(() => {
+    if (freightMode !== "ZONE") {
+      setZoneFreightMatched(false);
+      setZoneFreightPrice(null);
+      setZoneFreightHint(null);
+      setZoneFreightLoading(false);
+      return;
+    }
+    if (!geoMunicipalityId.trim()) {
+      setZoneFreightMatched(false);
+      setZoneFreightPrice(null);
+      setZoneFreightHint(null);
+      setZoneFreightLoading(false);
+      return;
+    }
+    setZoneFreightLoading(true);
+    const tm = window.setTimeout(() => {
+      void apiFetch<{
+        active: boolean;
+        matched?: boolean;
+        price?: number;
+        label?: string | null;
+        message?: string;
+      }>("/freight/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ municipalityId: geoMunicipalityId.trim() }),
+      })
+        .then((res) => {
+          setZoneFreightLoading(false);
+          if (!res.active) {
+            setZoneFreightMatched(false);
+            setZoneFreightPrice(null);
+            setZoneFreightHint("Modo zona não disponível neste momento.");
+            return;
+          }
+          if (res.matched === true && typeof res.price === "number") {
+            setZoneFreightMatched(true);
+            setZoneFreightPrice(res.price);
+            setZoneFreightHint(null);
+          } else {
+            setZoneFreightMatched(false);
+            setZoneFreightPrice(null);
+            setZoneFreightHint(res.message ?? "Sem tarifa cadastrada para este município.");
+          }
+        })
+        .catch(() => {
+          setZoneFreightLoading(false);
+          setZoneFreightMatched(false);
+          setZoneFreightPrice(null);
+          setZoneFreightHint("Não foi possível calcular o frete. Tente de novo.");
+        });
+    }, 420);
+    return () => window.clearTimeout(tm);
+  }, [freightMode, geoMunicipalityId]);
+
+  useEffect(() => {
+    if (!token || user?.role !== "CLIENTE") {
       setMeLoad(null);
       return;
     }
@@ -117,6 +283,17 @@ export default function CheckoutPage() {
     [cart?.items]
   );
 
+  const effectiveShipping =
+    freightMode === "ZONE" && zoneFreightMatched && zoneFreightPrice != null ? zoneFreightPrice : shipping;
+  const effectiveGrand = subtotal + effectiveShipping;
+
+  const selectedDestinationLabel = useMemo(() => {
+    const m = geoMunicipalities.find((x) => x.id === geoMunicipalityId);
+    const p = geoProvinces.find((x) => x.id === geoProvinceId);
+    if (!m || !p) return "";
+    return `${m.namePt}, ${p.namePt}`;
+  }, [geoMunicipalities, geoMunicipalityId, geoProvinces, geoProvinceId]);
+
   const awaitingMe = Boolean(token && user?.role === "CLIENTE" && meLoad === null);
   const profilePhoneIncomplete = Boolean(
     token &&
@@ -124,7 +301,22 @@ export default function CheckoutPage() {
       meLoad !== null &&
       (!meLoad.phone?.trim() || meLoad.phone.trim().length < 6)
   );
-  const checkoutBlocked = awaitingMe || profilePhoneIncomplete;
+
+  /** Frete dinâmico: município catalogado + zona ou âncora GPS alinhada ao mesmo município. */
+  const checkoutBlockedFreight =
+    freightMode === "ZONE" &&
+    Boolean(
+      !geoMunicipalityId.trim() ||
+        zoneFreightLoading ||
+        !zoneFreightMatched ||
+        zoneFreightPrice == null
+    );
+  const checkoutBlockedFreightDist =
+    freightMode === "DISTANCE" &&
+    Boolean(!geoMunicipalityId.trim() || !freightLocalityId.trim());
+
+  const checkoutBlocked =
+    awaitingMe || profilePhoneIncomplete || checkoutBlockedFreight || checkoutBlockedFreightDist;
 
   async function saveAccountPhone() {
     if (!token) return;
@@ -183,6 +375,21 @@ export default function CheckoutPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
+    if (!geoMunicipalityId.trim()) {
+      setMsg("Seleccione província e município no catálogo (entrega estruturada).");
+      return;
+    }
+    if (freightMode === "DISTANCE" && !freightLocalityId.trim()) {
+      setMsg("Escolha a zona GPS de destino dentro do município para calcular o frete por distância.");
+      return;
+    }
+    if (freightMode === "ZONE" && (!zoneFreightMatched || zoneFreightPrice == null)) {
+      setMsg(
+        zoneFreightHint ??
+          "Este município ainda não tem tarifa de portes no marketplace — experimente outra localidade ou contacte o suporte."
+      );
+      return;
+    }
     setLoading(true);
     try {
       const out = await apiFetch<{ checkoutGroupId: string; orders: { id: string }[] }>("/checkout", {
@@ -194,10 +401,14 @@ export default function CheckoutPage() {
           paymentProofUrl: paymentProofUrl || undefined,
           shippingName,
           shippingPhone,
-          shippingProvince,
-          shippingCity,
-          shippingAddress,
+          shippingMunicipalityId: geoMunicipalityId.trim(),
+          ...(shippingPickupPointId.trim() ? { shippingPickupPointId: shippingPickupPointId.trim() } : {}),
+          shippingNeighborhood: shippingNeighborhood.trim() || undefined,
+          ...(shippingAddress.trim() ? { shippingAddress: shippingAddress.trim() } : {}),
           notes,
+          ...(freightMode === "DISTANCE" && freightLocalityId.trim()
+            ? { freightLocalityId: freightLocalityId.trim() }
+            : {}),
         }),
       });
       window.dispatchEvent(new Event("cart-updated"));
@@ -398,18 +609,136 @@ export default function CheckoutPage() {
               <input value={shippingName} onChange={(e) => setShippingName(e.target.value)} required />
               <label>Telefone para entrega</label>
               <input value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} required />
-              <div className="ae-checkout-fields__row">
-                <div>
-                  <label>Província</label>
-                  <input value={shippingProvince} onChange={(e) => setShippingProvince(e.target.value)} required />
+              <label htmlFor="checkout-geo-prov">Província (catálogo oficial)</label>
+              <select
+                id="checkout-geo-prov"
+                required
+                value={geoProvinceId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setGeoProvinceId(v);
+                  setGeoMunicipalityId("");
+                  setShippingPickupPointId("");
+                  setFreightLocalityId("");
+                }}
+              >
+                <option value="">— seleccione —</option>
+                {geoProvinces.map((pr) => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.namePt}
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="checkout-geo-mun">Município / comuna</label>
+              <select
+                id="checkout-geo-mun"
+                required
+                disabled={!geoProvinceId}
+                value={geoMunicipalityId}
+                onChange={(e) => {
+                  setGeoMunicipalityId(e.target.value);
+                  setShippingPickupPointId("");
+                  setFreightLocalityId("");
+                }}
+              >
+                <option value="">{geoProvinceId ? "— seleccione —" : "— escolha primeiro a província —"}</option>
+                {geoMunicipalities.map((mu) => (
+                  <option key={mu.id} value={mu.id}>
+                    {mu.namePt}
+                  </option>
+                ))}
+              </select>
+              <p className="ae-muted" style={{ fontSize: 12, margin: 0 }}>
+                O valor do frete e a operação usam sempre estes identificadores estruturados — sem depender de texto livre
+                de morada.
+              </p>
+              {pickupPoints.length > 0 ? (
+                <div className="form-stack" style={{ marginTop: 6 }}>
+                  <label htmlFor="checkout-pickup">Ponto fixo de entrega / recolha (opcional)</label>
+                  <select
+                    id="checkout-pickup"
+                    value={shippingPickupPointId}
+                    onChange={(e) => setShippingPickupPointId(e.target.value)}
+                  >
+                    <option value="">— entrega ao domicílio / morada indicada abaixo —</option>
+                    {pickupPoints.map((pp) => (
+                      <option key={pp.id} value={pp.id}>
+                        {pp.namePt}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label>Cidade / município</label>
-                  <input value={shippingCity} onChange={(e) => setShippingCity(e.target.value)} required />
+              ) : null}
+              {freightMode === "DISTANCE" ? (
+                <div className="form-stack" style={{ marginTop: 10 }}>
+                  <label htmlFor="checkout-freight-locality">Zona GPS · frete por distância</label>
+                  <select
+                    id="checkout-freight-locality"
+                    required
+                    disabled={!geoMunicipalityId}
+                    value={freightLocalityId}
+                    onChange={(e) => setFreightLocalityId(e.target.value)}
+                  >
+                    <option value="">
+                      {geoMunicipalityId
+                        ? freightLocals.length === 0
+                          ? "— sem âncora GPS para este município (admin) —"
+                          : "— escolha a zona —"
+                        : "— seleccione primeiro o município —"}
+                    </option>
+                    {freightLocals.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.label} — {loc.province}, {loc.city}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="ae-muted" style={{ fontSize: 12, margin: 0 }}>
+                    Os quilómetros até este ponto catalogado determinam a faixa de portes. O município de entrega deve
+                    coincidir com a âncora seleccionada.
+                  </p>
                 </div>
-              </div>
-              <label>Rua / bairro / ponto de referência</label>
-              <textarea rows={3} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} required />
+              ) : null}
+              {freightMode === "ZONE" ? (
+                <div className="page-panel" style={{ marginTop: 10, padding: "12px 14px", fontSize: 14 }}>
+                  {zoneFreightLoading ? (
+                    <p className="ae-muted" style={{ margin: 0 }}>
+                      A consultar tarifa para o município…
+                    </p>
+                  ) : zoneFreightMatched && zoneFreightPrice != null ? (
+                    <p style={{ margin: 0 }}>
+                      <strong>Entrega:</strong> {formatKz(zoneFreightPrice)}
+                      <span className="ae-muted" style={{ display: "block", fontSize: 12, marginTop: 6 }}>
+                        Tabela da plataforma para{" "}
+                        <strong>{selectedDestinationLabel || "município seleccionado"}</strong>.
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="ae-muted" style={{ margin: 0 }}>
+                      {zoneFreightHint ??
+                        (!geoMunicipalityId
+                          ? "Escolha o município para aparecer o valor dos portes."
+                          : "Este município ainda não tem tarifa configurada no marketplace.")}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+              <label htmlFor="checkout-bairro">Bairro / distrito (opcional)</label>
+              <input
+                id="checkout-bairro"
+                maxLength={160}
+                value={shippingNeighborhood}
+                onChange={(e) => setShippingNeighborhood(e.target.value)}
+                placeholder="Ex.: Benfica · complemento humano; o cálculo territorial vem do catálogo."
+              />
+              <label htmlFor="checkout-instructions">Instruções de entrega (opcional)</label>
+              <textarea
+                id="checkout-instructions"
+                rows={3}
+                maxLength={600}
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                placeholder="Andar, porta, ponto de referência, contacto à chegada — não substitui província/município."
+              />
               <label>Observações (opcional)</label>
               <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
@@ -527,15 +856,36 @@ export default function CheckoutPage() {
               disabled={loading || checkoutBlocked}
               className="btn btn-primary ae-checkout-submit-btn"
             >
-              {loading ? "A processar…" : `Confirmar compra · ${formatKz(grand)}`}
+              {loading
+                ? "A processar…"
+                : freightMode === "ZONE"
+                  ? zoneFreightMatched && zoneFreightPrice != null
+                    ? `Confirmar compra · ${formatKz(effectiveGrand)}`
+                    : "Confirmar compra · município com tarifa"
+                  : freightMode === "DISTANCE"
+                    ? `Confirmar · ${formatKz(subtotal)} + portes por distância`
+                    : `Confirmar compra · ${formatKz(grand)}`}
             </button>
             {checkoutBlocked && profilePhoneIncomplete ? (
               <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
                 Guarde telefone acima.
               </p>
+            ) : checkoutBlockedFreightDist ? (
+              <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                Escolha município no catálogo e depois a zona GPS com frete válido para esse município.
+              </p>
+            ) : checkoutBlockedFreight ? (
+              <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                Escolha um município com tarifa publicada ou confira no suporte quando a cobertura estiver disponível.
+              </p>
             ) : null}
             <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
-              Uma encomenda por loja parceira · totais em kwanzas.
+              Uma encomenda por loja parceira · totais em kwanzas
+              {freightMode === "ZONE"
+                ? " · o porte fixa‑se ao município oficialmente coberto (cadastro admin)."
+                : freightMode === "DISTANCE"
+                  ? " · faixas de quilómetros até ao ponto seleccionado."
+                  : "."}
             </p>
           </div>
         </form>
@@ -570,7 +920,9 @@ export default function CheckoutPage() {
                         </div>
                         <div className="ae-checkout-sum-line__pr">
                           <span>{formatKz(line)}</span>
-                          {ship > 0 ? (
+                          {freightMode === "ZONE" || freightMode === "DISTANCE" ? (
+                            <span className="ae-muted"> · portes no total do pedido</span>
+                          ) : ship > 0 ? (
                             <span className="ae-muted"> + {formatKz(ship)} portes</span>
                           ) : (
                             <span className="ae-muted"> · portes grátis</span>
@@ -588,12 +940,32 @@ export default function CheckoutPage() {
                 <span>{formatKz(subtotal)}</span>
               </div>
               <div className="ae-checkout-sum-row">
-                <span>Portes (por linha)</span>
-                <span>{formatFreteKz(shipping)}</span>
+                <span>Portes</span>
+                <span>
+                  {freightMode === "ZONE" ? (
+                    zoneFreightLoading ? (
+                      <span className="ae-muted">A calcular…</span>
+                    ) : zoneFreightMatched && zoneFreightPrice != null ? (
+                      formatKz(zoneFreightPrice)
+                    ) : (
+                      <span className="ae-muted">—</span>
+                    )
+                  ) : freightMode === "DISTANCE" ? (
+                    <span className="ae-muted">Conforme km</span>
+                  ) : (
+                    formatFreteKz(shipping)
+                  )}
+                </span>
               </div>
               <div className="ae-checkout-sum-row ae-checkout-sum-row--bold">
                 <span>Total</span>
-                <span>{formatKz(grand)}</span>
+                <span>
+                  {freightMode === "ZONE" && !zoneFreightMatched ? (
+                    <span className="ae-muted">{formatKz(subtotal)} + portes</span>
+                  ) : (
+                    formatKz(effectiveGrand)
+                  )}
+                </span>
               </div>
             </div>
             <Link to="/cart" className="ae-checkout-back">

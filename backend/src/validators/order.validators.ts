@@ -6,9 +6,14 @@ export const checkoutSchema = z
     paymentProofUrl: z.string().url().optional().or(z.literal("")),
     shippingName: z.string().min(2),
     shippingPhone: z.string().min(6),
-    shippingProvince: z.string().min(2),
-    shippingCity: z.string().min(2),
-    shippingAddress: z.string().min(5),
+    shippingMunicipalityId: z.string().trim().min(8),
+    shippingPickupPointId: z.string().trim().optional(),
+    /// Opcional · ex.: Talatona, Benfica.
+    shippingNeighborhood: z.string().trim().max(160).optional().or(z.literal("")),
+    /// Instruções curtas opcionais; o destino territorial vem sempre do catálogo (município + opcional pickup).
+    shippingAddress: z.string().trim().max(600).optional().or(z.literal("")),
+    /// Origem GPS do destino (lista «FreightLocality»); obrigatório quando `public.distance_freight_enabled`.
+    freightLocalityId: z.string().trim().optional(),
     notes: z.string().optional(),
   })
   .superRefine((data, ctx) => {

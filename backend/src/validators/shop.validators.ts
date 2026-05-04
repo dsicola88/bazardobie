@@ -1,16 +1,30 @@
 import { z } from "zod";
 
-/** Nível 1 — loja + responsável + telefone + WhatsApp + localização (login = conta User com e-mail/senha) */
-export const upsertShopSchema = z.object({
-  name: z.string().min(2),
-  ownerResponsibleName: z.string().min(2, "Indique o nome do responsável"),
-  description: z.string().optional(),
-  province: z.string().min(2),
-  city: z.string().min(2),
-  phone: z.string().min(6),
-  whatsapp: z.string().min(6, "WhatsApp obrigatório"),
-  logoUrl: z.string().url().optional().or(z.literal("")),
-});
+/** Nível 1 — loja + responsável + telefone + WhatsApp + localização catalogada Angola */
+export const upsertShopSchema = z
+  .object({
+    name: z.string().min(2),
+    ownerResponsibleName: z.string().min(2, "Indique o nome do responsável"),
+    description: z.string().optional(),
+    municipalityId: z.string().trim().min(8, "Seleccione município no catálogo oficial"),
+    phone: z.string().min(6),
+    whatsapp: z.string().min(6, "WhatsApp obrigatório"),
+    logoUrl: z.string().url().optional().or(z.literal("")),
+    /// Origem GPS para frete por distância quando o envio é pela loja (WGS‑84).
+    freightOriginLatitude: z.number().min(-90).max(90).optional(),
+    freightOriginLongitude: z.number().min(-180).max(180).optional(),
+  })
+  .superRefine((d, ctx) => {
+    const hasLat = d.freightOriginLatitude !== undefined && d.freightOriginLatitude !== null;
+    const hasLng = d.freightOriginLongitude !== undefined && d.freightOriginLongitude !== null;
+    if (hasLat !== hasLng) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique latitude e longitude juntas, ou omita ambas.",
+        path: ["freightOriginLongitude"],
+      });
+    }
+  });
 
 /** Nível 2 — para análise e selo VERIFICADO */
 export const submitTier2Schema = z.object({

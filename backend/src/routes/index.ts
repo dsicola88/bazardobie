@@ -18,6 +18,8 @@ import { disputeController } from "../controllers/dispute.controller.js";
 import { reportController } from "../controllers/report.controller.js";
 import { logisticsController } from "../controllers/logistics.controller.js";
 import { logisticsPartnerController } from "../controllers/logisticsPartner.controller.js";
+import { freightController } from "../controllers/freight.controller.js";
+import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
 import { adminAuditLog } from "../middlewares/adminAuditLog.js";
 import { runUpload } from "../middlewares/upload.js";
 import { notificationService } from "../services/notification.service.js";
@@ -57,6 +59,13 @@ r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authControll
 r.get("/categories", catalogController.categories);
 r.get("/banners", catalogController.banners);
 r.get("/site-content", siteSettingsController.publicBundle);
+r.get("/freight/meta", freightController.meta);
+r.post("/freight/quote", freightController.quote);
+r.get("/freight/quote", freightController.quote);
+r.get("/freight/localities", freightController.localities);
+r.get("/shipping/geo/provinces", shippingGeoController.provinces);
+r.get("/shipping/geo/municipalities", shippingGeoController.municipalities);
+r.get("/shipping/geo/pickup-points", shippingGeoController.pickupPoints);
 r.get("/shipping-carriers", logisticsPartnerController.shippingCarriers);
 
 r.get("/shops", shopController.list);
@@ -218,6 +227,22 @@ admin.get("/products/moderation", productController.adminListModeration);
 admin.patch("/products/:id/moderation", productController.adminSetModeration);
 admin.patch("/products/:id/active", productController.adminSetActive);
 admin.patch("/products/:id/featured", productController.setFeatured);
+
+admin.get("/shipping/geo/municipalities", shippingGeoController.municipalitiesAdmin);
+
+admin.get("/freight/distance-bands", freightController.bandsList);
+admin.post("/freight/distance-bands", freightController.bandsCreate);
+admin.patch("/freight/distance-bands/:id", freightController.bandsPatch);
+admin.delete("/freight/distance-bands/:id", freightController.bandsDelete);
+
+admin.get("/freight/localities", freightController.localitiesListAdmin);
+admin.post("/freight/localities", freightController.localitiesCreate);
+admin.patch("/freight/localities/:id", freightController.localitiesPatch);
+
+admin.get("/freight/zones", freightController.zonesListAdmin);
+admin.post("/freight/zones", freightController.zonesCreate);
+admin.patch("/freight/zones/:id", freightController.zonesPatch);
+admin.delete("/freight/zones/:id", freightController.zonesDelete);
 
 admin.get("/reviews", reviewController.adminList);
 admin.get("/reports", reportController.adminList);

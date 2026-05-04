@@ -47,6 +47,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/logistics-partners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Transportadoras
           </NavLink>
+          <NavLink to="/admin/freight" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Fretes (zonas e km)
+          </NavLink>
           <NavLink to="/admin/team" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Equipa e logística
           </NavLink>

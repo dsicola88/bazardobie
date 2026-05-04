@@ -20,6 +20,21 @@ function emptToUndef(url?: string): string | undefined {
   return t ? t : undefined;
 }
 
+async function resolveShopMunicipality(municipalityId: string) {
+  const mun = await prisma.angolaMunicipality.findFirst({
+    where: { id: municipalityId.trim(), active: true },
+    include: { province: true },
+  });
+  if (!mun) {
+    throw new HttpError(
+      400,
+      "Município inválido ou inactivo. Seleccione província e município na lista oficial do país.",
+      { code: "SHOP_MUNICIPALITY_INVALID" }
+    );
+  }
+  return mun;
+}
+
 async function atualizarRankingLoja(id: string) {
   const s = await prisma.shop.findUniqueOrThrow({
     where: { id },
@@ -41,17 +56,21 @@ export const shopService = {
     const exists = await repo.findByUserId(userId);
     if (exists) throw new HttpError(400, "Esta conta já possui uma loja");
 
+    const mun = await resolveShopMunicipality(input.municipalityId);
     const tier1CompletedAt = new Date();
     return repo.create({
       user: { connect: { id: userId } },
       name: input.name,
       ownerResponsibleName: input.ownerResponsibleName,
       description: input.description,
-      province: input.province,
-      city: input.city,
+      municipality: { connect: { id: mun.id } },
+      province: mun.province.namePt,
+      city: mun.namePt,
       phone: input.phone,
       whatsapp: input.whatsapp,
       logoUrl: emptToUndef(input.logoUrl),
+      freightOriginLatitude: input.freightOriginLatitude ?? null,
+      freightOriginLongitude: input.freightOriginLongitude ?? null,
       tier1CompletedAt,
       isApproved: false,
       searchRankBoost: 0,
@@ -63,16 +82,20 @@ export const shopService = {
     const shop = await repo.findByUserId(userId);
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
+    const mun = await resolveShopMunicipality(input.municipalityId);
     const tier1CompletedAt = shop.tier1CompletedAt ?? new Date();
     return repo.update(shop.id, {
       name: input.name,
       ownerResponsibleName: input.ownerResponsibleName,
       description: input.description,
-      province: input.province,
-      city: input.city,
+      municipality: { connect: { id: mun.id } },
+      province: mun.province.namePt,
+      city: mun.namePt,
       phone: input.phone,
       whatsapp: input.whatsapp,
       logoUrl: emptToUndef(input.logoUrl) ?? null,
+      freightOriginLatitude: input.freightOriginLatitude ?? null,
+      freightOriginLongitude: input.freightOriginLongitude ?? null,
       tier1CompletedAt,
     });
   },

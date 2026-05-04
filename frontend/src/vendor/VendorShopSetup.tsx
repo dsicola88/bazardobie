@@ -3,12 +3,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 
+type GeoProvinceDto = { id: string; code: string; namePt: string };
+type GeoMunicipalityDto = { id: string; namePt: string; provinceId: string };
+
 type ShopMe = {
   id: string;
   name: string;
   isApproved: boolean;
   province: string;
   city: string;
+  municipalityId?: string | null;
+  municipality?: {
+    id: string;
+    namePt: string;
+    code: string;
+    province: { namePt: string; code: string };
+  } | null;
 };
 
 export default function VendorShopSetup() {
@@ -19,8 +29,10 @@ export default function VendorShopSetup() {
   const [name, setName] = useState("");
   const [ownerResponsibleName, setOwnerResponsibleName] = useState("");
   const [description, setDescription] = useState("");
-  const [province, setProvince] = useState("");
-  const [city, setCity] = useState("");
+  const [geoProvinces, setGeoProvinces] = useState<GeoProvinceDto[]>([]);
+  const [geoProvinceId, setGeoProvinceId] = useState("");
+  const [geoMunicipalities, setGeoMunicipalities] = useState<GeoMunicipalityDto[]>([]);
+  const [municipalityId, setMunicipalityId] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -30,6 +42,24 @@ export default function VendorShopSetup() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
+
+  useEffect(() => {
+    void apiFetch<{ items: GeoProvinceDto[] }>("/shipping/geo/provinces")
+      .then((r) => setGeoProvinces(r.items ?? []))
+      .catch(() => setGeoProvinces([]));
+  }, []);
+
+  useEffect(() => {
+    if (!geoProvinceId) {
+      setGeoMunicipalities([]);
+      return;
+    }
+    void apiFetch<{ items: GeoMunicipalityDto[] }>(
+      `/shipping/geo/municipalities?provinceId=${encodeURIComponent(geoProvinceId)}`
+    )
+      .then((r) => setGeoMunicipalities(r.items ?? []))
+      .catch(() => setGeoMunicipalities([]));
+  }, [geoProvinceId]);
 
   useEffect(() => {
     if (!token) return;
@@ -68,6 +98,11 @@ export default function VendorShopSetup() {
     if (!token) return;
     setErr(null);
     setMsg(null);
+    const mid = municipalityId.trim();
+    if (!mid) {
+      setErr("Seleccione província e município na lista oficial (localização estrutural).");
+      return;
+    }
     setSaving(true);
     try {
       await apiFetch("/vendor/shop", {
@@ -77,8 +112,7 @@ export default function VendorShopSetup() {
           name: name.trim(),
           ownerResponsibleName: ownerResponsibleName.trim(),
           description: description.trim() || undefined,
-          province: province.trim(),
-          city: city.trim(),
+          municipalityId: mid,
           phone: phone.trim(),
           whatsapp: whatsapp.trim(),
           logoUrl: logoUrl.trim() || undefined,
@@ -112,6 +146,10 @@ export default function VendorShopSetup() {
   }
 
   if (existing) {
+    const catLabel =
+      existing.municipality?.namePt && existing.municipality?.province?.namePt
+        ? `${existing.municipality.namePt} · ${existing.municipality.province.namePt} (catálogo)`
+        : null;
     return (
       <div>
         <header className="ae-v-head">
@@ -119,7 +157,19 @@ export default function VendorShopSetup() {
         </header>
         <div className="ae-panel">
           <p>
-            <strong>{existing.name}</strong> · {existing.city}, {existing.province}
+            <strong>{existing.name}</strong>
+            <br />
+            <span style={{ marginTop: 6, display: "inline-block" }}>
+              {existing.city}, {existing.province}
+            </span>
+            {catLabel ? (
+              <>
+                <br />
+                <span className="ae-muted" style={{ fontSize: 13 }}>
+                  {catLabel}
+                </span>
+              </>
+            ) : null}
           </p>
           <p className="ae-muted">
             Estado:{" "}
@@ -143,8 +193,9 @@ export default function VendorShopSetup() {
         <div>
           <h1 className="ae-v-title">Dados da loja (nível 1)</h1>
           <p className="ae-muted" style={{ margin: "6px 0 0" }}>
-            Informação obrigatória para abrir a loja. Depois de submeter, a equipa BAZAR DO BIÉ valida antes da loja
-            aparecer nas pesquisas públicas.
+            A localização da loja utiliza o mesmo catálogo oficial de Angola que o cliente vê no checkout — sem texto
+            livre de província/município, para alinhar com fretes e estatísticas. Depois de submeter, a equipa BAZAR DO BIÉ
+            valida antes da loja aparecer nas pesquisas públicas.
           </p>
         </div>
       </header>
@@ -175,15 +226,42 @@ export default function VendorShopSetup() {
           <label htmlFor="desc">Descrição (opcional)</label>
           <textarea id="desc" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="O que vende, horário de contacto, etc." />
         </div>
-        <div className="ae-field-grid-2">
-          <div>
-            <label htmlFor="prov">Província</label>
-            <input id="prov" value={province} onChange={(e) => setProvince(e.target.value)} required minLength={2} />
-          </div>
-          <div>
-            <label htmlFor="cit">Cidade / município</label>
-            <input id="cit" value={city} onChange={(e) => setCity(e.target.value)} required minLength={2} />
-          </div>
+        <div>
+          <label htmlFor="vss-prov">Província · catálogo oficial</label>
+          <select
+            id="vss-prov"
+            required
+            value={geoProvinceId}
+            onChange={(e) => {
+              setGeoProvinceId(e.target.value);
+              setMunicipalityId("");
+            }}
+          >
+            <option value="">— seleccione —</option>
+            {geoProvinces.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.namePt}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="vss-mun">Município / comuna (sede da loja)</label>
+          <select
+            id="vss-mun"
+            required
+            disabled={!geoProvinceId}
+            value={municipalityId}
+            onChange={(e) => setMunicipalityId(e.target.value)}
+          >
+            <option value="">{geoProvinceId ? "— seleccione —" : "— primeiro escolha a província —"}</option>
+            {geoMunicipalities.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.namePt}
+              </option>
+            ))}
+          </select>
+          <p className="ae-field-hint">Este campo alinha a sua loja com fretes estruturais e com o formulário dos compradores.</p>
         </div>
         <div className="ae-field-grid-2">
           <div>

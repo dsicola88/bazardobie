@@ -99,6 +99,69 @@ model SiteSetting {
   updatedAt DateTime @updatedAt
 }
 
+/// Divisões administrativas de Angola — fonte estrutural para checkout e fretes (sem depender do texto livre).
+model AngolaProvince {
+  id        String   @id @default(cuid())
+  /// Código estável para integrações (ex.: LUA, BIE).
+  code      String   @unique
+  namePt    String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  municipalities AngolaMunicipality[]
+
+  @@index([active, sortOrder])
+}
+
+/// Município conforme subdivisão angolana — unidade onde se fixa zona de envio ou ponto de recolha.
+model AngolaMunicipality {
+  id         String @id @default(cuid())
+  provinceId String
+  /// Slug estável dentro da província (ex.: TALATONA).
+  code       String
+  namePt     String
+  latitude   Decimal? @db.Decimal(11, 8)
+  longitude  Decimal? @db.Decimal(11, 8)
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  province AngolaProvince @relation(fields: [provinceId], references: [id], onDelete: Restrict)
+
+  shippingZones   ShippingZone[]
+  freightAnchors FreightLocality[]
+  pickupPoints    DeliveryPickupPoint[]
+  orders          Order[]
+  shops           Shop[]
+
+  @@unique([provinceId, code])
+  @@index([provinceId, active, sortOrder])
+}
+
+/// Ponto estruturado de entrega/recolha (locker ou loja associada — escalável tipo marketplace AliExpress pickup).
+model DeliveryPickupPoint {
+  id             String             @id @default(cuid())
+  municipalityId String
+  municipality   AngolaMunicipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  /// Nome público para o comprador seleccionar.
+  namePt         String
+  /// Código opcional para operação na origem/gate (não equivale ao endereço livre da rua).
+  refCode        String?
+  latitude       Decimal @db.Decimal(11, 8)
+  longitude      Decimal @db.Decimal(11, 8)
+  sortOrder      Int     @default(0)
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([municipalityId, active])
+}
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -141,6 +204,10 @@ model Shop {
   name                 String
   ownerResponsibleName String
   description          String? @db.Text
+  /// Município oficial (catálogo ANG — alinhamento com fretes/checkout).
+  municipalityId String?
+  municipality   AngolaMunicipality? @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  /// Espelhos legível da província e município (servidor preenche a partir de municipalityId quando definido).
   province             String
   city                 String
   phone                String
@@ -172,6 +239,10 @@ model Shop {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  /// Ponto de origem para cálculo de frete por distância (envio pela loja). Opcional — use coordenadas WGS‑84 decimais.
+  freightOriginLatitude  Decimal? @db.Decimal(11, 8)
+  freightOriginLongitude Decimal? @db.Decimal(11, 8)
+
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   products       Product[]
   orderItems     OrderItem[]
@@ -182,6 +253,7 @@ model Shop {
   @@index([tier2SubmittedAt])
   @@index([tier3SubmittedAt])
   @@index([searchRankBoost])
+  @@index([municipalityId])
 }
 
 model Banner {
@@ -336,9 +408,20 @@ model Order {
   paymentProofUrl  String?
   shippingName     String
   shippingPhone    String
+
+  /// Destino estrutural (obrigatório em novos checkouts quando o catágeo está configurado).
+  shippingMunicipalityId String?
+  shippingMunicipality   AngolaMunicipality? @relation(fields: [shippingMunicipalityId], references: [id], onDelete: SetNull)
+  /// Ponto fixo opcional dentro do município (prioridade tipo pickup point marketplace).
+  shippingPickupPointId  String?
+  shippingPickupPoint    DeliveryPickupPoint? @relation(fields: [shippingPickupPointId], references: [id], onDelete: SetNull)
+
   shippingProvince String
   shippingCity     String
-  shippingAddress  String        @db.Text
+  /// Bairro / referência complementar opcional — não substitui o município catalogado.
+  shippingNeighborhood String?
+  /// Instruções curtas opcionais (andar, porta, contacto à chegada). Morada estrutural = município + ponto opcional.
+  shippingAddress  String?       @db.Text
   notes            String?       @db.Text
   subtotal         Decimal       @db.Decimal(12, 2)
   deliveryTotal    Decimal       @db.Decimal(12, 2)
@@ -379,10 +462,20 @@ model Order {
   logisticsPartnerId String?
   logisticsPartner   LogisticsPartner? @relation(fields: [logisticsPartnerId], references: [id], onDelete: SetNull)
 
+  /// Distância (km haversine) origem→destino e faixa aplicada quando o modo frete por distância está activo.
+  freightComputedDistanceKm Decimal?               @db.Decimal(12, 3)
+  freightDistanceBandId     String?
+  freightDistanceBand       ShippingDistanceBand?  @relation(fields: [freightDistanceBandId], references: [id], onDelete: SetNull)
+
+  /// Tarifa aplicada quando o modo «frete por zona (morada)» está activo.
+  freightShippingZoneId String?
+  freightShippingZone   ShippingZone? @relation(fields: [freightShippingZoneId], references: [id], onDelete: SetNull)
+
   @@index([userId, status])
   @@index([status])
   @@index([checkoutGroupId])
   @@index([logisticsPartnerId])
+  @@index([shippingMunicipalityId])
 }
 
 model OrderItem {
@@ -556,4 +649,68 @@ model LogisticsPartner {
   productDeliveryOptions  ProductDeliveryOption[]
 
   @@index([active])
+}
+
+/// Faixa tarifária por distância (km entre origem definida pela loja/plataforma e localidade de entrega).
+model ShippingDistanceBand {
+  id            String   @id @default(cuid())
+  name          String
+  /// Inclusive: distância (km haversine) >= este valor.
+  minDistanceKm Decimal  @db.Decimal(12, 3)
+  /// Exclusive: distância < este valor (na última faixa use número alto, ex. 9999).
+  maxDistanceKm Decimal  @db.Decimal(12, 3)
+  price         Decimal  @db.Decimal(12, 2)
+  sortOrder     Int      @default(0)
+  active        Boolean  @default(true)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([active, sortOrder])
+}
+
+/// Tarifa plana por município de destino (lookup por ID — evita erros de digitação).
+model ShippingZone {
+  id        String   @id @default(cuid())
+  /// Origem estrutural do preço; quando preenchido, substitui o casamento por texto em `province`/`city`.
+  municipalityId String?              @unique
+  municipality   AngolaMunicipality?  @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  /// Campos legados espelhados para listagens e migração a partir de dados antigos.
+  province  String
+  city      String
+  label     String?
+  price     Decimal  @db.Decimal(12, 2)
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@unique([province, city])
+  @@index([active, sortOrder])
+  @@index([municipalityId])
+}
+
+/// Centro de referência GPS para o destino (modo distância) — amarrado preferencialmente a um município.
+model FreightLocality {
+  id        String   @id @default(cuid())
+  label     String
+  province  String
+  city      String
+  municipalityId String?              @unique
+  municipality   AngolaMunicipality? @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  latitude  Decimal  @db.Decimal(11, 8)
+  longitude Decimal  @db.Decimal(11, 8)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([province, city])
+  @@index([province, active])
+  @@index([municipalityId])
 }

@@ -21,6 +21,9 @@ import {
   refundHeldFunds,
   tryAutoReleaseIfDue,
 } from "./escrow.service.js";
+import { freightDistanceService } from "./freightDistance.service.js";
+import { getFreightPricingMode } from "./freightMode.service.js";
+import { freightZoneService } from "./freightZone.service.js";
 
 type Checkout = z.infer<typeof checkoutSchema>;
 
@@ -208,7 +211,53 @@ export const orderService = {
     const checkoutGroupId = randomUUID();
     const grouped = groupCartByShop(cart.items);
 
+    const freightMode = await getFreightPricingMode();
+    const zoneFreightOn = freightMode === "ZONE";
+    const distanceFreightOn = freightMode === "DISTANCE";
+
+    if (distanceFreightOn && !input.freightLocalityId?.trim()) {
+      throw new HttpError(
+        400,
+        "Seleccione a localidade de entrega na lista (frete calculado por distância).",
+        { code: "FREIGHT_LOCALITY_REQUIRED_CHECKOUT" }
+      );
+    }
+
     const createdOrders = await prisma.$transaction(async (tx) => {
+      const mun = await tx.angolaMunicipality.findFirst({
+        where: { id: input.shippingMunicipalityId.trim(), active: true },
+        include: { province: true },
+      });
+      if (!mun) {
+        throw new HttpError(
+          400,
+          "Município de entrega inválido ou inactivo — escolha de novo na lista oficial.",
+          { code: "SHIPPING_MUNICIPALITY_INVALID" }
+        );
+      }
+
+      let pickupId: string | null = null;
+      if (input.shippingPickupPointId?.trim()) {
+        const ppt = await tx.deliveryPickupPoint.findFirst({
+          where: {
+            id: input.shippingPickupPointId.trim(),
+            active: true,
+            municipalityId: mun.id,
+          },
+          select: { id: true },
+        });
+        if (!ppt) {
+          throw new HttpError(
+            400,
+            "Ponto de recolha não pertence ao município seleccionado ou está inactivo.",
+            { code: "PICKUP_POINT_INVALID" }
+          );
+        }
+        pickupId = ppt.id;
+      }
+
+      const optionalAddr = input.shippingAddress?.trim() || null;
+
       const results = [];
 
       for (const [, lines] of grouped) {
@@ -354,6 +403,46 @@ export const orderService = {
           orderLogisticsPartnerId = uniqCarriers[0] ?? null;
         }
 
+        let freightDistanceKmValue: number | undefined;
+        let freightDistanceBandIdValue: string | undefined;
+        let freightShippingZoneIdValue: string | undefined;
+
+        if (zoneFreightOn) {
+          const zr = await freightZoneService.resolveCheckoutFreight(tx, { municipalityId: mun.id });
+          const zSplits = freightDistanceService.splitFreightAcrossLineCount(
+            zr.price,
+            orderItemsCreate.length
+          );
+          for (let zi = 0; zi < orderItemsCreate.length; zi++) {
+            orderItemsCreate[zi]!.deliveryCost = zSplits[zi]!.toString();
+          }
+          deliveryTotal = zr.price;
+          freightShippingZoneIdValue = zr.zoneId;
+        } else if (distanceFreightOn) {
+          const shopId = orderItemsCreate[0]!.shopId;
+          const shopFreightRow = await tx.shop.findUnique({
+            where: { id: shopId },
+            select: { freightOriginLatitude: true, freightOriginLongitude: true },
+          });
+          const resolved = await freightDistanceService.resolveFreightPriceForOrder({
+            tipoEntrega: firstTipo,
+            shopFreightLat: shopFreightRow?.freightOriginLatitude ?? null,
+            shopFreightLng: shopFreightRow?.freightOriginLongitude ?? null,
+            freightLocalityId: input.freightLocalityId ?? null,
+            shippingMunicipalityId: mun.id,
+          });
+          const splits = freightDistanceService.splitFreightAcrossLineCount(
+            resolved.freightTotal,
+            orderItemsCreate.length
+          );
+          for (let idx = 0; idx < orderItemsCreate.length; idx++) {
+            orderItemsCreate[idx]!.deliveryCost = splits[idx]!.toString();
+          }
+          deliveryTotal = resolved.freightTotal;
+          freightDistanceKmValue = resolved.distanceKm;
+          freightDistanceBandIdValue = resolved.bandId;
+        }
+
         const grandTotal = subtotal.plus(deliveryTotal);
 
         const gatewayDefaults =
@@ -374,14 +463,22 @@ export const orderService = {
             ...gatewayDefaults,
             shippingName: input.shippingName,
             shippingPhone: input.shippingPhone,
-            shippingProvince: input.shippingProvince,
-            shippingCity: input.shippingCity,
-            shippingAddress: input.shippingAddress,
+            shippingMunicipalityId: mun.id,
+            shippingPickupPointId: pickupId,
+            shippingProvince: mun.province.namePt,
+            shippingCity: mun.namePt,
+            shippingNeighborhood: input.shippingNeighborhood?.trim() || null,
+            shippingAddress: optionalAddr,
             notes: input.notes,
             subtotal: subtotal.toString(),
             deliveryTotal: deliveryTotal.toString(),
             grandTotal: grandTotal.toString(),
             logisticsPartnerId: orderLogisticsPartnerId,
+            ...(freightDistanceKmValue !== undefined
+              ? { freightComputedDistanceKm: freightDistanceKmValue }
+              : {}),
+            ...(freightDistanceBandIdValue ? { freightDistanceBandId: freightDistanceBandIdValue } : {}),
+            ...(freightShippingZoneIdValue ? { freightShippingZoneId: freightShippingZoneIdValue } : {}),
             items: { create: orderItemsCreate },
           },
           include: { items: { include: { shop: true } } },
@@ -430,10 +527,19 @@ export const orderService = {
         skip,
         take,
         include: {
-          items: {
-            include: { shop: true, product: { include: { images: { take: 1 } } } },
+        items: {
+          include: { shop: true, product: { include: { images: { take: 1 } } } },
+        },
+        shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+        shippingMunicipality: {
+          select: {
+            id: true,
+            namePt: true,
+            code: true,
+            province: { select: { namePt: true, code: true } },
           },
         },
+      },
       }),
       prisma.order.count({ where }),
     ]);
@@ -448,6 +554,15 @@ export const orderService = {
         items: { include: { shop: true, product: true, variant: true } },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 8 },
+        shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+        shippingMunicipality: {
+          select: {
+            id: true,
+            namePt: true,
+            code: true,
+            province: { select: { namePt: true, code: true } },
+          },
+        },
       },
     });
     if (!order) throw new HttpError(404, "Pedido não encontrado");
@@ -471,6 +586,15 @@ export const orderService = {
             include: { product: { include: { images: true } } },
           },
           user: { select: { id: true, name: true, email: true, phone: true } },
+          shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+          shippingMunicipality: {
+            select: {
+              id: true,
+              namePt: true,
+              code: true,
+              province: { select: { namePt: true } },
+            },
+          },
         },
       }),
       prisma.order.count({ where }),
@@ -668,6 +792,15 @@ export const orderService = {
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 12 },
         logisticsPartner: { select: { id: true, name: true } },
+        shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+        shippingMunicipality: {
+          select: {
+            id: true,
+            namePt: true,
+            code: true,
+            province: { select: { namePt: true, code: true } },
+          },
+        },
       },
     });
     if (!order) throw new HttpError(404, "Pedido não encontrado");
@@ -704,6 +837,15 @@ export const orderService = {
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 12 },
         logisticsPartner: { select: { id: true, name: true } },
+        shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+        shippingMunicipality: {
+          select: {
+            id: true,
+            namePt: true,
+            code: true,
+            province: { select: { namePt: true, code: true } },
+          },
+        },
       },
     });
     if (!full) throw new HttpError(404, "Pedido não encontrado");

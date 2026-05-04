@@ -30,6 +30,10 @@ export const logisticsService = {
         items: { include: { shop: { select: { id: true, name: true, city: true, province: true } } } },
         user: { select: { id: true, name: true, phone: true } },
         logisticsPartner: { select: { id: true, name: true } },
+        shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
+        shippingMunicipality: {
+          select: { id: true, namePt: true, province: { select: { namePt: true } } },
+        },
       },
     });
   },

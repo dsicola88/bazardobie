@@ -47,7 +47,8 @@ type TrackOrder = {
   shippingPhone: string;
   shippingProvince: string;
   shippingCity: string;
-  shippingAddress: string;
+  shippingAddress: string | null;
+  shippingPickupPoint?: { id: string; namePt: string; refCode?: string | null } | null;
   disputes?: { id: string; status: string; reason: string; createdAt: string }[];
   ledgerEntries?: { kind: string; amount: string; note: string | null; createdAt: string }[];
   items?: TrackItem[];
@@ -411,8 +412,16 @@ export default function OrderTrackPage() {
           {row.shippingName} · {row.shippingPhone}
           <br />
           {row.shippingProvince}, {row.shippingCity}
+          {row.shippingPickupPoint?.namePt ? (
+            <>
+              <br />
+              <strong>Ponto:</strong> {row.shippingPickupPoint.namePt}
+            </>
+          ) : null}
           <br />
-          {row.shippingAddress}
+          {(row.shippingAddress ?? "").trim() || (
+            <span className="ae-muted">Destino territorial por catálogo — sem texto de morada.</span>
+          )}
         </p>
       </div>
 

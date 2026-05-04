@@ -4,6 +4,7 @@ import AdminCategories from "./admin/AdminCategories.js";
 import AdminDashboard from "./admin/AdminDashboard.js";
 import AdminDisputes from "./admin/AdminDisputes.js";
 import AdminFinance from "./admin/AdminFinance.js";
+import AdminFreight from "./admin/AdminFreight.js";
 import AdminLayout from "./admin/AdminLayout.js";
 import AdminLogisticsPartners from "./admin/AdminLogisticsPartners.js";
 import AdminOrderDetail from "./admin/AdminOrderDetail.js";
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="categories" element={<AdminCategories />} />
         <Route path="sellers" element={<AdminSellers />} />
         <Route path="logistics-partners" element={<AdminLogisticsPartners />} />
+        <Route path="freight" element={<AdminFreight />} />
         <Route path="team" element={<AdminTeam />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="orders" element={<AdminOrders />} />

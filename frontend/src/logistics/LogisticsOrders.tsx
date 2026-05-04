@@ -14,7 +14,7 @@ type Row = {
   createdAt: string;
   shippingProvince: string;
   shippingCity: string;
-  shippingAddress: string;
+  shippingAddress: string | null;
   shippingName: string;
   shippingPhone: string;
   paymentMethod: string;
@@ -155,7 +155,7 @@ export default function LogisticsOrders() {
               </div>
             </div>
             <div className="ae-muted" style={{ padding: "8px 14px", fontSize: 12, borderBottom: "1px solid var(--ae-line)" }}>
-              {o.shippingAddress}
+              {o.shippingAddress?.trim() || "—"}
             </div>
             <table className="ae-data-table" style={{ border: "none", borderRadius: 0 }}>
               <tbody>

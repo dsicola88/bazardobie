@@ -12,7 +12,17 @@ export function shopRepo() {
     findByUserId(userId: string) {
       return prisma.shop.findUnique({
         where: { userId },
-        include: { user: { select: { email: true, name: true, phone: true } } },
+        include: {
+          user: { select: { email: true, name: true, phone: true } },
+          municipality: {
+            select: {
+              id: true,
+              namePt: true,
+              code: true,
+              province: { select: { id: true, code: true, namePt: true } },
+            },
+          },
+        },
       });
     },
     findById(id: string) {

@@ -80,6 +80,27 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
       "Transfira o montante total da encomenda para a conta que a loja ou o suporte BAZAR DO BIÉ lhe indicar (confirme sempre os dados por canal oficial).\n\nDepois de efectuar a transferência, pode carregar o comprovativo (foto ou PDF, até 5 MB) directamente no checkout ou, em alternativa, publicar o ficheiro num serviço com link HTTPS e colar o endereço no campo do formulário.",
     hint: "Texto multilinha mostrado no checkout quando o cliente escolhe «Transferência». Pode incluir IBAN, nome do titular e referências.",
   },
+  "public.distance_freight_enabled": {
+    label: "Frete por distância — activar no checkout",
+    defaultValue: "false",
+    hint: "true / 1 / sim: o porte do pedido passa a ser calculado por faixas de km (origem loja ou hub da plataforma → localidade de entrega). O cliente escolhe a localidade no checkout.",
+  },
+  "logistics.platform_freight_hub_lat": {
+    label: "Frete — latitude do hub (envio BAZAR DO BIÉ), WGS‑84",
+    defaultValue: "",
+    hint: "Ex.: -8.8383. Obrigatório quando o modo por distância está activo e há pedidos com envio pela plataforma. Não é exposto no site público.",
+  },
+  "logistics.platform_freight_hub_lng": {
+    label: "Frete — longitude do hub (envio BAZAR DO BIÉ), WGS‑84",
+    defaultValue: "",
+    hint: "Ex.: 13.2344. Par da latitude acima.",
+  },
+  "public.zone_freight_enabled": {
+    label: "Frete por zona (morada) — activar no checkout",
+    defaultValue: "false",
+    hint:
+      "true / 1 / sim: o porte vem da tabela «Zonas por cidade» (província + cidade do endereço). Tem prioridade sobre o frete por distância GPS. Ex.: Luanda + Talatona → preço cadastrado.",
+  },
 };
 
 const ALLOWED_KEYS = new Set(Object.keys(SITE_SETTING_DEFS));

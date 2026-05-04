@@ -877,6 +877,11 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+.ae-checkout input.ae-input-readonly {
+  opacity: 0.88;
+  background: rgba(0, 0, 0, 0.04);
+  cursor: not-allowed;
+}
 .ae-pay-options {
   display: flex;
   flex-direction: column;
