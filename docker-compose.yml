@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bazarr-do-bie-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bazarr
+      POSTGRES_PASSWORD: bazarr_seguro_local
+      POSTGRES_DB: bazarr_do_bie
+    ports:
+      - "5433:5432"
+    volumes:
+      - bazarr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bazarr -d bazarr_do_bie"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  bazarr_pgdata:

@@ -1,0 +1,52 @@
+import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.js";
+
+export default function VendorLayout() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="ae-vendor-shell">
+        <p className="ae-v-main" style={{ padding: 24 }}>
+          A preparar o painel…
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login?next=/vendor" replace />;
+  if (user.role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
+  if (user.role !== "VENDEDOR") return <Navigate to="/unauthorized" replace />;
+
+  return (
+    <div className="ae-vendor-shell">
+      <aside className="ae-vendor-side">
+        <div className="ae-v-logo">
+          BAZAR DO BIÉ · Parceiros
+          <small>Catálogo, encomendas e expedição</small>
+        </div>
+        <nav className="ae-v-nav">
+          <NavLink to="/vendor" end className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Resumo
+          </NavLink>
+          <NavLink to="/vendor/loja" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Dados da loja
+          </NavLink>
+          <NavLink to="/vendor/products/new" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Nova referência
+          </NavLink>
+          <NavLink to="/vendor/products" end className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Catálogo de produtos
+          </NavLink>
+          <NavLink to="/vendor/orders" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Encomendas
+          </NavLink>
+          <Link to="/">Loja pública</Link>
+        </nav>
+      </aside>
+      <main className="ae-v-main">
+        <Outlet />
+      </main>
+    </div>
+  );
+}

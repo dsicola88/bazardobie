@@ -1,0 +1,96 @@
+import { z } from "zod";
+
+const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
+
+export const deliveryOptionSchema = z.object({
+  tipoEntrega,
+  custoEntrega: z.coerce.number().nonnegative(),
+  prazoEstimado: z.coerce.number().int().positive(),
+  areaProvincia: z.string().min(2),
+  areaCidade: z.string().min(2),
+});
+
+export const productVariantSchema = z.object({
+  sku: z.string().min(1),
+  name: z.string().optional(),
+  color: z.string().optional(),
+  size: z.string().optional(),
+  priceAdjust: z.coerce.number().optional(),
+  stock: z.coerce.number().int().nonnegative(),
+  imageUrl: z.string().url().optional().or(z.literal("")),
+});
+
+const createProductShape = z.object({
+  categoryId: z.union([z.string().min(1), z.null()]).optional(),
+  name: z.string().min(2).max(200),
+  description: z.string().min(10).max(20000),
+  sku: z.string().min(1).max(80),
+  price: z.coerce.number().positive(),
+  promoPrice: z.union([z.coerce.number().positive(), z.null()]).optional(),
+  stock: z.coerce.number().int().nonnegative(),
+  images: z.array(z.string().url()).min(1).max(15),
+  variants: z.array(productVariantSchema).max(50).optional(),
+  deliveryOptions: z.array(deliveryOptionSchema).min(1).max(12),
+});
+
+export const createProductSchema = createProductShape.refine((d) => d.promoPrice == null || d.promoPrice < d.price, {
+  message: "O preço promocional tem de ser inferior ao preço normal.",
+  path: ["promoPrice"],
+});
+
+export const updateProductSchema = createProductShape
+  .partial()
+  .extend({
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.images !== undefined && data.images.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique pelo menos uma imagem.",
+        path: ["images"],
+      });
+    }
+    if (data.images !== undefined && data.images.length > 15) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "No máximo 15 imagens.",
+        path: ["images"],
+      });
+    }
+    if (data.deliveryOptions !== undefined && data.deliveryOptions.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indique pelo menos uma opção de envio.",
+        path: ["deliveryOptions"],
+      });
+    }
+    if (
+      data.promoPrice != null &&
+      data.promoPrice !== undefined &&
+      data.price != null &&
+      data.price !== undefined &&
+      data.promoPrice >= data.price
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "O preço promocional tem de ser inferior ao preço normal.",
+        path: ["promoPrice"],
+      });
+    }
+  });
+
+export const productListQuerySchema = z.object({
+  q: z.string().optional(),
+  categoryId: z.string().optional(),
+  minPrice: z.coerce.number().optional(),
+  maxPrice: z.coerce.number().optional(),
+  minRating: z.coerce.number().min(1).max(5).optional(),
+  featured: z.enum(["true", "false"]).optional(),
+  shopId: z.string().optional(),
+  sort: z
+    .enum(["mais_vendidos", "preco_asc", "preco_desc", "melhor_avaliados", "recentes"])
+    .optional(),
+  skip: z.coerce.number().int().nonnegative().optional(),
+  take: z.coerce.number().int().positive().max(100).optional(),
+});

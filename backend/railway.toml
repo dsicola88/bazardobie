@@ -1,0 +1,9 @@
+# Railway — definir em Project Settings → Service → Root Directory: `backend`
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
