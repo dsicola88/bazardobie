@@ -38,7 +38,14 @@ export async function apiFetch<T>(
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error("Resposta inválida da API");
+      const preview = text.slice(0, 200).toLowerCase();
+      const gotHtml = preview.includes("<!doctype html") || preview.includes("<html");
+      if (gotHtml) {
+        throw new Error(
+          "A resposta recebida nao e JSON da API. Verifique VITE_API_BASE no frontend (Vercel) para apontar para a API publica, por exemplo https://api.bazardobie.com/api/v1."
+        );
+      }
+      throw new Error("Resposta invalida da API");
     }
   }
 
