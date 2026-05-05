@@ -24,6 +24,12 @@ enum ProductModerationStatus {
   REJECTED
 }
 
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  VIDEO
+}
+
 enum ReportStatus {
   OPEN
   DISMISSED
@@ -194,6 +200,7 @@ model User {
   adminAuditLogs AdminAuditLog[]
   disputesOpened Dispute[]       @relation("DisputeOpener")
   disputesResolved Dispute[]     @relation("DisputeResolver")
+  chatMessagesSent OrderChatMessage[]
 }
 
 model Shop {
@@ -287,6 +294,8 @@ model Product {
   categoryId  String?
   name        String
   description String    @db.Text
+  /// Video curto opcional de demonstracao do produto (max. 60s recomendado).
+  demoVideoUrl String?
   sku         String
   price        Decimal   @db.Decimal(12, 2)
   promoPrice   Decimal?  @db.Decimal(12, 2)
@@ -457,6 +466,7 @@ model Order {
   reviews Review[]
   ledgerEntries LedgerEntry[]
   disputes  Dispute[]
+  chatMessages OrderChatMessage[]
 
   /// Parceiro de logística responsável (envio PLATAFORMA). Null = equipa interna ou ainda por atribuir.
   logisticsPartnerId String?
@@ -476,6 +486,22 @@ model Order {
   @@index([checkoutGroupId])
   @@index([logisticsPartnerId])
   @@index([shippingMunicipalityId])
+}
+
+model OrderChatMessage {
+  id        String          @id @default(cuid())
+  orderId   String
+  senderId  String
+  type      ChatMessageType @default(TEXT)
+  text      String?         @db.Text
+  mediaUrl  String?
+  createdAt DateTime        @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([senderId, createdAt])
 }
 
 model OrderItem {

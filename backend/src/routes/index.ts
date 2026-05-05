@@ -20,6 +20,7 @@ import { logisticsController } from "../controllers/logistics.controller.js";
 import { logisticsPartnerController } from "../controllers/logisticsPartner.controller.js";
 import { freightController } from "../controllers/freight.controller.js";
 import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
+import { chatController } from "../controllers/chat.controller.js";
 import { adminAuditLog } from "../middlewares/adminAuditLog.js";
 import { runUpload } from "../middlewares/upload.js";
 import { notificationService } from "../services/notification.service.js";
@@ -140,6 +141,9 @@ r.post(
 );
 
 r.post("/reviews", requireAuth, requireRoles("CLIENTE"), reviewController.create);
+
+r.get("/orders/:id/chat/messages", requireAuth, requireRoles("CLIENTE", "VENDEDOR"), chatController.listOrderMessages);
+r.post("/orders/:id/chat/messages", requireAuth, requireRoles("CLIENTE", "VENDEDOR"), chatController.postOrderMessage);
 
 /// Denúncias — utilizador autenticado (cliente ou vendedor) contra loja/produto
 r.post("/reports", requireAuth, reportController.create);

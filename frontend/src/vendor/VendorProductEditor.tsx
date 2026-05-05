@@ -36,6 +36,7 @@ type ProductLoaded = {
   id: string;
   name: string;
   description: string;
+  demoVideoUrl?: string | null;
   sku: string;
   price: string;
   promoPrice?: string | null;
@@ -107,9 +108,11 @@ export default function VendorProductEditor() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [uploadingIx, setUploadingIx] = useState<number | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [demoVideoUrl, setDemoVideoUrl] = useState("");
   const [sku, setSku] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("");
@@ -158,6 +161,7 @@ export default function VendorProductEditor() {
       .then((p) => {
         setName(p.name);
         setDescription(p.description);
+        setDemoVideoUrl(p.demoVideoUrl ?? "");
         setSku(p.sku);
         setCategoryId(p.categoryId ?? "");
         setPrice(String(p.price));
@@ -214,6 +218,7 @@ export default function VendorProductEditor() {
       setLoadErr(null);
       setName("");
       setDescription("");
+      setDemoVideoUrl("");
       setSku("");
       setCategoryId("");
       setPrice("");
@@ -262,6 +267,7 @@ export default function VendorProductEditor() {
     return {
       name: name.trim(),
       description: description.trim(),
+      demoVideoUrl: demoVideoUrl.trim() || null,
       sku: sku.trim(),
       categoryId: categoryId.trim() === "" ? null : categoryId.trim(),
       price: priceN,
@@ -328,6 +334,20 @@ export default function VendorProductEditor() {
       setErr(ex instanceof Error ? ex.message : "Falha no carregamento do ficheiro.");
     } finally {
       setUploadingIx(null);
+    }
+  }
+
+  async function onUploadVideo(file: File) {
+    if (!token) return;
+    setUploadingVideo(true);
+    setErr(null);
+    try {
+      const url = await uploadAdminFile(token, file);
+      setDemoVideoUrl(url);
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Falha no carregamento do video.");
+    } finally {
+      setUploadingVideo(false);
     }
   }
 
@@ -443,6 +463,37 @@ export default function VendorProductEditor() {
               placeholder="Especificações técnicas, conteúdo da embalagem, dimensões, peso, garantia, compatibilidades, instruções de uso sucintas e condições de devolução, quando aplicável."
             />
             <p className="ae-field-hint">{description.length.toLocaleString("pt-AO")} caracteres · limite 20 000</p>
+          </div>
+          <div>
+            <label htmlFor="pvideo">Video curto de demonstracao (opcional)</label>
+            <div className="ae-v-prod-img-row">
+              <input
+                id="pvideo"
+                value={demoVideoUrl}
+                onChange={(e) => setDemoVideoUrl(e.target.value)}
+                placeholder="URL https://...mp4 | .webm | .mov"
+              />
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                className="sr-only"
+                id="pvideo-file"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void onUploadVideo(f);
+                }}
+              />
+              <label htmlFor="pvideo-file" className="btn" style={{ cursor: "pointer", margin: 0 }}>
+                {uploadingVideo ? "A importar..." : "Carregar video"}
+              </label>
+              {demoVideoUrl ? (
+                <button type="button" className="ae-mini-btn" onClick={() => setDemoVideoUrl("")}>
+                  Remover
+                </button>
+              ) : null}
+            </div>
+            <p className="ae-field-hint">Limite recomendado: ate 60 segundos e ate 720p para ficheiro leve.</p>
           </div>
         </section>
 

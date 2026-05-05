@@ -1,6 +1,13 @@
 import { z } from "zod";
 
 const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
+const demoVideoUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (url) => /\.(mp4|webm|mov)(\?.*)?$/i.test(url),
+    "Use um URL de video MP4, WebM ou MOV para demonstracao."
+  );
 
 export const deliveryOptionSchema = z
   .object({
@@ -42,6 +49,7 @@ const createProductShape = z.object({
   categoryId: z.union([z.string().min(1), z.null()]).optional(),
   name: z.string().min(2).max(200),
   description: z.string().min(10).max(20000),
+  demoVideoUrl: z.union([demoVideoUrlSchema, z.null()]).optional(),
   sku: z.string().min(1).max(80),
   price: z.coerce.number().positive(),
   promoPrice: z.union([z.coerce.number().positive(), z.null()]).optional(),

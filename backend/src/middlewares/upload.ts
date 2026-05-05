@@ -21,19 +21,27 @@ const allowedMime = new Set([
   "image/png",
   "image/webp",
   "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
   "application/pdf",
 ]);
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const m = String(file.mimetype || "").toLowerCase();
     if (allowedMime.has(m)) {
       cb(null, true);
       return;
     }
-    cb(new HttpError(400, "Formato não suportado — use JPG, PNG, WebP, GIF ou PDF (máx. 5 MB)."));
+    cb(
+      new HttpError(
+        400,
+        "Formato não suportado — use JPG, PNG, WebP, GIF, MP4, WebM, MOV ou PDF (máx. 20 MB)."
+      )
+    );
   },
 }).single("file");
 
@@ -48,7 +56,7 @@ export function runUpload(req: Request, res: Response, next: NextFunction): void
       return;
     }
     if (err instanceof Error && err.message.includes("Limite")) {
-      next(new HttpError(400, "Ficheiro demasiado grande (máx. 5 MB)."));
+      next(new HttpError(400, "Ficheiro demasiado grande (máx. 20 MB)."));
       return;
     }
     next(new HttpError(400, "Upload inválido — verifique o formato e o tamanho.", { cause: err }));

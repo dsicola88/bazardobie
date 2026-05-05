@@ -157,86 +157,99 @@ export default function AdminLogisticsPartners() {
       {err ? <p className="ae-admin-alert ae-admin-alert--err">{err}</p> : null}
       {msg ? <p className="ae-admin-alert ae-admin-alert--ok">{msg}</p> : null}
 
-      <div className="ae-panel" style={{ marginBottom: 18 }}>
-        <h2 style={{ marginTop: 0 }}>{editId ? `Editar parceiro (${editId.slice(0, 8)}…)` : "Nova transportadora"}</h2>
-        <div style={{ display: "grid", gap: 10, maxWidth: 520 }}>
-          <label>
-            Nome / razão social *
+      <div className="ae-panel ae-admin-form-card" style={{ marginBottom: 18 }}>
+        <h2 className="ae-admin-form-title">
+          {editId ? `Editar parceiro (${editId.slice(0, 8)}…)` : "Nova transportadora"}
+        </h2>
+        <form
+          className="ae-admin-form-grid"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editId) {
+              void submitPatch();
+              return;
+            }
+            void submitCreate();
+          }}
+        >
+          <label className="ae-admin-field">
+            <span>Nome / razão social *</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.name}
               onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              required
+              placeholder="Ex.: Expresso Bazar Luanda"
             />
           </label>
-          <label>
-            NIF
+          <label className="ae-admin-field">
+            <span>NIF</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.nif}
               onChange={(e) => setForm((s) => ({ ...s, nif: e.target.value }))}
+              placeholder="Ex.: 5000123456"
             />
           </label>
-          <label>
-            Telefone
+          <label className="ae-admin-field">
+            <span>Telefone</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.phone}
               onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+              placeholder="Ex.: +244 923 000 111"
             />
           </label>
-          <label>
-            E-mail
+          <label className="ae-admin-field">
+            <span>E-mail</span>
             <input
               className="ae-input"
               type="email"
-              style={{ width: "100%" }}
               value={form.email}
               onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              placeholder="Ex.: contacto@transportadora.ao"
             />
           </label>
-          <label>
-            Pessoa de contacto
+          <label className="ae-admin-field">
+            <span>Pessoa de contacto</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.contactName}
               onChange={(e) => setForm((s) => ({ ...s, contactName: e.target.value }))}
+              placeholder="Ex.: Maria Silva"
             />
           </label>
-          <label>
-            Província
+          <label className="ae-admin-field">
+            <span>Província</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.province}
               onChange={(e) => setForm((s) => ({ ...s, province: e.target.value }))}
+              placeholder="Ex.: Luanda"
             />
           </label>
-          <label>
-            Cidade / base
+          <label className="ae-admin-field">
+            <span>Cidade / base</span>
             <input
               className="ae-input"
-              style={{ width: "100%" }}
               value={form.city}
               onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
+              placeholder="Ex.: Talatona"
             />
           </label>
-          <label>
-            Notas internas
+          <label className="ae-admin-field">
+            <span>Notas internas</span>
             <textarea
               className="ae-input"
-              style={{ width: "100%", minHeight: 72 }}
               value={form.notes}
               onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
+              placeholder="Dados operacionais internos (opcional)."
             />
           </label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="ae-admin-form-actions">
             {editId ? (
               <>
-                <button type="button" className="btn btn-primary" onClick={() => void submitPatch()}>
+                <button type="submit" className="btn btn-primary">
                   Guardar alterações
                 </button>
                 <button type="button" className="btn" onClick={() => cancelEdit()}>
@@ -244,12 +257,12 @@ export default function AdminLogisticsPartners() {
                 </button>
               </>
             ) : (
-              <button type="button" className="btn btn-primary" onClick={() => void submitCreate()}>
+              <button type="submit" className="btn btn-primary">
                 Registar transportadora
               </button>
             )}
           </div>
-        </div>
+        </form>
       </div>
 
       <div className="ae-panel">

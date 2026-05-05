@@ -23,6 +23,7 @@ type ProductDetail = {
   id: string;
   name: string;
   description: string;
+  demoVideoUrl?: string | null;
   price: string;
   promoPrice?: string | null;
   displayPrice: string;
@@ -148,7 +149,18 @@ export default function ProductPage() {
             ))}
           </div>
           <div className="ae-pdp-main">
-            <img src={mainImg || product.images[0]?.url} alt="" />
+            {product.demoVideoUrl ? (
+              <video
+                src={product.demoVideoUrl}
+                controls
+                preload="metadata"
+                playsInline
+                poster={mainImg || product.images[0]?.url}
+                style={{ width: "100%", borderRadius: 8, border: "1px solid var(--ae-line)", background: "#000" }}
+              />
+            ) : (
+              <img src={mainImg || product.images[0]?.url} alt="" />
+            )}
           </div>
 
           <div className="ae-buybox">

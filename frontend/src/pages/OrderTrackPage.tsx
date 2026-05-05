@@ -4,6 +4,7 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { OrderTimeline } from "../components/OrderTimeline.js";
 import { ReviewOrderModal } from "../components/ReviewOrderModal.js";
+import { OrderChatPanel } from "../components/OrderChatPanel.js";
 import {
   BUYER_ORDER_TAB_LABELS,
   etiquetaEstadoPedidoCliente,
@@ -473,6 +474,15 @@ export default function OrderTrackPage() {
           {textoRastreioPorEstado(row.status)}
         </p>
       </div>
+
+      {token && user ? (
+        <OrderChatPanel
+          orderId={row.id}
+          token={token}
+          currentUserId={user.id}
+          title="Chat com vendedor"
+        />
+      ) : null}
 
       <p style={{ marginTop: 16 }}>
         <Link to={phaseTab === "todos" ? "/orders" : `/orders?tab=${phaseTab}`} className="btn btn-ghost">

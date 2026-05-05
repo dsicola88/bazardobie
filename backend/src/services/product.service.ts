@@ -89,6 +89,7 @@ export const productService = {
       shop: { connect: { id: shop.id } },
       name: input.name,
       description: input.description,
+      demoVideoUrl: input.demoVideoUrl?.trim() || undefined,
       sku: input.sku,
       price: String(input.price),
       promoPrice:
@@ -196,6 +197,7 @@ export const productService = {
     const substantiveForRemod =
       input.name !== undefined ||
       input.description !== undefined ||
+      input.demoVideoUrl !== undefined ||
       input.images !== undefined ||
       input.variants !== undefined ||
       input.categoryId !== undefined ||
@@ -262,6 +264,7 @@ export const productService = {
       const scalarData: Prisma.ProductUpdateInput = {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.description !== undefined && { description: input.description }),
+        ...(input.demoVideoUrl !== undefined && { demoVideoUrl: input.demoVideoUrl?.trim() || null }),
         ...(input.sku !== undefined && { sku: input.sku }),
         ...(input.price !== undefined && { price: String(input.price) }),
         ...(input.promoPrice !== undefined && {

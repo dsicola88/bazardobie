@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { OrderTrackingEditor } from "../components/OrderTrackingEditor.js";
+import { OrderChatPanel } from "../components/OrderChatPanel.js";
 import { formatKz } from "../utils/format.js";
 import { etiquetaEstadoPedidoCliente } from "../utils/buyerOrderFilters.js";
 import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
@@ -41,12 +42,13 @@ type OrderPageResp = {
 const PAGE_SIZE = 35;
 
 export default function VendorOrders() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [bundle, setBundle] = useState<OrderPageResp | null>(null);
   const [page, setPage] = useState(0);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [patchErr, setPatchErr] = useState<string | null>(null);
+  const [openChats, setOpenChats] = useState<Record<string, boolean>>({});
 
   async function reload() {
     if (!token) return;
@@ -230,6 +232,25 @@ export default function VendorOrders() {
                 <p className="ae-muted" style={{ margin: "8px 0 0", fontSize: 12 }}>
                   Com envio BAZAR DO BIÉ, o rastreio é definido pela logística da plataforma.
                 </p>
+              ) : null}
+              <div style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setOpenChats((prev) => ({ ...prev, [o.id]: !prev[o.id] }))}
+                >
+                  {openChats[o.id] ? "Ocultar chat" : "Abrir chat com comprador"}
+                </button>
+              </div>
+              {openChats[o.id] && token && user ? (
+                <div style={{ marginTop: 10 }}>
+                  <OrderChatPanel
+                    orderId={o.id}
+                    token={token}
+                    currentUserId={user.id}
+                    title="Chat com comprador"
+                  />
+                </div>
               ) : null}
             </div>
           </article>
