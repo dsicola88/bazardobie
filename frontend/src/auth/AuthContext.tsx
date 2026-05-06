@@ -15,6 +15,17 @@ export type AuthUser = {
   name: string;
   role: string;
   phone?: string | null;
+  municipalityId?: string | null;
+  province?: string | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  addressLine?: string | null;
+  municipality?: {
+    id: string;
+    namePt: string;
+    code: string;
+    province: { id: string; namePt: string; code: string };
+  } | null;
   blocked?: boolean;
   logisticsPartnerId?: string | null;
   logisticsPartner?: { id: string; name: string } | null;

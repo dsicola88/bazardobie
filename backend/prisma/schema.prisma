@@ -143,6 +143,7 @@ model AngolaMunicipality {
   communes        AngolaCommune[]
   orders          Order[]
   shops           Shop[]
+  users           User[]
 
   @@unique([provinceId, code])
   @@index([provinceId, active, sortOrder])
@@ -198,6 +199,14 @@ model User {
   /// Ligação opcional à conta Facebook (`id` do Graph API).
   facebookId   String?   @unique
   phone        String?
+  /// Endereço estrutural principal do comprador (base para cálculo de frete).
+  municipalityId String?
+  municipality   AngolaMunicipality? @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  /// Espelhos legíveis para relatórios e snapshots rápidos.
+  province     String?
+  city         String?
+  neighborhood String?
+  addressLine  String?
   avatarUrl    String?
   role         UserRole  @default(CLIENTE)
   /// Conta suspensa (vendedor ou outro) — bloqueia API autenticada
@@ -220,6 +229,8 @@ model User {
   disputesOpened Dispute[]       @relation("DisputeOpener")
   disputesResolved Dispute[]     @relation("DisputeResolver")
   chatMessagesSent OrderChatMessage[]
+
+  @@index([municipalityId])
 }
 
 model Shop {

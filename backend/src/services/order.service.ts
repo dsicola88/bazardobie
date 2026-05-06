@@ -195,7 +195,7 @@ export const orderService = {
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
-      select: { phone: true, email: true },
+      select: { phone: true, email: true, municipalityId: true },
     });
     const phoneOk = buyer?.phone?.trim() && buyer.phone.trim().length >= 6;
     if (!phoneOk) {
@@ -203,6 +203,20 @@ export const orderService = {
         400,
         "Guarde um telefone de contacto na sua conta (mín. 6 caracteres) antes de finalizar — necessário para entregas e COD.",
         { code: "PHONE_REQUIRED" }
+      );
+    }
+    if (!buyer?.municipalityId) {
+      throw new HttpError(
+        400,
+        "Defina o município principal no seu perfil antes de finalizar a compra para garantir frete correcto.",
+        { code: "PROFILE_MUNICIPALITY_REQUIRED" }
+      );
+    }
+    if (buyer.municipalityId !== input.shippingMunicipalityId.trim()) {
+      throw new HttpError(
+        400,
+        "O município de entrega deve corresponder ao endereço principal cadastrado no perfil. Atualize o perfil para mudar a localidade.",
+        { code: "PROFILE_MUNICIPALITY_MISMATCH" }
       );
     }
 

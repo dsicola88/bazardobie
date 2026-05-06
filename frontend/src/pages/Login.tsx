@@ -96,7 +96,7 @@ export default function Login() {
     }
   }
 
-  const showOAuth = !registerMode && oauthProviders && (oauthProviders.google || oauthProviders.facebook);
+  const showOAuth = !registerMode;
 
   return (
     <div style={{ maxWidth: 420 }}>
@@ -153,18 +153,38 @@ export default function Login() {
               <span>Acesso rápido com</span>
             </div>
             <div className="ae-oauth-grid">
-              {oauthProviders.google ? (
+              {oauthProviders?.google ? (
                 <a className="ae-oauth-btn ae-oauth-btn--google" href={apiOAuthAbsolute("/auth/oauth/google")}>
                   <span className="ae-oauth-icon" aria-hidden>G</span>
                   Google
                 </a>
-              ) : null}
-              {oauthProviders.facebook ? (
+              ) : (
+                <button
+                  type="button"
+                  className="ae-oauth-btn ae-oauth-btn--google"
+                  disabled
+                  title="Login Google ainda não configurado no servidor."
+                >
+                  <span className="ae-oauth-icon" aria-hidden>G</span>
+                  Google (indisponível)
+                </button>
+              )}
+              {oauthProviders?.facebook ? (
                 <a className="ae-oauth-btn ae-oauth-btn--facebook" href={apiOAuthAbsolute("/auth/oauth/facebook")}>
                   <span className="ae-oauth-icon" aria-hidden>f</span>
                   Facebook
                 </a>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  className="ae-oauth-btn ae-oauth-btn--facebook"
+                  disabled
+                  title="Login Facebook ainda não configurado no servidor."
+                >
+                  <span className="ae-oauth-icon" aria-hidden>f</span>
+                  Facebook (indisponível)
+                </button>
+              )}
               <button
                 type="button"
                 className="ae-oauth-btn ae-oauth-btn--passkey"
@@ -175,6 +195,11 @@ export default function Login() {
                 Passkey
               </button>
             </div>
+            {oauthProviders && !oauthProviders.google && !oauthProviders.facebook ? (
+              <p className="ae-muted" style={{ fontSize: 12, marginTop: 10 }}>
+                Google/Facebook ainda não estão configurados neste ambiente. O acesso por e-mail continua disponível.
+              </p>
+            ) : null}
           </>
         ) : null}
 

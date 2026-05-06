@@ -6,13 +6,33 @@ export function userRepo() {
     findByEmail(email: string) {
       return prisma.user.findUnique({
         where: { email },
-        include: { logisticsPartner: { select: { id: true, name: true } } },
+        include: {
+          logisticsPartner: { select: { id: true, name: true } },
+          municipality: {
+            select: {
+              id: true,
+              namePt: true,
+              code: true,
+              province: { select: { id: true, namePt: true, code: true } },
+            },
+          },
+        },
       });
     },
     findById(id: string) {
       return prisma.user.findUnique({
         where: { id },
-        include: { logisticsPartner: { select: { id: true, name: true } } },
+        include: {
+          logisticsPartner: { select: { id: true, name: true } },
+          municipality: {
+            select: {
+              id: true,
+              namePt: true,
+              code: true,
+              province: { select: { id: true, namePt: true, code: true } },
+            },
+          },
+        },
       });
     },
     create(data: Prisma.UserCreateInput) {
@@ -29,6 +49,11 @@ export function userRepo() {
           email: true,
           name: true,
           phone: true,
+          municipalityId: true,
+          province: true,
+          city: true,
+          neighborhood: true,
+          addressLine: true,
           role: true,
           avatarUrl: true,
           blocked: true,
@@ -80,15 +105,45 @@ export function userRepo() {
         },
       });
     },
-    updateProfile(id: string, data: { phone: string }) {
+    updateProfile(
+      id: string,
+      data: {
+        phone?: string;
+        municipalityId?: string | null;
+        province?: string | null;
+        city?: string | null;
+        neighborhood?: string | null;
+        addressLine?: string | null;
+      }
+    ) {
       return prisma.user.update({
         where: { id },
-        data: { phone: data.phone },
+        data: {
+          ...(data.phone !== undefined ? { phone: data.phone } : {}),
+          ...(data.municipalityId !== undefined ? { municipalityId: data.municipalityId } : {}),
+          ...(data.province !== undefined ? { province: data.province } : {}),
+          ...(data.city !== undefined ? { city: data.city } : {}),
+          ...(data.neighborhood !== undefined ? { neighborhood: data.neighborhood } : {}),
+          ...(data.addressLine !== undefined ? { addressLine: data.addressLine } : {}),
+        },
         select: {
           id: true,
           email: true,
           name: true,
           phone: true,
+          municipalityId: true,
+          municipality: {
+            select: {
+              id: true,
+              namePt: true,
+              code: true,
+              province: { select: { id: true, namePt: true, code: true } },
+            },
+          },
+          province: true,
+          city: true,
+          neighborhood: true,
+          addressLine: true,
           avatarUrl: true,
           role: true,
           blocked: true,

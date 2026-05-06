@@ -41,6 +41,13 @@ type GeoMunicipalityDto = {
   sortOrder: number;
 };
 type PickupDto = { id: string; namePt: string; refCode?: string | null };
+type MeProfileDto = {
+  phone?: string | null;
+  municipalityId?: string | null;
+  neighborhood?: string | null;
+  addressLine?: string | null;
+  municipality?: { id: string; namePt: string; province: { id: string; namePt: string } } | null;
+};
 
 type FreightMode = "ZONE" | "DISTANCE" | "NONE";
 
@@ -90,10 +97,11 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<{ items: CheckoutCartItem[] } | null>(null);
   const [cartErr, setCartErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-  /** null = cliente ainda a carregar; object = estado conhecido (pode não ter telefone). */
-  const [meLoad, setMeLoad] = useState<{ phone: string | null } | null>(null);
+  /** null = cliente ainda a carregar; object = estado conhecido (pode faltar telefone ou município). */
+  const [meLoad, setMeLoad] = useState<MeProfileDto | null>(null);
   const [profilePhoneDraft, setProfilePhoneDraft] = useState("");
-  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSavingPhone, setProfileSavingPhone] = useState(false);
+  const [profileSavingAddress, setProfileSavingAddress] = useState(false);
 
   const [shippingName, setShippingName] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
@@ -267,15 +275,19 @@ export default function CheckoutPage() {
       setMeLoad(null);
       return;
     }
-    void apiFetch<{ phone?: string | null }>("/auth/me", { token })
+    void apiFetch<MeProfileDto>("/auth/me", { token })
       .then((m) => {
         const tel = m.phone ?? null;
-        setMeLoad({ phone: tel });
+        setMeLoad(m);
         const p = tel?.trim();
         if (p && p.length >= 6) setShippingPhone((s) => (s.trim() ? s : p));
         setProfilePhoneDraft((prev) => (prev.trim() ? prev : p ?? ""));
+        if (m.municipality?.province?.id) setGeoProvinceId((prev) => prev || m.municipality!.province.id);
+        if (m.municipality?.id) setGeoMunicipalityId((prev) => prev || m.municipality!.id);
+        if (m.neighborhood?.trim()) setShippingNeighborhood((prev) => prev || m.neighborhood!.trim());
+        if (m.addressLine?.trim()) setShippingAddress((prev) => prev || m.addressLine!.trim());
       })
-      .catch(() => setMeLoad({ phone: null }));
+      .catch(() => setMeLoad({ phone: null, municipalityId: null }));
   }, [token, user]);
 
   const { subtotal, shipping, grand } = useMemo(
@@ -301,6 +313,9 @@ export default function CheckoutPage() {
       meLoad !== null &&
       (!meLoad.phone?.trim() || meLoad.phone.trim().length < 6)
   );
+  const profileMunicipalityMissing = Boolean(
+    token && user?.role === "CLIENTE" && meLoad !== null && !meLoad.municipalityId?.trim()
+  );
 
   /** Frete dinâmico: município catalogado + zona ou âncora GPS alinhada ao mesmo município. */
   const checkoutBlockedFreight =
@@ -316,7 +331,11 @@ export default function CheckoutPage() {
     Boolean(!geoMunicipalityId.trim() || !freightLocalityId.trim());
 
   const checkoutBlocked =
-    awaitingMe || profilePhoneIncomplete || checkoutBlockedFreight || checkoutBlockedFreightDist;
+    awaitingMe ||
+    profilePhoneIncomplete ||
+    profileMunicipalityMissing ||
+    checkoutBlockedFreight ||
+    checkoutBlockedFreightDist;
 
   async function saveAccountPhone() {
     if (!token) return;
@@ -325,7 +344,7 @@ export default function CheckoutPage() {
       setMsg("O telefone na conta deve ter pelo menos 6 caracteres.");
       return;
     }
-    setProfileSaving(true);
+    setProfileSavingPhone(true);
     setMsg(null);
     try {
       await apiFetch("/auth/profile", {
@@ -339,7 +358,34 @@ export default function CheckoutPage() {
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Não foi possível guardar o telefone.");
     } finally {
-      setProfileSaving(false);
+      setProfileSavingPhone(false);
+    }
+  }
+
+  async function savePrimaryAddress() {
+    if (!token) return;
+    if (!geoMunicipalityId.trim()) {
+      setMsg("Selecione o município principal para gravar no perfil.");
+      return;
+    }
+    setProfileSavingAddress(true);
+    setMsg(null);
+    try {
+      const updated = await apiFetch<MeProfileDto>("/auth/profile", {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          municipalityId: geoMunicipalityId.trim(),
+          neighborhood: shippingNeighborhood.trim() || "",
+          addressLine: shippingAddress.trim() || "",
+        }),
+      });
+      setMeLoad(updated);
+      await refreshMe();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Não foi possível guardar a morada principal.");
+    } finally {
+      setProfileSavingAddress(false);
     }
   }
 
@@ -456,8 +502,33 @@ export default function CheckoutPage() {
         orderIds: out.orders.map((o) => o.id),
       });
     } catch (err: unknown) {
+      const code = apiErrorDetailsCode(err);
+      if (code === "FREIGHT_ZONE_NOT_FOUND") {
+        setMsg(
+          "A transportadora/plataforma ainda não entrega nesta localidade. Escolha um município coberto ou atualize o endereço para uma zona atendida."
+        );
+        return;
+      }
+      if (code === "PROFILE_MUNICIPALITY_MISMATCH") {
+        setMsg(
+          "O município escolhido no checkout não corresponde ao município principal do seu perfil. Atualize o endereço principal para calcular o frete correto."
+        );
+        return;
+      }
+      if (code === "PROFILE_MUNICIPALITY_REQUIRED") {
+        setMsg(
+          "Defina primeiro o município principal no seu perfil. Isso evita cobrança de frete incorreta para outra localidade."
+        );
+        return;
+      }
+      if (code === "FREIGHT_LOCALITY_INVALID" || code === "FREIGHT_ADDRESS_MISMATCH_MUNICIPALITY") {
+        setMsg(
+          "A zona de frete selecionada não pertence ao município de entrega. Selecione a zona correta da sua localidade."
+        );
+        return;
+      }
       if (apiErrorDetailsCode(err) === "PHONE_REQUIRED" && token) {
-        void apiFetch<{ phone?: string | null }>("/auth/me", { token }).then((m) => {
+        void apiFetch<MeProfileDto>("/auth/me", { token }).then((m) => {
           setMeLoad({ phone: m.phone ?? null });
           setProfilePhoneDraft(m.phone?.trim() ?? "");
         });
@@ -591,12 +662,28 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={profileSaving}
+                  disabled={profileSavingPhone}
                   onClick={() => void saveAccountPhone()}
                 >
-                  {profileSaving ? "A guardar…" : "Guardar"}
+                  {profileSavingPhone ? "A guardar…" : "Guardar"}
                 </button>
               </div>
+            </section>
+          ) : null}
+          {profileMunicipalityMissing ? (
+            <section className="page-panel ae-checkout-msg" style={{ marginBottom: 16 }}>
+              <strong style={{ display: "block", marginBottom: 10 }}>Município principal do perfil — obrigatório</strong>
+              <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
+                Para evitar frete errado, a compra só conclui quando o município principal do perfil está definido.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={profileSavingAddress || !geoMunicipalityId.trim()}
+                onClick={() => void savePrimaryAddress()}
+              >
+                {profileSavingAddress ? "A guardar morada…" : "Guardar município principal"}
+              </button>
             </section>
           ) : null}
           <section className="ae-checkout-panel">
@@ -652,6 +739,12 @@ export default function CheckoutPage() {
                 O valor do frete e a operação usam sempre estes identificadores estruturados — sem depender de texto livre
                 de morada.
               </p>
+              {meLoad?.municipalityId ? (
+                <p className="ae-muted" style={{ fontSize: 12, margin: 0 }}>
+                  Município principal no perfil: <strong>{meLoad.municipality?.namePt ?? meLoad.city ?? "definido"}</strong>.
+                  A entrega deve usar este município para evitar divergência de frete.
+                </p>
+              ) : null}
               {pickupPoints.length > 0 ? (
                 <div className="form-stack" style={{ marginTop: 6 }}>
                   <label htmlFor="checkout-pickup">Ponto fixo de entrega / recolha (opcional)</label>
@@ -741,6 +834,16 @@ export default function CheckoutPage() {
               />
               <label>Observações (opcional)</label>
               <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={profileSavingAddress || !geoMunicipalityId.trim()}
+                  onClick={() => void savePrimaryAddress()}
+                >
+                  {profileSavingAddress ? "A guardar morada…" : "Atualizar morada principal no perfil"}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -877,6 +980,10 @@ export default function CheckoutPage() {
             ) : checkoutBlockedFreight ? (
               <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
                 Escolha um município com tarifa publicada ou confira no suporte quando a cobertura estiver disponível.
+              </p>
+            ) : profileMunicipalityMissing ? (
+              <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>
+                Guarde o município principal do perfil para validar o frete da sua localidade.
               </p>
             ) : null}
             <p className="ae-muted" style={{ fontSize: 12, margin: "8px 0 0" }}>

@@ -3,6 +3,7 @@ import { userRepo } from "../repositories/user.repository.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { HttpError } from "../middlewares/errorHandler.js";
+import { prisma } from "../lib/prisma.js";
 import type { z } from "zod";
 import type { registerSchema, loginSchema, patchProfileSchema, becomeVendorSchema } from "../validators/auth.validators.js";
 
@@ -64,7 +65,51 @@ export const authService = {
 
   async updateProfile(userId: string, input: PatchProfileInput) {
     const users = userRepo();
-    const updated = await users.updateProfile(userId, { phone: input.phone.trim() });
+    const patch: {
+      phone?: string;
+      municipalityId?: string | null;
+      province?: string | null;
+      city?: string | null;
+      neighborhood?: string | null;
+      addressLine?: string | null;
+    } = {};
+
+    if (input.phone !== undefined) patch.phone = input.phone.trim();
+
+    if (input.municipalityId !== undefined) {
+      const munId = input.municipalityId.trim();
+      if (!munId) {
+        patch.municipalityId = null;
+        patch.province = null;
+        patch.city = null;
+      } else {
+        const mun = await prisma.angolaMunicipality.findFirst({
+          where: { id: munId, active: true },
+          include: { province: true },
+        });
+        if (!mun) {
+          throw new HttpError(
+            400,
+            "Município inválido ou inactivo. Escolha na lista oficial.",
+            { code: "USER_MUNICIPALITY_INVALID" }
+          );
+        }
+        patch.municipalityId = mun.id;
+        patch.province = mun.province.namePt;
+        patch.city = mun.namePt;
+      }
+    }
+
+    if (input.neighborhood !== undefined) {
+      const t = input.neighborhood.trim();
+      patch.neighborhood = t ? t : null;
+    }
+    if (input.addressLine !== undefined) {
+      const t = input.addressLine.trim();
+      patch.addressLine = t ? t : null;
+    }
+
+    const updated = await users.updateProfile(userId, patch);
     return sanitizeUser(updated);
   },
 
@@ -99,6 +144,17 @@ function sanitizeUser(user: {
   email: string;
   name: string;
   phone: string | null;
+  municipalityId?: string | null;
+  municipality?: {
+    id: string;
+    namePt: string;
+    code: string;
+    province: { id: string; namePt: string; code: string };
+  } | null;
+  province?: string | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  addressLine?: string | null;
   avatarUrl: string | null;
   role: UserRole;
   blocked?: boolean;
@@ -111,6 +167,12 @@ function sanitizeUser(user: {
     email: user.email,
     name: user.name,
     phone: user.phone,
+    municipalityId: user.municipalityId ?? null,
+    municipality: user.municipality ?? null,
+    province: user.province ?? null,
+    city: user.city ?? null,
+    neighborhood: user.neighborhood ?? null,
+    addressLine: user.addressLine ?? null,
     avatarUrl: user.avatarUrl,
     role: user.role,
     blocked: user.blocked ?? false,

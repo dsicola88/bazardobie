@@ -25,7 +25,23 @@ export const becomeVendorSchema = z.object({
 });
 
 export const patchProfileSchema = z.object({
-  phone: z.string().trim().min(6, "Telefone inválido"),
+  phone: z.string().trim().min(6, "Telefone inválido").optional(),
+  municipalityId: z.string().trim().min(8, "Município inválido").optional().or(z.literal("")),
+  neighborhood: z.string().trim().max(160).optional().or(z.literal("")),
+  addressLine: z.string().trim().max(600).optional().or(z.literal("")),
+}).superRefine((data, ctx) => {
+  if (
+    data.phone === undefined &&
+    data.municipalityId === undefined &&
+    data.neighborhood === undefined &&
+    data.addressLine === undefined
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Envie pelo menos um campo para actualizar o perfil.",
+      path: ["phone"],
+    });
+  }
 });
 
 export const loginSchema = z.object({
