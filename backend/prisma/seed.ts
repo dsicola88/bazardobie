@@ -123,6 +123,19 @@ async function seedAngolaGeoCatalog() {
             continue;
           }
 
+          // 2.5) Evita conflito de PK quando o id já existir de execuções anteriores.
+          const existingById = await prisma.angolaMunicipality.findUnique({
+            where: { id },
+            select: { id: true },
+          });
+          if (existingById?.id) {
+            await prisma.angolaMunicipality.update({
+              where: { id },
+              data: { provinceId, code, namePt: muniNamePt, sortOrder, active: true, latitude: null, longitude: null },
+            });
+            continue;
+          }
+
           // 3) Caso não exista, cria.
           await prisma.angolaMunicipality.create({
             data: {
@@ -147,8 +160,10 @@ async function seedAngolaGeoCatalog() {
         const province = await prisma.angolaProvince.findUnique({ where: { code: m.provinceCode } });
         if (!province) continue;
         await prisma.angolaMunicipality.upsert({
-          where: { provinceId_code: { provinceId: province.id, code: m.code } },
+          where: { id: m.id },
           update: {
+            provinceId: province.id,
+            code: m.code,
             namePt: m.namePt,
             sortOrder: m.sortOrder,
             active: true,
@@ -174,8 +189,10 @@ async function seedAngolaGeoCatalog() {
       const province = await prisma.angolaProvince.findUnique({ where: { code: m.provinceCode } });
       if (!province) continue;
       await prisma.angolaMunicipality.upsert({
-        where: { provinceId_code: { provinceId: province.id, code: m.code } },
+        where: { id: m.id },
         update: {
+          provinceId: province.id,
+          code: m.code,
           namePt: m.namePt,
           sortOrder: m.sortOrder,
           active: true,
