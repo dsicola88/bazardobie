@@ -1921,6 +1921,36 @@ a:hover {
   width: 100%;
   box-sizing: border-box;
 }
+.ae-admin-pro input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.ae-admin-pro select,
+.ae-admin-pro textarea {
+  border: 1px solid #ccd5e2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 11px;
+  font: inherit;
+}
+.ae-admin-pro input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.ae-admin-pro select:focus,
+.ae-admin-pro textarea:focus {
+  outline: none;
+  border-color: #2f6feb;
+  box-shadow: 0 0 0 3px rgba(47, 111, 235, 0.14);
+}
+.ae-admin-pro .ae-data-table {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ae-line);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.ae-admin-pro .ae-data-table th {
+  background: #f6f7f9;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.ae-admin-pro .ae-data-table td {
+  border-bottom: 1px solid #f0f1f3;
+}
 
 .ae-admin-pro .ae-panel:has(.ae-data-table) {
   overflow-x: auto;

@@ -1,9 +1,16 @@
 import { z } from "zod";
 
 const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
+const absoluteHttpUrl = z.string().url().refine((v) => /^https?:\/\//i.test(v), {
+  message: "Use URL http/https válida.",
+});
+const uploadRelativeUrl = z.string().regex(/^\/uploads\/[^\s]+$/i, {
+  message: "Use caminho relativo de upload válido (/uploads/...).",
+});
+const mediaUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl]);
+
 const demoVideoUrlSchema = z
-  .string()
-  .url()
+  .union([absoluteHttpUrl, uploadRelativeUrl])
   .refine(
     (url) => /\.(mp4|webm|mov)(\?.*)?$/i.test(url),
     "Use um URL de video MP4, WebM ou MOV para demonstracao."
@@ -42,7 +49,7 @@ export const productVariantSchema = z.object({
   size: z.string().optional(),
   priceAdjust: z.coerce.number().optional(),
   stock: z.coerce.number().int().nonnegative(),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: mediaUrlSchema.optional().or(z.literal("")),
 });
 
 const createProductShape = z.object({
@@ -54,7 +61,7 @@ const createProductShape = z.object({
   price: z.coerce.number().positive(),
   promoPrice: z.union([z.coerce.number().positive(), z.null()]).optional(),
   stock: z.coerce.number().int().nonnegative(),
-  images: z.array(z.string().url()).min(1).max(15),
+  images: z.array(mediaUrlSchema).min(1).max(15),
   variants: z.array(productVariantSchema).max(50).optional(),
   deliveryOptions: z.array(deliveryOptionSchema).min(1).max(12),
 });

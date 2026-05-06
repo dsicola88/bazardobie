@@ -203,9 +203,6 @@ export const productService = {
       input.variants !== undefined ||
       input.categoryId !== undefined ||
       input.sku !== undefined ||
-      input.price !== undefined ||
-      input.promoPrice !== undefined ||
-      input.stock !== undefined ||
       input.deliveryOptions !== undefined;
 
     const shouldRemoderate =
