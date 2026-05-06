@@ -552,8 +552,19 @@ export const orderService = {
     return { checkoutGroupId, orders: createdOrders };
   },
 
-  async myOrders(userId: string, skip = 0, take = 20) {
-    const where = { userId };
+  async myOrders(userId: string, skip = 0, take = 20, q?: string) {
+    const term = q?.trim();
+    const where: Prisma.OrderWhereInput = {
+      userId,
+      ...(term
+        ? {
+            OR: [
+              { orderCode: { contains: term, mode: "insensitive" } },
+              { id: { contains: term, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -603,11 +614,24 @@ export const orderService = {
     return order;
   },
 
-  async sellerOrders(vendorUserId: string, skip = 0, take = 20) {
+  async sellerOrders(vendorUserId: string, skip = 0, take = 20, q?: string) {
     const shop = await prisma.shop.findUnique({ where: { userId: vendorUserId } });
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
-    const where = { items: { some: { shopId: shop.id } } };
+    const term = q?.trim();
+    const where: Prisma.OrderWhereInput = {
+      items: { some: { shopId: shop.id } },
+      ...(term
+        ? {
+            OR: [
+              { orderCode: { contains: term, mode: "insensitive" } },
+              { id: { contains: term, mode: "insensitive" } },
+              { user: { is: { name: { contains: term, mode: "insensitive" } } } },
+              { user: { is: { email: { contains: term, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -819,9 +843,21 @@ export const orderService = {
     return updated;
   },
 
-  async adminList(skip = 0, take = 50) {
+  async adminList(skip = 0, take = 50, q?: string) {
+    const term = q?.trim();
+    const where: Prisma.OrderWhereInput = term
+      ? {
+          OR: [
+            { orderCode: { contains: term, mode: "insensitive" } },
+            { id: { contains: term, mode: "insensitive" } },
+            { user: { is: { name: { contains: term, mode: "insensitive" } } } },
+            { user: { is: { email: { contains: term, mode: "insensitive" } } } },
+          ],
+        }
+      : {};
     const [items, total] = await Promise.all([
       prisma.order.findMany({
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take,
@@ -831,7 +867,7 @@ export const orderService = {
           logisticsPartner: { select: { id: true, name: true } },
         },
       }),
-      prisma.order.count(),
+      prisma.order.count({ where }),
     ]);
     return { items, total, skip, take };
   },

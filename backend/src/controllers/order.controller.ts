@@ -19,7 +19,8 @@ export const orderController = {
     if (!userId) throw new HttpError(401, "Autenticação necessária");
     const skip = Math.max(0, Number(req.query.skip) || 0);
     const take = Math.min(Math.max(Number(req.query.take) || 25, 1), 100);
-    const list = await orderService.myOrders(userId, skip, take);
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const list = await orderService.myOrders(userId, skip, take, q);
     res.json(list);
   }),
 
@@ -35,7 +36,8 @@ export const orderController = {
     if (!userId) throw new HttpError(401, "Autenticação necessária");
     const skip = Math.max(0, Number(req.query.skip) || 0);
     const take = Math.min(Math.max(Number(req.query.take) || 30, 1), 150);
-    const list = await orderService.sellerOrders(userId, skip, take);
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const list = await orderService.sellerOrders(userId, skip, take, q);
     res.json(list);
   }),
 
@@ -60,7 +62,8 @@ export const orderController = {
   adminList: asyncHandler(async (req, res) => {
     const skip = Number(req.query.skip) || 0;
     const take = Math.min(Number(req.query.take) || 100, 500);
-    const list = await orderService.adminList(skip, take);
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const list = await orderService.adminList(skip, take, q);
     res.json(list);
   }),
 

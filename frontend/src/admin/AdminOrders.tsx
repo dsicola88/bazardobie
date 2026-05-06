@@ -24,14 +24,20 @@ export default function AdminOrders() {
   const [data, setData] = useState<OrderList | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [q, setQ] = useState("");
   const PAGE = 80;
 
   useEffect(() => {
     if (!token) return;
-    void apiFetch<OrderList>(`/admin/orders?take=${PAGE}&skip=${page * PAGE}`, { token })
+    const params = new URLSearchParams({
+      take: String(PAGE),
+      skip: String(page * PAGE),
+    });
+    if (q.trim()) params.set("q", q.trim());
+    void apiFetch<OrderList>(`/admin/orders?${params.toString()}`, { token })
       .then(setData)
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Erro"));
-  }, [token, page]);
+  }, [token, page, q]);
 
   return (
     <div className="ae-admin-pro">
@@ -43,6 +49,16 @@ export default function AdminOrders() {
             transições de estado em contexto de suporte.
           </p>
         </div>
+        <input
+          type="search"
+          className="ae-admin-filter-input"
+          placeholder="Pesquisar por orderCode, id, comprador..."
+          value={q}
+          onChange={(e) => {
+            setPage(0);
+            setQ(e.target.value);
+          }}
+        />
       </header>
       {err ? (
         <div className="ae-admin-alert ae-admin-alert--err" role="alert">

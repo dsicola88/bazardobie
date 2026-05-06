@@ -55,8 +55,13 @@ export default function VendorOrders() {
     if (!token) return;
     setLoadErr(null);
     try {
+      const params = new URLSearchParams({
+        take: String(PAGE_SIZE),
+        skip: String(page * PAGE_SIZE),
+      });
+      if (q.trim()) params.set("q", q.trim());
       const res = await apiFetch<OrderPageResp>(
-        `/vendor/orders?take=${PAGE_SIZE}&skip=${page * PAGE_SIZE}`,
+        `/vendor/orders?${params.toString()}`,
         { token }
       );
       setBundle(res);
@@ -68,14 +73,9 @@ export default function VendorOrders() {
 
   useEffect(() => {
     void reload().catch(() => {});
-  }, [token, page]);
+  }, [token, page, q]);
 
-  const orders = bundle?.items ?? [];
-  const filtered = orders.filter((o) => {
-    const ref = o.orderCode || o.id;
-    const blob = `${ref} ${o.user?.name ?? ""} ${o.items.map((i) => i.productNameSnapshot).join(" ")}`.toLowerCase();
-    return !q.trim() || blob.includes(q.trim().toLowerCase());
-  });
+  const filtered = bundle?.items ?? [];
 
   const totalPages = bundle ? Math.max(1, Math.ceil(bundle.total / PAGE_SIZE)) : 1;
 
@@ -109,7 +109,10 @@ export default function VendorOrders() {
           type="search"
           placeholder="Filtrar na página actual (referência ou comprador)…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setPage(0);
+            setQ(e.target.value);
+          }}
           style={{ padding: "8px 10px", minWidth: 240, border: "1px solid var(--ae-line)", borderRadius: 4 }}
         />
       </header>
