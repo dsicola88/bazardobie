@@ -90,6 +90,7 @@ r.patch("/vendor/shop", requireAuth, requireRoles("VENDEDOR"), shopController.up
 r.post("/vendor/shop/credibility/tier2", requireAuth, requireRoles("VENDEDOR"), shopController.submitTier2);
 r.post("/vendor/shop/credibility/tier3", requireAuth, requireRoles("VENDEDOR"), shopController.submitTier3);
 r.get("/vendor/shop/me", requireAuth, requireRoles("VENDEDOR"), shopController.mine);
+r.get("/vendor/dashboard/stats", requireAuth, requireRoles("VENDEDOR"), shopController.dashboardStats);
 
 r.post("/vendor/products", requireAuth, requireRoles("VENDEDOR"), productController.create);
 r.patch("/vendor/products/:id", requireAuth, requireRoles("VENDEDOR"), productController.update);

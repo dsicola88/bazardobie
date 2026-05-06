@@ -7,10 +7,16 @@ import { z } from "zod";
 const patchRoleSchema = z.object({
   role: z.enum(["ADMIN", "LOGISTICA", "VENDEDOR", "CLIENTE"]),
 });
+const dashboardQuerySchema = z.object({
+  period: z.enum(["day", "month", "year", "custom"]).optional(),
+  start: z.string().optional(),
+  end: z.string().optional(),
+});
 
 export const adminController = {
   stats: asyncHandler(async (_req, res) => {
-    const s = await adminService.dashboardStats();
+    const q = dashboardQuerySchema.parse(_req.query);
+    const s = await adminService.dashboardStats(q.period ?? "month", q.start, q.end);
     res.json(s);
   }),
 
@@ -53,7 +59,8 @@ export const adminController = {
   }),
 
   finance: asyncHandler(async (_req, res) => {
-    const s = await adminService.dashboardStats();
+    const q = dashboardQuerySchema.parse(_req.query);
+    const s = await adminService.dashboardStats(q.period ?? "month", q.start, q.end);
     res.json({
       escrowHeldTotal: s.escrowHeldTotal,
       escrowReleasedTotal: s.escrowReleasedTotal,

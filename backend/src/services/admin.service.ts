@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
+import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -9,9 +10,13 @@ function startOfToday(): Date {
 }
 
 export const adminService = {
-  async dashboardStats() {
+  async dashboardStats(period: DashboardPeriod = "month", startRaw?: string, endRaw?: string) {
     const dayStart = startOfToday();
-      const bps = env.PLATFORM_COMMISSION_BPS;
+    const bps = env.PLATFORM_COMMISSION_BPS;
+    const { start, end } = resolveDashboardRange(period, startRaw, endRaw);
+    const { prevStart, prevEnd } = previousRangeFrom(start, end);
+    const inRange = { gte: start, lte: end };
+    const prevRange = { gte: prevStart, lte: prevEnd };
 
     const [
       totalOrders,
@@ -28,6 +33,15 @@ export const adminService = {
       openDisputes,
       openReports,
       ledgerRefunds,
+      periodRevenueAgg,
+      periodOrders,
+      periodRefundedOrders,
+      periodRefundsLedger,
+      prevPeriodRevenueAgg,
+      prevPeriodOrders,
+      prevPeriodRefundedOrders,
+      prevPeriodRefundsLedger,
+      periodOrdersRows,
     ] = await Promise.all([
       prisma.order.count(),
       prisma.order.count({ where: { createdAt: { gte: dayStart } } }),
@@ -63,6 +77,30 @@ export const adminService = {
         _sum: { amount: true },
         where: { kind: "REFUND_TO_BUYER" },
       }),
+      prisma.order.aggregate({
+        _sum: { grandTotal: true },
+        where: { createdAt: inRange, status: { not: "CANCELADO" } },
+      }),
+      prisma.order.count({ where: { createdAt: inRange } }),
+      prisma.order.count({ where: { createdAt: inRange, escrowState: "REFUNDED" } }),
+      prisma.ledgerEntry.aggregate({
+        _sum: { amount: true },
+        where: { kind: "REFUND_TO_BUYER", createdAt: inRange },
+      }),
+      prisma.order.aggregate({
+        _sum: { grandTotal: true },
+        where: { createdAt: prevRange, status: { not: "CANCELADO" } },
+      }),
+      prisma.order.count({ where: { createdAt: prevRange } }),
+      prisma.order.count({ where: { createdAt: prevRange, escrowState: "REFUNDED" } }),
+      prisma.ledgerEntry.aggregate({
+        _sum: { amount: true },
+        where: { kind: "REFUND_TO_BUYER", createdAt: prevRange },
+      }),
+      prisma.order.findMany({
+        where: { createdAt: inRange },
+        select: { createdAt: true, status: true, grandTotal: true, escrowState: true },
+      }),
     ]);
 
     const revenueTotal = revenueAgg._sum.grandTotal?.toString() ?? "0";
@@ -71,7 +109,28 @@ export const adminService = {
       ? ((revNum * bps) / 10000).toFixed(2)
       : "0";
 
+    const trendMap = new Map<string, { day: string; orders: number; revenue: number; refunds: number }>();
+    for (const o of periodOrdersRows) {
+      const day = o.createdAt.toISOString().slice(0, 10);
+      const row = trendMap.get(day) ?? { day, orders: 0, revenue: 0, refunds: 0 };
+      row.orders += 1;
+      if (o.status !== "CANCELADO") row.revenue += Number(o.grandTotal);
+      if (o.escrowState === "REFUNDED") row.refunds += Number(o.grandTotal);
+      trendMap.set(day, row);
+    }
+    const trend = Array.from(trendMap.values())
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((t) => ({
+        day: t.day,
+        orders: t.orders,
+        revenueTotal: t.revenue.toFixed(2),
+        refundsTotal: t.refunds.toFixed(2),
+      }));
+
     return {
+      period,
+      rangeStart: start.toISOString(),
+      rangeEnd: end.toISOString(),
       totalOrders,
       ordersToday,
       revenueTotal,
@@ -86,6 +145,17 @@ export const adminService = {
       escrowAwaitingFundsTotal: escrowAwaitingFunds._sum.grandTotal?.toString() ?? "0",
       refundedOrdersCount,
       refundsLedgerTotal: ledgerRefunds._sum.amount?.toString() ?? "0",
+      periodOrders,
+      periodRevenueTotal: periodRevenueAgg._sum.grandTotal?.toString() ?? "0",
+      periodRefundedOrders,
+      periodRefundsTotal: periodRefundsLedger._sum.amount?.toString() ?? "0",
+      previousRangeStart: prevStart.toISOString(),
+      previousRangeEnd: prevEnd.toISOString(),
+      previousPeriodOrders: prevPeriodOrders,
+      previousPeriodRevenueTotal: prevPeriodRevenueAgg._sum.grandTotal?.toString() ?? "0",
+      previousPeriodRefundedOrders: prevPeriodRefundedOrders,
+      previousPeriodRefundsTotal: prevPeriodRefundsLedger._sum.amount?.toString() ?? "0",
+      trend,
       openDisputes,
       openReports,
     };

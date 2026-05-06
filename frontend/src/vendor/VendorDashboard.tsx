@@ -6,6 +6,7 @@ import { formatKz } from "../utils/format.js";
 
 const DASH_PRODUCT_SAMPLE = 300;
 const DASH_ORD_SAMPLE = 24;
+type Period = "day" | "month" | "year" | "custom";
 
 type ProductRow = {
   id: string;
@@ -23,6 +24,32 @@ type OrderMini = {
 
 type ProductMine = { items: ProductRow[]; total: number };
 type OrderPage = { items: OrderMini[]; total: number };
+type VendorStats = {
+  period: Period;
+  rangeStart: string;
+  rangeEnd: string;
+  productTotal: number;
+  activeProducts: number;
+  inactiveProducts: number;
+  ordersTotal: number;
+  pendingOrders: number;
+  wonOrders: number;
+  soldUnits: number;
+  refundedOrders: number;
+  grossSalesTotal: string;
+  refundsTotal: string;
+  netSalesTotal: string;
+  previousRangeStart: string;
+  previousRangeEnd: string;
+  previousOrdersTotal: number;
+  previousWonOrders: number;
+  previousRefundedOrders: number;
+  previousGrossSalesTotal: string;
+  previousRefundsTotal: string;
+  previousNetSalesTotal: string;
+  trend: { day: string; orders: number; wonOrders: number; grossSalesTotal: string }[];
+  topProducts: { id: string; name: string; soldCount: number; stock: number }[];
+};
 
 type ShopMeBrief = {
   isApproved: boolean;
@@ -43,6 +70,10 @@ export default function VendorDashboard() {
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [shopStatus, setShopStatus] = useState<"load" | "missing" | "pending" | "ok" | "err">("load");
   const [shopMe, setShopMe] = useState<ShopMeBrief | null>(null);
+  const [period, setPeriod] = useState<Period>("month");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [stats, setStats] = useState<VendorStats | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -63,6 +94,18 @@ export default function VendorDashboard() {
         }
       });
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams({ period });
+    if (period === "custom" && start && end) {
+      params.set("start", `${start}T00:00:00.000Z`);
+      params.set("end", `${end}T23:59:59.999Z`);
+    }
+    void apiFetch<VendorStats>(`/vendor/dashboard/stats?${params.toString()}`, { token })
+      .then(setStats)
+      .catch(() => setStats(null));
+  }, [token, period, start, end]);
 
   useEffect(() => {
     if (!token) return;
@@ -93,6 +136,27 @@ export default function VendorDashboard() {
   const active = products.filter((p) => p.isActive).length;
   const inactive = products.length - active;
   const pend = orders.filter((o) => o.status === "PENDENTE" || o.status === "CONFIRMADO").length;
+  const pct = (curr: number, prev: number) => (prev <= 0 ? (curr > 0 ? 100 : 0) : ((curr - prev) / prev) * 100);
+  const exportCsv = () => {
+    if (!stats) return;
+    const rows = [
+      ["Metrica", "Atual", "Anterior"],
+      ["Pedidos", String(stats.ordersTotal), String(stats.previousOrdersTotal)],
+      ["Vendas concluidas", String(stats.wonOrders), String(stats.previousWonOrders)],
+      ["Devolucoes", String(stats.refundedOrders), String(stats.previousRefundedOrders)],
+      ["Total bruto", stats.grossSalesTotal, stats.previousGrossSalesTotal],
+      ["Total devolvido", stats.refundsTotal, stats.previousRefundsTotal],
+      ["Liquido", stats.netSalesTotal, stats.previousNetSalesTotal],
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vendor-dashboard-${stats.period}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <>
@@ -218,8 +282,60 @@ export default function VendorDashboard() {
           Abrir catálogo
         </Link>
       </header>
+      <section className="ae-panel" style={{ marginBottom: 14 }}>
+        <div className="ae-admin-toolbar">
+          <strong style={{ marginRight: 8 }}>Filtro do painel:</strong>
+          <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+            <option value="day">Hoje</option>
+            <option value="month">Mês atual</option>
+            <option value="year">Ano atual</option>
+            <option value="custom">Período personalizado</option>
+          </select>
+          {period === "custom" ? (
+            <>
+              <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+              <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </>
+          ) : null}
+          <button type="button" className="btn btn-ghost" onClick={exportCsv}>
+            Exportar CSV
+          </button>
+        </div>
+      </section>
 
       <div className="ae-v-metrics">
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{stats?.productTotal ?? productTotal}</div>
+          <div className="ae-v-metric__l">Total de produtos cadastrados</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{stats?.soldUnits ?? 0}</div>
+          <div className="ae-v-metric__l">Produtos vendidos (unidades)</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{stats?.pendingOrders ?? pend}</div>
+          <div className="ae-v-metric__l">Vendas pendentes</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{stats?.wonOrders ?? 0}</div>
+          <div className="ae-v-metric__l">Vendas concluídas/ganhas</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{stats?.refundedOrders ?? 0}</div>
+          <div className="ae-v-metric__l">Devoluções (pedidos reembolsados)</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{formatKz(stats?.grossSalesTotal ?? "0")}</div>
+          <div className="ae-v-metric__l">Total bruto vendido</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{formatKz(stats?.refundsTotal ?? "0")}</div>
+          <div className="ae-v-metric__l">Total em devoluções</div>
+        </div>
+        <div className="ae-v-metric">
+          <div className="ae-v-metric__v">{formatKz(stats?.netSalesTotal ?? "0")}</div>
+          <div className="ae-v-metric__l">Resultado líquido</div>
+        </div>
         <div className="ae-v-metric">
           <div className="ae-v-metric__v">{productTotal}</div>
           <div className="ae-v-metric__l">Referências no catálogo (total na base)</div>
@@ -247,6 +363,74 @@ export default function VendorDashboard() {
           </div>
         </div>
       </div>
+      {stats ? (
+        <section className="ae-panel" style={{ marginBottom: 14 }}>
+          <h3 style={{ marginTop: 0 }}>Comparação com período anterior</h3>
+          <p className="ae-muted" style={{ marginTop: 0 }}>
+            Pedidos: {stats.ordersTotal} vs {stats.previousOrdersTotal} ({pct(stats.ordersTotal, stats.previousOrdersTotal).toFixed(1)}%)
+            {" · "}Líquido: {formatKz(stats.netSalesTotal)} vs {formatKz(stats.previousNetSalesTotal)} (
+            {pct(Number(stats.netSalesTotal), Number(stats.previousNetSalesTotal)).toFixed(1)}%)
+          </p>
+        </section>
+      ) : null}
+
+      <section className="ae-table-wrap" style={{ marginBottom: 20 }}>
+        <table className="ae-data-table">
+          <thead>
+            <tr>
+              <th>Dia</th>
+              <th>Pedidos</th>
+              <th>Concluídos</th>
+              <th>Bruto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(stats?.trend ?? []).map((t) => (
+              <tr key={t.day}>
+                <td>{t.day}</td>
+                <td>{t.orders}</td>
+                <td>{t.wonOrders}</td>
+                <td>{formatKz(t.grossSalesTotal)}</td>
+              </tr>
+            ))}
+            {(stats?.trend?.length ?? 0) === 0 ? (
+              <tr>
+                <td colSpan={4} className="ae-empty-center">
+                  Sem tendência diária para o período.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="ae-table-wrap" style={{ marginBottom: 20 }}>
+        <table className="ae-data-table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Vendidos</th>
+              <th>Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(stats?.topProducts ?? []).map((p) => (
+              <tr key={p.id}>
+                <td>{p.name}</td>
+                <td>{p.soldCount}</td>
+                <td>{p.stock}</td>
+              </tr>
+            ))}
+            {(stats?.topProducts?.length ?? 0) === 0 ? (
+              <tr>
+                <td colSpan={3} className="ae-empty-center">
+                  Sem dados de produtos vendidos no período selecionado.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </section>
 
       <section className="ae-table-wrap" style={{ marginBottom: 20 }}>
         <table className="ae-data-table">

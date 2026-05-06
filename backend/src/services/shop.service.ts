@@ -10,6 +10,7 @@ import type {
 import { prisma } from "../lib/prisma.js";
 import { calcularSearchRankBoost, lojaPaginaPublica } from "../utils/shopCredibility.js";
 import { notificationService } from "./notification.service.js";
+import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
 
 type ShopInput = z.infer<typeof upsertShopSchema>;
 type Tier2Input = z.infer<typeof submitTier2Schema>;
@@ -52,6 +53,157 @@ async function atualizarRankingLoja(id: string) {
 }
 
 export const shopService = {
+  async dashboardStats(
+    userId: string,
+    period: DashboardPeriod = "month",
+    startRaw?: string,
+    endRaw?: string
+  ) {
+    const shop = await shopRepo().findByUserId(userId);
+    if (!shop) throw new HttpError(404, "Loja não encontrada");
+    const { start, end } = resolveDashboardRange(period, startRaw, endRaw);
+    const { prevStart, prevEnd } = previousRangeFrom(start, end);
+    const range = { gte: start, lte: end };
+    const prevRange = { gte: prevStart, lte: prevEnd };
+
+    const [
+      productTotal,
+      activeProducts,
+      inactiveProducts,
+      orders,
+      refundedOrders,
+      refundedLedger,
+      topProducts,
+      prevOrders,
+      prevRefundedOrders,
+      prevRefundedLedger,
+    ] =
+      await Promise.all([
+        prisma.product.count({ where: { shopId: shop.id } }),
+        prisma.product.count({ where: { shopId: shop.id, isActive: true } }),
+        prisma.product.count({ where: { shopId: shop.id, isActive: false } }),
+        prisma.order.findMany({
+          where: { createdAt: range, items: { some: { shopId: shop.id } } },
+          select: {
+            id: true,
+            status: true,
+            escrowState: true,
+            createdAt: true,
+            items: {
+              where: { shopId: shop.id },
+              select: { quantity: true, unitPrice: true, deliveryCost: true, productId: true },
+            },
+          },
+        }),
+        prisma.order.count({
+          where: { createdAt: range, escrowState: "REFUNDED", items: { some: { shopId: shop.id } } },
+        }),
+        prisma.ledgerEntry.aggregate({
+          _sum: { amount: true },
+          where: { shopId: shop.id, kind: "REFUND_TO_BUYER", createdAt: range },
+        }),
+        prisma.product.findMany({
+          where: { shopId: shop.id },
+          orderBy: { soldCount: "desc" },
+          take: 5,
+          select: { id: true, name: true, soldCount: true, stock: true },
+        }),
+        prisma.order.findMany({
+          where: { createdAt: prevRange, items: { some: { shopId: shop.id } } },
+          select: {
+            status: true,
+            items: {
+              where: { shopId: shop.id },
+              select: { quantity: true, unitPrice: true, deliveryCost: true },
+            },
+          },
+        }),
+        prisma.order.count({
+          where: { createdAt: prevRange, escrowState: "REFUNDED", items: { some: { shopId: shop.id } } },
+        }),
+        prisma.ledgerEntry.aggregate({
+          _sum: { amount: true },
+          where: { shopId: shop.id, kind: "REFUND_TO_BUYER", createdAt: prevRange },
+        }),
+      ]);
+
+    let soldUnits = 0;
+    let grossSales = 0;
+    let pendingOrders = 0;
+    let wonOrders = 0;
+    for (const o of orders) {
+      const isPending =
+        o.status === "PENDENTE" || o.status === "CONFIRMADO" || o.status === "EM_PREPARACAO" || o.status === "EM_ENTREGA";
+      if (isPending) pendingOrders += 1;
+      if (o.status === "ENTREGUE") wonOrders += 1;
+      for (const it of o.items) {
+        if (o.status !== "CANCELADO") {
+          soldUnits += it.quantity;
+          grossSales += Number(it.unitPrice) * it.quantity + Number(it.deliveryCost);
+        }
+      }
+    }
+    const refundsTotal = Number(refundedLedger._sum.amount ?? 0);
+    const netSales = Math.max(0, grossSales - refundsTotal);
+    let prevGrossSales = 0;
+    let prevWonOrders = 0;
+    for (const o of prevOrders) {
+      if (o.status === "ENTREGUE") prevWonOrders += 1;
+      for (const it of o.items) {
+        if (o.status !== "CANCELADO") {
+          prevGrossSales += Number(it.unitPrice) * it.quantity + Number(it.deliveryCost);
+        }
+      }
+    }
+    const prevRefundsTotal = Number(prevRefundedLedger._sum.amount ?? 0);
+    const prevNetSales = Math.max(0, prevGrossSales - prevRefundsTotal);
+
+    const dayMap = new Map<string, { day: string; orders: number; wonOrders: number; grossSales: number }>();
+    for (const o of orders) {
+      const day = o.createdAt.toISOString().slice(0, 10);
+      const row = dayMap.get(day) ?? { day, orders: 0, wonOrders: 0, grossSales: 0 };
+      row.orders += 1;
+      if (o.status === "ENTREGUE") row.wonOrders += 1;
+      for (const it of o.items) {
+        if (o.status !== "CANCELADO") row.grossSales += Number(it.unitPrice) * it.quantity + Number(it.deliveryCost);
+      }
+      dayMap.set(day, row);
+    }
+    const trend = Array.from(dayMap.values()).sort((a, b) => a.day.localeCompare(b.day));
+
+    return {
+      period,
+      rangeStart: start.toISOString(),
+      rangeEnd: end.toISOString(),
+      productTotal,
+      activeProducts,
+      inactiveProducts,
+      ordersTotal: orders.length,
+      pendingOrders,
+      wonOrders,
+      soldUnits,
+      refundedOrders,
+      grossSalesTotal: grossSales.toFixed(2),
+      refundsTotal: refundsTotal.toFixed(2),
+      netSalesTotal: netSales.toFixed(2),
+      previousRangeStart: prevStart.toISOString(),
+      previousRangeEnd: prevEnd.toISOString(),
+      previousOrdersTotal: prevOrders.length,
+      previousWonOrders: prevWonOrders,
+      previousRefundedOrders: prevRefundedOrders,
+      previousGrossSalesTotal: prevGrossSales.toFixed(2),
+      previousRefundsTotal: prevRefundsTotal.toFixed(2),
+      previousNetSalesTotal: prevNetSales.toFixed(2),
+      trend: trend.map((t) => ({
+        day: t.day,
+        orders: t.orders,
+        wonOrders: t.wonOrders,
+        grossSalesTotal: t.grossSales.toFixed(2),
+      })),
+      topProducts,
+    };
+  },
+
   async createForVendor(userId: string, input: ShopInput) {
     const repo = shopRepo();
     const exists = await repo.findByUserId(userId);

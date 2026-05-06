@@ -10,6 +10,11 @@ import {
 import { HttpError } from "../middlewares/errorHandler.js";
 
 const approveSchema = z.object({ isApproved: z.boolean() });
+const dashboardQuerySchema = z.object({
+  period: z.enum(["day", "month", "year", "custom"]).optional(),
+  start: z.string().optional(),
+  end: z.string().optional(),
+});
 
 export const shopController = {
   create: asyncHandler(async (req, res) => {
@@ -33,6 +38,14 @@ export const shopController = {
     if (!uid) throw new HttpError(401, "Autenticação necessária");
     const shop = await shopService.getMine(uid);
     res.json(shop);
+  }),
+
+  dashboardStats: asyncHandler(async (req, res) => {
+    const uid = req.user?.sub;
+    if (!uid) throw new HttpError(401, "Autenticação necessária");
+    const q = dashboardQuerySchema.parse(req.query);
+    const stats = await shopService.dashboardStats(uid, q.period ?? "month", q.start, q.end);
+    res.json(stats);
   }),
 
   submitTier2: asyncHandler(async (req, res) => {
