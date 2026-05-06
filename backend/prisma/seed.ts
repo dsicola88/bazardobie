@@ -9,6 +9,21 @@ import { siteSettingsService } from "../src/services/siteSettings.service.js";
 const prisma = new PrismaClient();
 
 async function seedAngolaGeoCatalog() {
+  const stripDiacritics = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  const normKey = (s: string) => stripDiacritics(s).toLowerCase();
+  const normalizeCode = (slugOrCode: string) =>
+    slugOrCode
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "_")
+      .replace(/-/g, "_")
+      .replace(/[^A-Z0-9_]/g, "");
+  const normalizeSlugForId = (slug: string) => slug.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
   for (const p of ANGOLA_PROVINCE_SEEDS) {
     await prisma.angolaProvince.upsert({
       where: { id: p.id },
@@ -23,29 +38,162 @@ async function seedAngolaGeoCatalog() {
     });
   }
 
-  for (const m of ANGOLA_MUNICIPALITY_SEEDS) {
-    const province = await prisma.angolaProvince.findUnique({ where: { code: m.provinceCode } });
-    if (!province) continue;
-    await prisma.angolaMunicipality.upsert({
-      where: { provinceId_code: { provinceId: province.id, code: m.code } },
-      update: {
-        namePt: m.namePt,
-        sortOrder: m.sortOrder,
-        active: true,
-        latitude: m.latitude ?? null,
-        longitude: m.longitude ?? null,
-      },
-      create: {
-        id: m.id,
-        provinceId: province.id,
-        code: m.code,
-        namePt: m.namePt,
-        sortOrder: m.sortOrder,
-        active: true,
-        latitude: m.latitude ?? null,
-        longitude: m.longitude ?? null,
-      },
-    });
+  const existingMunCount = await prisma.angolaMunicipality.count();
+  const shouldFetchMunicipalities =
+    process.env.ANGOLA_GEO_FETCH_REMOTE === "true" || existingMunCount < 80;
+
+  if (shouldFetchMunicipalities) {
+    const municipalitiesUrl =
+      process.env.ANGOLA_GEO_MUNICIPALITIES_URL ??
+      "https://angolaprovinciasapi.ggwp.com.br/api/v1/municipios";
+
+    console.log(
+      `[Seed Geo] Catálogo de municípios incompleto (${existingMunCount}). Buscando todos municípios em remoto...`
+    );
+
+    let remoteOk = false;
+    try {
+      const resp = await fetch(municipalitiesUrl);
+      if (!resp.ok) {
+        throw new Error(`Falha ao buscar municípios: ${resp.status} ${resp.statusText}`);
+      }
+      const json = (await resp.json()) as { success?: boolean; data?: unknown };
+      const items = Array.isArray(json.data) ? json.data : [];
+
+      if (items.length === 0) {
+        console.warn("[Seed Geo] API remota devolveu 0 municípios. Voltando para seed local...");
+      } else {
+        remoteOk = true;
+
+        const provinceByName = new Map(ANGOLA_PROVINCE_SEEDS.map((p) => [normKey(p.namePt), p]));
+        const provinceSortCounters = new Map<string, number>();
+
+        for (const raw of items) {
+          const m = raw as {
+            nome?: string;
+            slug?: string;
+            provincia?: { nome?: string };
+          };
+
+          const muniNamePt = (m.nome ?? "").trim();
+          const munSlug = (m.slug ?? "").trim();
+          const provName = (m.provincia?.nome ?? "").trim();
+
+          if (!muniNamePt || !munSlug || !provName) continue;
+          const provSeed = provinceByName.get(normKey(provName));
+          if (!provSeed) continue;
+
+          const provinceId = provSeed.id;
+          const code = normalizeCode(munSlug);
+          const idPart = normalizeSlugForId(munSlug);
+          const id = `geo-mun-${provSeed.code.toLowerCase()}-${idPart}`;
+
+          const sortOrder = provinceSortCounters.get(provinceId) ?? 0;
+          provinceSortCounters.set(provinceId, sortOrder + 1);
+
+          // 1) Primeiro tenta atualizar usando o (provinceId, code) esperado.
+          const existingByCode = await prisma.angolaMunicipality.findUnique({
+            where: { provinceId_code: { provinceId, code } },
+            select: { id: true },
+          });
+
+          if (existingByCode?.id) {
+            await prisma.angolaMunicipality.update({
+              where: { id: existingByCode.id },
+              data: { namePt: muniNamePt, code, sortOrder, active: true, latitude: null, longitude: null },
+            });
+            continue;
+          }
+
+          // 2) Se não existir por code, tenta encontrar pelo nome (caso já existisse no seed parcial).
+          const existingByName = await prisma.angolaMunicipality.findFirst({
+            where: {
+              provinceId,
+              active: true,
+              namePt: { equals: muniNamePt, mode: "insensitive" },
+            },
+            select: { id: true },
+          });
+
+          if (existingByName?.id) {
+            await prisma.angolaMunicipality.update({
+              where: { id: existingByName.id },
+              data: { namePt: muniNamePt, code, sortOrder, active: true, latitude: null, longitude: null },
+            });
+            continue;
+          }
+
+          // 3) Caso não exista, cria.
+          await prisma.angolaMunicipality.create({
+            data: {
+              id,
+              provinceId,
+              code,
+              namePt: muniNamePt,
+              sortOrder,
+              active: true,
+              latitude: null,
+              longitude: null,
+            },
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("[Seed Geo] Falha ao buscar municípios remotos. Voltando para seed local.", e);
+    }
+
+    if (!remoteOk) {
+      for (const m of ANGOLA_MUNICIPALITY_SEEDS) {
+        const province = await prisma.angolaProvince.findUnique({ where: { code: m.provinceCode } });
+        if (!province) continue;
+        await prisma.angolaMunicipality.upsert({
+          where: { provinceId_code: { provinceId: province.id, code: m.code } },
+          update: {
+            namePt: m.namePt,
+            sortOrder: m.sortOrder,
+            active: true,
+            latitude: m.latitude ?? null,
+            longitude: m.longitude ?? null,
+          },
+          create: {
+            id: m.id,
+            provinceId: province.id,
+            code: m.code,
+            namePt: m.namePt,
+            sortOrder: m.sortOrder,
+            active: true,
+            latitude: m.latitude ?? null,
+            longitude: m.longitude ?? null,
+          },
+        });
+      }
+    }
+  } else {
+    // Seed local (fallback) caso já tenha catálogo completo no banco.
+    for (const m of ANGOLA_MUNICIPALITY_SEEDS) {
+      const province = await prisma.angolaProvince.findUnique({ where: { code: m.provinceCode } });
+      if (!province) continue;
+      await prisma.angolaMunicipality.upsert({
+        where: { provinceId_code: { provinceId: province.id, code: m.code } },
+        update: {
+          namePt: m.namePt,
+          sortOrder: m.sortOrder,
+          active: true,
+          latitude: m.latitude ?? null,
+          longitude: m.longitude ?? null,
+        },
+        create: {
+          id: m.id,
+          provinceId: province.id,
+          code: m.code,
+          namePt: m.namePt,
+          sortOrder: m.sortOrder,
+          active: true,
+          latitude: m.latitude ?? null,
+          longitude: m.longitude ?? null,
+        },
+      });
+    }
   }
 
   await prisma.deliveryPickupPoint.upsert({
