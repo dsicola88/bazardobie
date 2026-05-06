@@ -761,6 +761,15 @@ a:hover {
   }
 }
 .ae-pdp-thumbs {
+  grid-area: thumbs;
+}
+.ae-pdp-main {
+  grid-area: media;
+}
+.ae-buybox {
+  grid-area: buybox;
+}
+.ae-pdp-thumbs {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -908,6 +917,83 @@ a:hover {
 .ae-field select,
 .ae-field input {
   height: auto;
+}
+@media (max-width: 760px) {
+  .ae-breadcrumb {
+    font-size: 11px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .ae-pdp {
+    padding: 10px;
+    border-radius: 8px;
+  }
+  .ae-pdp-grid {
+    grid-template-areas:
+      "media"
+      "thumbs"
+      "buybox";
+    gap: 10px;
+  }
+  .ae-pdp-main {
+    max-height: 320px;
+    border-radius: 8px;
+  }
+  .ae-pdp-thumbs {
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 7px;
+  }
+  .ae-pdp-thumbs button {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 auto;
+  }
+  .ae-buybox {
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .ae-buybox__title {
+    margin: 0 0 8px;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  .ae-buybox__reviews {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .ae-buybox__now {
+    font-size: 24px;
+  }
+  .ae-buybox__chip {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  .ae-buy-actions {
+    flex-direction: column;
+  }
+  .ae-btn-lg {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+  }
+  .ae-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ae-tabs button {
+    white-space: nowrap;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .ae-tab-panel {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
 }
 
 .ae-tabs {
