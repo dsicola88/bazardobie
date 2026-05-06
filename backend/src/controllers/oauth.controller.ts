@@ -12,11 +12,11 @@ function apiRoot(): string {
 }
 
 function redirectGoogleCallback(): string {
-  return `${apiRoot()}/auth/oauth/google/callback`;
+  return env.GOOGLE_REDIRECT_URI.trim() || `${apiRoot()}/auth/oauth/google/callback`;
 }
 
 function redirectFacebookCallback(): string {
-  return `${apiRoot()}/auth/oauth/facebook/callback`;
+  return env.FACEBOOK_REDIRECT_URI.trim() || `${apiRoot()}/auth/oauth/facebook/callback`;
 }
 
 function redirectLoginError(res: Response, message: string): void {
@@ -38,10 +38,11 @@ export const oauthController = {
       redirectLoginError(res, "Login Google não configurado no servidor.");
       return;
     }
+    const redirectUri = redirectGoogleCallback();
     const state = signOAuthPayload("google");
     const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     url.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
-    url.searchParams.set("redirect_uri", redirectGoogleCallback());
+    url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("scope", "openid email profile");
     url.searchParams.set("state", state);
@@ -76,10 +77,11 @@ export const oauthController = {
       redirectLoginError(res, "Login Facebook não configurado no servidor.");
       return;
     }
+    const redirectUri = redirectFacebookCallback();
     const state = signOAuthPayload("facebook");
     const url = new URL("https://www.facebook.com/v19.0/dialog/oauth");
     url.searchParams.set("client_id", env.FACEBOOK_APP_ID);
-    url.searchParams.set("redirect_uri", redirectFacebookCallback());
+    url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("state", state);
     url.searchParams.set("scope", "email,public_profile");
     res.redirect(url.toString());

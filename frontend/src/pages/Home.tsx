@@ -4,6 +4,7 @@ import { apiFetch } from "../api.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { parseTrustCell } from "../site/siteContent.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = { id: string; name: string; parentId: string | null };
@@ -71,10 +72,10 @@ export default function Home() {
           {hero ? (
             hero.linkUrl ? (
               <a href={hero.linkUrl}>
-                <img src={hero.imageUrl} alt={hero.title ?? ""} />
+                <img src={resolveMediaUrl(hero.imageUrl)} alt={hero.title ?? ""} />
               </a>
             ) : (
-              <img src={hero.imageUrl} alt={hero.title ?? ""} />
+              <img src={resolveMediaUrl(hero.imageUrl)} alt={hero.title ?? ""} />
             )
           ) : (
             <div

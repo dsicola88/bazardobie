@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz } from "../utils/format.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Row = {
   id: string;
@@ -199,7 +200,7 @@ export default function VendorProducts() {
               <tr key={p.id}>
                 <td style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <img
-                    src={p.images[0]?.url}
+                    src={resolveMediaUrl(p.images[0]?.url)}
                     alt=""
                     width={44}
                     height={44}

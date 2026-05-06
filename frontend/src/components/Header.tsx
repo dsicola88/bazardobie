@@ -17,6 +17,7 @@ export function Header() {
   const [cartCount, setCartCount] = useState(0);
   const [favCount, setFavCount] = useState(0);
   const [cats, setCats] = useState<Category[]>([]);
+  const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
 
   useEffect(() => {
     ensureCartSession();
@@ -31,6 +32,10 @@ export function Header() {
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
     if (loc.pathname === "/search") setQ(params.get("q") ?? "");
+  }, [loc.pathname, loc.search]);
+
+  useEffect(() => {
+    setMobileCatsOpen(false);
   }, [loc.pathname, loc.search]);
 
   async function refreshCart() {
@@ -232,7 +237,15 @@ export function Header() {
           <Link to={buildSearchPath(loc.pathname, searchParams, { categoryId: null })} className="ae-catnav__all">
             Catálogo completo
           </Link>
-          <div className="ae-catnav__strip">
+          <button
+            type="button"
+            className="ae-catnav__toggle"
+            aria-expanded={mobileCatsOpen}
+            onClick={() => setMobileCatsOpen((v) => !v)}
+          >
+            Categorias
+          </button>
+          <div className={`ae-catnav__strip ${mobileCatsOpen ? "ae-catnav__strip--open" : ""}`}>
             {roots.map((c) => (
               <Link key={c.id} to={buildSearchPath(loc.pathname, searchParams, { categoryId: c.id })}>
                 {c.name}

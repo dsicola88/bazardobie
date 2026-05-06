@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { formatKz, formatRating } from "../utils/format.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 export type ProductCardData = {
   id: string;
@@ -14,7 +15,7 @@ export type ProductCardData = {
 };
 
 export function ProductCard({ p, className }: { p: ProductCardData; className?: string }) {
-  const img = p.images[0]?.url;
+  const img = resolveMediaUrl(p.images[0]?.url);
   const hasPromo = p.promoPrice != null && p.promoPrice !== "";
 
   return (

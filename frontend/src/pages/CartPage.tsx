@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type CartItem = {
   id: string;
@@ -74,7 +75,7 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          <img src={item.product.images?.[0]?.url} alt="" />
+                          <img src={resolveMediaUrl(item.product.images?.[0]?.url)} alt="" />
                         </Link>
                         <div>
                           <Link to={`/product/${item.product.id}`} style={{ fontWeight: 600 }}>

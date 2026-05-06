@@ -29,7 +29,7 @@ export const uploadController = {
       }
     }
 
-    const url = `${env.PUBLIC_BASE_URL.replace(/\/$/, "")}/uploads/${filename}`;
+    const url = `/uploads/${filename}`;
     res.status(201).json({ url });
   }),
 };

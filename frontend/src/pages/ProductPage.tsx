@@ -6,6 +6,7 @@ import { FavoriteToggle } from "../components/FavoriteToggle.js";
 import { ProductReportModal } from "../components/ProductReportModal.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Img = { url: string };
 type Variant = { id: string; sku: string; name?: string | null; stock: number };
@@ -144,7 +145,7 @@ export default function ProductPage() {
                 className={mainImg === im.url ? "ae-on" : ""}
                 onClick={() => setMainImg(im.url)}
               >
-                <img src={im.url} alt="" />
+                <img src={resolveMediaUrl(im.url)} alt="" />
               </button>
             ))}
           </div>
@@ -155,11 +156,11 @@ export default function ProductPage() {
                 controls
                 preload="metadata"
                 playsInline
-                poster={mainImg || product.images[0]?.url}
+                poster={resolveMediaUrl(mainImg || product.images[0]?.url)}
                 style={{ width: "100%", borderRadius: 8, border: "1px solid var(--ae-line)", background: "#000" }}
               />
             ) : (
-              <img src={mainImg || product.images[0]?.url} alt="" />
+              <img src={resolveMediaUrl(mainImg || product.images[0]?.url)} alt="" />
             )}
           </div>
 
@@ -303,7 +304,10 @@ export default function ProductPage() {
                   <h3 className="ae-pdp-trust-box__title">Este parceiro na BAZAR DO BIÉ</h3>
                   {guarantees.fachadaParceiraUrl ? (
                     <figure className="ae-pdp-trust-box__photo">
-                      <img src={guarantees.fachadaParceiraUrl} alt="Fachada ou actividade do parceiro, revista pela plataforma" />
+                      <img
+                        src={resolveMediaUrl(guarantees.fachadaParceiraUrl)}
+                        alt="Fachada ou actividade do parceiro, revista pela plataforma"
+                      />
                       <figcaption className="ae-muted">Imagem facultada pelo parceiro e aceite após revisão da equipa.</figcaption>
                     </figure>
                   ) : null}
@@ -358,7 +362,7 @@ export default function ProductPage() {
                         {r.photoUrls.map((u) => (
                           <a key={u} href={u} target="_blank" rel="noopener noreferrer">
                             <img
-                              src={u}
+                              src={resolveMediaUrl(u)}
                               alt=""
                               style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid var(--ae-line)" }}
                             />

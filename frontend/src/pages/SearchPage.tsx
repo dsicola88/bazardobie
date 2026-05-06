@@ -26,6 +26,7 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState(() => params.get("maxPrice") ?? "");
   const [cats, setCats] = useState<Category[]>([]);
   const [data, setData] = useState<{ items: ProductCardData[]; total: number } | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     setMinPrice(minPriceParam ?? "");
@@ -69,8 +70,17 @@ export default function SearchPage() {
   return (
     <div className="ae-layout-search">
       <aside className="ae-filters">
+        <button
+          type="button"
+          className="ae-filters__toggle"
+          aria-expanded={mobileFiltersOpen}
+          onClick={() => setMobileFiltersOpen((v) => !v)}
+        >
+          Filtros e categorias
+        </button>
         <h3>Critérios</h3>
-        <div className="ae-filters__group">
+        <div className={`ae-filters__body ${mobileFiltersOpen ? "ae-filters__body--open" : ""}`}>
+          <div className="ae-filters__group">
           <strong>Categoria</strong>
           <nav className="ae-chip-list" style={{ marginTop: 8 }}>
             <Link to={buildSearchPath("/search", params, { categoryId: null })} className={!categoryId ? "ae-on" : ""}>
@@ -86,8 +96,8 @@ export default function SearchPage() {
               </Link>
             ))}
           </nav>
-        </div>
-        <div className="ae-filters__group">
+          </div>
+          <div className="ae-filters__group">
           <strong>Preço (Kz)</strong>
           <div className="ae-filters__price-row">
             <input
@@ -110,8 +120,8 @@ export default function SearchPage() {
           <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
             Aplicar
           </button>
-        </div>
-        <div className="ae-filters__group">
+          </div>
+          <div className="ae-filters__group">
           <strong>Avaliação mín.</strong>
           <select
             className="ae-filters__select"
@@ -131,6 +141,7 @@ export default function SearchPage() {
               </option>
             ))}
           </select>
+          </div>
         </div>
       </aside>
 
