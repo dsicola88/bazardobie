@@ -111,6 +111,11 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     hint:
       "true / 1 / sim: o porte vem da tabela «Zonas por cidade» (província + cidade do endereço). Tem prioridade sobre o frete por distância GPS. Ex.: Luanda + Talatona → preço cadastrado.",
   },
+  "logistics.platform_commission_bps": {
+    label: "Comissão da plataforma (basis points)",
+    defaultValue: "500",
+    hint: "500 = 5%, 1000 = 10%. Usado em relatórios e painel financeiro/admin.",
+  },
 };
 
 const ALLOWED_KEYS = new Set(Object.keys(SITE_SETTING_DEFS));
@@ -130,6 +135,7 @@ export function defaultPublicMap(): Record<string, string> {
 }
 
 const DEF_ALLOW_SELLER = SITE_SETTING_DEFS["public.allow_seller_delivery"].defaultValue;
+const DEF_PLATFORM_COMMISSION_BPS = SITE_SETTING_DEFS["logistics.platform_commission_bps"].defaultValue;
 
 function warnSiteSettingRead(method: string, err: unknown): void {
   console.warn(
@@ -165,6 +171,20 @@ export const siteSettingsService = {
     } catch (e) {
       warnSiteSettingRead("isSellerDeliveryAllowed", e);
       return parseTruthySetting(undefined, DEF_ALLOW_SELLER);
+    }
+  },
+
+  async getPlatformCommissionBps(): Promise<number> {
+    try {
+      const row = await prisma.siteSetting.findUnique({
+        where: { key: "logistics.platform_commission_bps" },
+      });
+      const n = Number((row?.value ?? DEF_PLATFORM_COMMISSION_BPS).trim());
+      if (!Number.isFinite(n) || n < 0) return Number(DEF_PLATFORM_COMMISSION_BPS);
+      return Math.round(n);
+    } catch (e) {
+      warnSiteSettingRead("getPlatformCommissionBps", e);
+      return Number(DEF_PLATFORM_COMMISSION_BPS);
     }
   },
 

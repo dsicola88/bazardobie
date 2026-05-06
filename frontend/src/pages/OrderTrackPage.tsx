@@ -56,6 +56,7 @@ type TrackOrder = {
   trackingCarrier?: string | null;
   trackingCode?: string | null;
   trackingUrl?: string | null;
+  logisticsPartner?: { id: string; name: string; phone?: string | null } | null;
 };
 
 function textoRastreioPorEstado(status: string): string {
@@ -433,6 +434,12 @@ export default function OrderTrackPage() {
             {row.trackingCarrier ? (
               <p style={{ margin: "0 0 8px" }}>
                 <strong>Transportadora:</strong> {row.trackingCarrier}
+              </p>
+            ) : null}
+            {row.status === "EM_ENTREGA" && row.logisticsPartner?.phone ? (
+              <p style={{ margin: "0 0 8px" }}>
+                <strong>Telefone da transportadora:</strong>{" "}
+                <a href={`tel:${row.logisticsPartner.phone}`}>{row.logisticsPartner.phone}</a>
               </p>
             ) : null}
             {row.trackingCode ? (

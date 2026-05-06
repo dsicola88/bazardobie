@@ -61,7 +61,15 @@ export const shopService = {
   ) {
     const shop = await shopRepo().findByUserId(userId);
     if (!shop) throw new HttpError(404, "Loja não encontrada");
-    const { start, end } = resolveDashboardRange(period, startRaw, endRaw);
+    let start: Date;
+    let end: Date;
+    try {
+      const r = resolveDashboardRange(period, startRaw, endRaw);
+      start = r.start;
+      end = r.end;
+    } catch {
+      throw new HttpError(400, "Período personalizado inválido. Informe data inicial e final válidas.");
+    }
     const { prevStart, prevEnd } = previousRangeFrom(start, end);
     const range = { gte: start, lte: end };
     const prevRange = { gte: prevStart, lte: prevEnd };

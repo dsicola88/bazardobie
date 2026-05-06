@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
+import { siteSettingsService } from "./siteSettings.service.js";
+import { HttpError } from "../middlewares/errorHandler.js";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -12,8 +14,16 @@ function startOfToday(): Date {
 export const adminService = {
   async dashboardStats(period: DashboardPeriod = "month", startRaw?: string, endRaw?: string) {
     const dayStart = startOfToday();
-    const bps = env.PLATFORM_COMMISSION_BPS;
-    const { start, end } = resolveDashboardRange(period, startRaw, endRaw);
+    const bps = await siteSettingsService.getPlatformCommissionBps().catch(() => env.PLATFORM_COMMISSION_BPS);
+    let start: Date;
+    let end: Date;
+    try {
+      const r = resolveDashboardRange(period, startRaw, endRaw);
+      start = r.start;
+      end = r.end;
+    } catch {
+      throw new HttpError(400, "Período personalizado inválido. Informe data inicial e final válidas.");
+    }
     const { prevStart, prevEnd } = previousRangeFrom(start, end);
     const inRange = { gte: start, lte: end };
     const prevRange = { gte: prevStart, lte: prevEnd };

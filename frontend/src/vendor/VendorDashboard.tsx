@@ -98,6 +98,7 @@ export default function VendorDashboard() {
 
   useEffect(() => {
     if (!token) return;
+    if (period === "custom" && (!start || !end)) return;
     const params = new URLSearchParams({ period });
     if (period === "custom" && start && end) {
       params.set("start", `${start}T00:00:00.000Z`);

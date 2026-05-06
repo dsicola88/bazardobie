@@ -43,6 +43,11 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!token) return;
+    if (period === "custom" && (!start || !end)) {
+      setErr("Selecione data inicial e final para o período personalizado.");
+      return;
+    }
+    setErr(null);
     const params = new URLSearchParams({ period });
     if (period === "custom" && start && end) {
       params.set("start", `${start}T00:00:00.000Z`);

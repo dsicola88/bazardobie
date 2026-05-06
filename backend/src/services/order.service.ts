@@ -575,6 +575,7 @@ export const orderService = {
         items: {
           include: { shop: true, product: { include: { images: { take: 1 } } } },
         },
+        logisticsPartner: { select: { id: true, name: true, phone: true } },
         shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
         shippingMunicipality: {
           select: {
@@ -597,6 +598,7 @@ export const orderService = {
       where: { id: orderId, userId },
       include: {
         items: { include: { shop: true, product: true, variant: true } },
+        logisticsPartner: { select: { id: true, name: true, phone: true } },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 8 },
         shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
