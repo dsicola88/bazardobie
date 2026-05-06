@@ -15,6 +15,8 @@ export default function Login() {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotDone, setForgotDone] = useState<string | null>(null);
   const [oauthProviders, setOauthProviders] = useState<{ google: boolean; facebook: boolean } | null>(null);
 
   const oauthErrParam = params.get("oauth_error");
@@ -82,6 +84,28 @@ export default function Login() {
     }
   }
 
+  async function onForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setForgotDone(null);
+    setLoading(true);
+    try {
+      const out = await apiFetch<{ ok: boolean; devResetUrl?: string }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      setForgotDone(
+        out.devResetUrl
+          ? `Link de recuperação (ambiente local): ${out.devResetUrl}`
+          : "Se o e-mail existir, enviámos instruções de recuperação."
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Não foi possível iniciar recuperação.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function tryMergeCart(jwt: string) {
     const sessionId = localStorage.getItem("cart_session") ?? ensureCartSession();
     try {
@@ -106,6 +130,7 @@ export default function Login() {
           <span aria-hidden>✓</span> As suas informações de sessão são transmitidas de forma segura (HTTPS em produção).
         </p>
         {roleHint}
+        {!forgotMode ? (
         <form className="form-stack ae-form" onSubmit={onSubmit}>
           {registerMode && (
             <>
@@ -140,14 +165,31 @@ export default function Login() {
             {loading ? "A processar…" : registerMode ? "Criar conta" : "Continuar"}
           </button>
         </form>
+        ) : (
+          <form className="form-stack ae-form" onSubmit={onForgot}>
+            <label htmlFor="forgot-email">E-mail da conta</label>
+            <input
+              id="forgot-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            {error && <p style={{ color: "crimson", margin: "10px 0 0", fontSize: "13px" }}>{error}</p>}
+            {forgotDone ? <p style={{ color: "#0d5c2e", margin: "10px 0 0", fontSize: "13px" }}>{forgotDone}</p> : null}
+            <button className="btn btn-primary" disabled={loading} type="submit">
+              {loading ? "A processar…" : "Enviar recuperação"}
+            </button>
+          </form>
+        )}
 
-        {!registerMode ? (
+        {!registerMode && !forgotMode ? (
           <p className="ae-muted" style={{ fontSize: 13 }}>
             Problemas ao aceder? Se criou a conta com Google ou Facebook, use o mesmo botão abaixo — não use palavra-passe.
           </p>
         ) : null}
 
-        {showOAuth ? (
+        {showOAuth && !forgotMode ? (
           <>
             <div className="ae-oauth-divider">
               <span>Acesso rápido com</span>
@@ -204,10 +246,20 @@ export default function Login() {
         ) : null}
 
         <p style={{ marginBottom: 0 }}>
-          {registerMode ? (
+          {forgotMode ? (
+            <button type="button" className="ae-linkbtn" onClick={() => setForgotMode(false)}>
+              Voltar ao login
+            </button>
+          ) : registerMode ? (
             <Link to={loginLink}>Já tem conta? Iniciar sessão</Link>
           ) : (
-            <Link to={registerLink}>Criar conta com e-mail</Link>
+            <>
+              <Link to={registerLink}>Criar conta com e-mail</Link>
+              {" · "}
+              <button type="button" className="ae-linkbtn" onClick={() => setForgotMode(true)}>
+                Esqueci a senha
+              </button>
+            </>
           )}
         </p>
       </div>

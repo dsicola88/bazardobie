@@ -1,6 +1,13 @@
 import { authService } from "../services/auth.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
-import { registerSchema, loginSchema, patchProfileSchema, becomeVendorSchema } from "../validators/auth.validators.js";
+import {
+  registerSchema,
+  loginSchema,
+  patchProfileSchema,
+  becomeVendorSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../validators/auth.validators.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 
 export const authController = {
@@ -39,6 +46,18 @@ export const authController = {
     if (!uid) throw new HttpError(401, "Autenticação necessária");
     const body = becomeVendorSchema.parse(req.body);
     const out = await authService.becomeVendor(uid, body);
+    res.json(out);
+  }),
+
+  forgotPassword: asyncHandler(async (req, res) => {
+    const body = forgotPasswordSchema.parse(req.body);
+    const out = await authService.requestPasswordReset(body.email);
+    res.json({ ok: true, ...(out.devResetUrl ? { devResetUrl: out.devResetUrl } : {}) });
+  }),
+
+  resetPassword: asyncHandler(async (req, res) => {
+    const body = resetPasswordSchema.parse(req.body);
+    const out = await authService.resetPassword(body.token, body.password);
     res.json(out);
   }),
 };

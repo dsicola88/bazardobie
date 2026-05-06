@@ -47,6 +47,8 @@ r.get("/health", (_req, res) => {
 
 r.post("/auth/register", authController.register);
 r.post("/auth/login", authController.login);
+r.post("/auth/forgot-password", authController.forgotPassword);
+r.post("/auth/reset-password", authController.resetPassword);
 r.get("/auth/oauth/providers", oauthController.providers);
 r.get("/auth/oauth/google", oauthController.googleStart);
 r.get("/auth/oauth/google/callback", oauthController.googleCallback);

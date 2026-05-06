@@ -22,6 +22,7 @@ import BecomeVendorPage from "./pages/BecomeVendorPage.js";
 import Home from "./pages/Home.js";
 import SearchPage from "./pages/SearchPage.js";
 import Login from "./pages/Login.js";
+import ResetPasswordPage from "./pages/ResetPasswordPage.js";
 import OAuthDonePage from "./pages/OAuthDonePage.js";
 import ProductPage from "./pages/ProductPage.js";
 import CartPage from "./pages/CartPage.js";
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="search" element={<SearchPage />} />
         <Route path="login/oauth-done" element={<OAuthDonePage />} />
         <Route path="login" element={<Login />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="quero-vender" element={<BecomeVendorPage />} />
         <Route path="product/:id" element={<ProductPage />} />
         <Route path="cart" element={<CartPage />} />

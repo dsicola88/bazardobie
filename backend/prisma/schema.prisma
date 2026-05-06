@@ -229,8 +229,22 @@ model User {
   disputesOpened Dispute[]       @relation("DisputeOpener")
   disputesResolved Dispute[]     @relation("DisputeResolver")
   chatMessagesSent OrderChatMessage[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([municipalityId])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Shop {

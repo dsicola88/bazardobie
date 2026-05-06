@@ -1,4 +1,5 @@
 import type { UserRole } from "@prisma/client";
+import { createHash, randomBytes } from "node:crypto";
 import { userRepo } from "../repositories/user.repository.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 import { signAccessToken } from "../utils/jwt.js";
@@ -6,12 +7,18 @@ import { HttpError } from "../middlewares/errorHandler.js";
 import { prisma } from "../lib/prisma.js";
 import type { z } from "zod";
 import type { registerSchema, loginSchema, patchProfileSchema, becomeVendorSchema } from "../validators/auth.validators.js";
+import { env } from "../config/env.js";
 
 type RegisterInput = z.infer<typeof registerSchema>;
 type LoginInput = z.infer<typeof loginSchema>;
 type PatchProfileInput = z.infer<typeof patchProfileSchema>;
 
 type BecomeVendorInput = z.infer<typeof becomeVendorSchema>;
+const RESET_TTL_MINUTES = 30;
+
+function hashResetToken(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
+}
 
 export const authService = {
   async register(input: RegisterInput) {
@@ -136,6 +143,48 @@ export const authService = {
     const updated = await users.updateRole(userId, "VENDEDOR");
     const token = signAccessToken({ sub: updated.id, role: updated.role });
     return { token, user: sanitizeUser(updated) };
+  },
+
+  async requestPasswordReset(email: string) {
+    const users = userRepo();
+    const user = await users.findByEmail(email);
+    // Não revelar existência da conta (segurança).
+    if (!user || user.blocked) return { ok: true as const };
+
+    await prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id, OR: [{ usedAt: { not: null } }, { expiresAt: { lte: new Date() } }] },
+    });
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = hashResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
+    await prisma.passwordResetToken.create({
+      data: { userId: user.id, tokenHash, expiresAt },
+    });
+    const resetUrl = `${env.FRONTEND_URL.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    // Até integrar SMTP, registrar URL no servidor para operação imediata.
+    console.info(`[auth] password reset link for ${email}: ${resetUrl}`);
+    return { ok: true as const, devResetUrl: env.NODE_ENV === "production" ? undefined : resetUrl };
+  },
+
+  async resetPassword(token: string, password: string) {
+    const tokenHash = hashResetToken(token);
+    const row = await prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+    if (!row || row.usedAt || row.expiresAt <= new Date()) {
+      throw new HttpError(400, "Link de recuperação inválido ou expirado.");
+    }
+    if (row.user.blocked) throw new HttpError(403, "Conta suspensa — contacte suporte.");
+    const passwordHash = await hashPassword(password);
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+      prisma.passwordResetToken.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
+      prisma.passwordResetToken.deleteMany({
+        where: { userId: row.userId, id: { not: row.id } },
+      }),
+    ]);
+    return { ok: true as const };
   },
 };
 
