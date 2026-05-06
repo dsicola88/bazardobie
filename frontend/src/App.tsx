@@ -1,98 +1,104 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import AdminBanners from "./admin/AdminBanners.js";
-import AdminCredibility from "./admin/AdminCredibility.js";
-import AdminCategories from "./admin/AdminCategories.js";
-import AdminDashboard from "./admin/AdminDashboard.js";
-import AdminDisputes from "./admin/AdminDisputes.js";
-import AdminFinance from "./admin/AdminFinance.js";
-import AdminFreight from "./admin/AdminFreight.js";
-import AdminLayout from "./admin/AdminLayout.js";
-import AdminLogisticsPartners from "./admin/AdminLogisticsPartners.js";
-import AdminOrderDetail from "./admin/AdminOrderDetail.js";
-import AdminOrders from "./admin/AdminOrders.js";
-import AdminProducts from "./admin/AdminProducts.js";
-import AdminSellers from "./admin/AdminSellers.js";
-import AdminTeam from "./admin/AdminTeam.js";
-import AdminSiteContent from "./admin/AdminSiteContent.js";
-import AdminTrust from "./admin/AdminTrust.js";
-import Layout from "./Layout.js";
-import LogisticsLayout from "./logistics/LogisticsLayout.js";
-import LogisticsOrders from "./logistics/LogisticsOrders.js";
-import BecomeVendorPage from "./pages/BecomeVendorPage.js";
-import Home from "./pages/Home.js";
-import SearchPage from "./pages/SearchPage.js";
-import Login from "./pages/Login.js";
-import ResetPasswordPage from "./pages/ResetPasswordPage.js";
-import OAuthDonePage from "./pages/OAuthDonePage.js";
-import ProductPage from "./pages/ProductPage.js";
-import CartPage from "./pages/CartPage.js";
-import CheckoutPage from "./pages/CheckoutPage.js";
-import FavoritesPage from "./pages/FavoritesPage.js";
-import OrdersPage from "./pages/OrdersPage.js";
-import OrderTrackPage from "./pages/OrderTrackPage.js";
-import NotificationsPage from "./pages/NotificationsPage.js";
-import UnauthorizedPage from "./pages/UnauthorizedPage.js";
-import VendorLayout from "./vendor/VendorLayout.js";
-import VendorCredibility from "./vendor/VendorCredibility.js";
-import VendorDashboard from "./vendor/VendorDashboard.js";
-import VendorProductEditor from "./vendor/VendorProductEditor.js";
-import VendorOrders from "./vendor/VendorOrders.js";
-import VendorProducts from "./vendor/VendorProducts.js";
-import VendorShopSetup from "./vendor/VendorShopSetup.js";
+import { SeoRouteControl } from "./seo/SeoRouteControl.js";
+
+const AdminBanners = lazy(() => import("./admin/AdminBanners.js"));
+const AdminCredibility = lazy(() => import("./admin/AdminCredibility.js"));
+const AdminCategories = lazy(() => import("./admin/AdminCategories.js"));
+const AdminDashboard = lazy(() => import("./admin/AdminDashboard.js"));
+const AdminDisputes = lazy(() => import("./admin/AdminDisputes.js"));
+const AdminFinance = lazy(() => import("./admin/AdminFinance.js"));
+const AdminFreight = lazy(() => import("./admin/AdminFreight.js"));
+const AdminLayout = lazy(() => import("./admin/AdminLayout.js"));
+const AdminLogisticsPartners = lazy(() => import("./admin/AdminLogisticsPartners.js"));
+const AdminOrderDetail = lazy(() => import("./admin/AdminOrderDetail.js"));
+const AdminOrders = lazy(() => import("./admin/AdminOrders.js"));
+const AdminProducts = lazy(() => import("./admin/AdminProducts.js"));
+const AdminSellers = lazy(() => import("./admin/AdminSellers.js"));
+const AdminTeam = lazy(() => import("./admin/AdminTeam.js"));
+const AdminSiteContent = lazy(() => import("./admin/AdminSiteContent.js"));
+const AdminTrust = lazy(() => import("./admin/AdminTrust.js"));
+const Layout = lazy(() => import("./Layout.js"));
+const LogisticsLayout = lazy(() => import("./logistics/LogisticsLayout.js"));
+const LogisticsOrders = lazy(() => import("./logistics/LogisticsOrders.js"));
+const BecomeVendorPage = lazy(() => import("./pages/BecomeVendorPage.js"));
+const Home = lazy(() => import("./pages/Home.js"));
+const SearchPage = lazy(() => import("./pages/SearchPage.js"));
+const Login = lazy(() => import("./pages/Login.js"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.js"));
+const OAuthDonePage = lazy(() => import("./pages/OAuthDonePage.js"));
+const ProductPage = lazy(() => import("./pages/ProductPage.js"));
+const CartPage = lazy(() => import("./pages/CartPage.js"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage.js"));
+const FavoritesPage = lazy(() => import("./pages/FavoritesPage.js"));
+const OrdersPage = lazy(() => import("./pages/OrdersPage.js"));
+const OrderTrackPage = lazy(() => import("./pages/OrderTrackPage.js"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage.js"));
+const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage.js"));
+const VendorLayout = lazy(() => import("./vendor/VendorLayout.js"));
+const VendorCredibility = lazy(() => import("./vendor/VendorCredibility.js"));
+const VendorDashboard = lazy(() => import("./vendor/VendorDashboard.js"));
+const VendorProductEditor = lazy(() => import("./vendor/VendorProductEditor.js"));
+const VendorOrders = lazy(() => import("./vendor/VendorOrders.js"));
+const VendorProducts = lazy(() => import("./vendor/VendorProducts.js"));
+const VendorShopSetup = lazy(() => import("./vendor/VendorShopSetup.js"));
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/logistica" element={<LogisticsLayout />}>
-        <Route index element={<LogisticsOrders />} />
-      </Route>
+    <Suspense fallback={<p className="ae-muted" style={{ padding: 16 }}>A carregar…</p>}>
+      <SeoRouteControl />
+      <Routes>
+        <Route path="/logistica" element={<LogisticsLayout />}>
+          <Route index element={<LogisticsOrders />} />
+        </Route>
 
-      <Route path="/vendor" element={<VendorLayout />}>
-        <Route index element={<VendorDashboard />} />
-        <Route path="products/new" element={<VendorProductEditor />} />
-        <Route path="products/:productId/edit" element={<VendorProductEditor />} />
-        <Route path="products" element={<VendorProducts />} />
-        <Route path="orders" element={<VendorOrders />} />
-        <Route path="credibility" element={<VendorCredibility />} />
-        <Route path="loja" element={<VendorShopSetup />} />
-      </Route>
+        <Route path="/vendor" element={<VendorLayout />}>
+          <Route index element={<VendorDashboard />} />
+          <Route path="products/new" element={<VendorProductEditor />} />
+          <Route path="products/:productId/edit" element={<VendorProductEditor />} />
+          <Route path="products" element={<VendorProducts />} />
+          <Route path="orders" element={<VendorOrders />} />
+          <Route path="credibility" element={<VendorCredibility />} />
+          <Route path="loja" element={<VendorShopSetup />} />
+        </Route>
 
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="categories" element={<AdminCategories />} />
-        <Route path="sellers" element={<AdminSellers />} />
-        <Route path="logistics-partners" element={<AdminLogisticsPartners />} />
-        <Route path="freight" element={<AdminFreight />} />
-        <Route path="team" element={<AdminTeam />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="orders/:orderId" element={<AdminOrderDetail />} />
-        <Route path="finance" element={<AdminFinance />} />
-        <Route path="trust" element={<AdminTrust />} />
-        <Route path="credibility" element={<AdminCredibility />} />
-        <Route path="disputes" element={<AdminDisputes />} />
-        <Route path="content" element={<AdminSiteContent />} />
-        <Route path="banners" element={<AdminBanners />} />
-      </Route>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="categories" element={<AdminCategories />} />
+          <Route path="sellers" element={<AdminSellers />} />
+          <Route path="logistics-partners" element={<AdminLogisticsPartners />} />
+          <Route path="freight" element={<AdminFreight />} />
+          <Route path="team" element={<AdminTeam />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="orders/:orderId" element={<AdminOrderDetail />} />
+          <Route path="finance" element={<AdminFinance />} />
+          <Route path="trust" element={<AdminTrust />} />
+          <Route path="credibility" element={<AdminCredibility />} />
+          <Route path="disputes" element={<AdminDisputes />} />
+          <Route path="content" element={<AdminSiteContent />} />
+          <Route path="banners" element={<AdminBanners />} />
+        </Route>
 
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="search" element={<SearchPage />} />
-        <Route path="login/oauth-done" element={<OAuthDonePage />} />
-        <Route path="login" element={<Login />} />
-        <Route path="reset-password" element={<ResetPasswordPage />} />
-        <Route path="quero-vender" element={<BecomeVendorPage />} />
-        <Route path="product/:id" element={<ProductPage />} />
-        <Route path="cart" element={<CartPage />} />
-        <Route path="favorites" element={<FavoritesPage />} />
-        <Route path="checkout" element={<CheckoutPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="orders/:orderId/seguir" element={<OrderTrackPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
-      </Route>
-    </Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="login/oauth-done" element={<OAuthDonePage />} />
+          <Route path="login" element={<Login />} />
+          <Route path="reset-password" element={<ResetPasswordPage />} />
+          <Route path="quero-vender" element={<BecomeVendorPage />} />
+          <Route path="product/:id" element={<ProductPage />} />
+          <Route path="cart" element={<CartPage />} />
+          <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="orders/:orderId/seguir" element={<OrderTrackPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
