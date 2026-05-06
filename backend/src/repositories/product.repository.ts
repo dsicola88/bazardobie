@@ -123,14 +123,36 @@ export function productRepo() {
     suggestPublic(q: string, take: number) {
       const term = q.trim();
       if (!term) return Promise.resolve([]);
-      const where = buildWhere({ q: term });
+      const terms = term
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .slice(0, 6);
+      const where: Prisma.ProductWhereInput = {
+        ...buildWhere({}),
+        ...(terms.length > 0
+          ? {
+              OR: terms.flatMap((t) => [
+                { name: { contains: t, mode: "insensitive" as const } },
+                { sku: { contains: t, mode: "insensitive" as const } },
+                { category: { is: { name: { contains: t, mode: "insensitive" as const } } } },
+                { shop: { is: { name: { contains: t, mode: "insensitive" as const } } } },
+              ]),
+            }
+          : {}),
+      };
       return prisma.product.findMany({
         where,
-        take,
+        take: Math.max(take, 1) * 8,
         orderBy: [{ soldCount: "desc" }, { createdAt: "desc" }],
         select: {
           id: true,
           name: true,
+          sku: true,
+          soldCount: true,
+          reviewCount: true,
+          category: { select: { name: true } },
+          shop: { select: { name: true } },
         },
       });
     },

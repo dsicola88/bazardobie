@@ -378,7 +378,41 @@ export const productService = {
       repo.listPublic(filters, sort, skip, take),
       repo.countPublic(filters),
     ]);
-    const safe = items.map((p) => {
+    const qTerms = (query.q ?? "")
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    const useSmartRanking = qTerms.length > 0 && (!sort || sort === "recentes");
+    const scored = useSmartRanking
+      ? [...items].sort((a, b) => {
+          const score = (p: (typeof items)[number]) => {
+            const name = p.name.toLowerCase();
+            const sku = (p.sku ?? "").toLowerCase();
+            const cat = (p.category?.name ?? "").toLowerCase();
+            const shop = (p.shop?.name ?? "").toLowerCase();
+            const text = `${name} ${sku} ${cat} ${shop}`.trim();
+            let s = 0;
+            for (const t of qTerms) {
+              if (!t) continue;
+              if (name === t) s += 300;
+              if (name.startsWith(t)) s += 120;
+              if (sku === t) s += 200;
+              if (sku.startsWith(t)) s += 100;
+              if (name.includes(t)) s += 50;
+              if (sku.includes(t)) s += 35;
+              if (cat.includes(t)) s += 18;
+              if (shop.includes(t)) s += 14;
+              if (text.includes(t)) s += 8;
+            }
+            s += Math.min(40, Math.log10(Number(p.soldCount || 0) + 1) * 16);
+            s += Math.min(20, Number(p.reviewCount || 0) * 0.8);
+            return s;
+          };
+          return score(b) - score(a);
+        })
+      : items;
+    const safe = scored.map((p) => {
       const deliveryOptions = allowSeller
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
@@ -395,7 +429,41 @@ export const productService = {
     const term = q.trim();
     if (term.length < 2) return [];
     const repo = productRepo();
-    return repo.suggestPublic(term, Math.min(Math.max(take, 1), 12));
+    const rows = await repo.suggestPublic(term, Math.min(Math.max(take, 1), 12));
+    const terms = term
+      .toLowerCase()
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const ranked = rows
+      .map((r) => {
+        const name = r.name.toLowerCase();
+        const sku = (r.sku ?? "").toLowerCase();
+        const cat = (r.category?.name ?? "").toLowerCase();
+        const shop = (r.shop?.name ?? "").toLowerCase();
+        let score = 0;
+        for (const t of terms) {
+          if (!t) continue;
+          if (name === t) score += 300;
+          if (name.startsWith(t)) score += 150;
+          if (sku === t) score += 210;
+          if (sku.startsWith(t)) score += 120;
+          if (name.includes(t)) score += 60;
+          if (sku.includes(t)) score += 40;
+          if (cat.includes(t)) score += 20;
+          if (shop.includes(t)) score += 16;
+        }
+        score += Math.min(40, Math.log10(Number(r.soldCount || 0) + 1) * 16);
+        score += Math.min(20, Number(r.reviewCount || 0) * 0.8);
+        return {
+          id: r.id,
+          name: r.name,
+          score,
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(Math.max(take, 1), 12));
+    return ranked.map((r) => ({ id: r.id, name: r.name }));
   },
 
   async setFeatured(_adminUserId: string, productId: string, isFeatured: boolean) {
