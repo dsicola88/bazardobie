@@ -476,12 +476,14 @@ export default function OrderTrackPage() {
       </div>
 
       {token && user ? (
-        <OrderChatPanel
-          orderId={row.id}
-          token={token}
-          currentUserId={user.id}
-          title="Chat com vendedor"
-        />
+        <div id="chat">
+          <OrderChatPanel
+            orderId={row.id}
+            token={token}
+            currentUserId={user.id}
+            title="Chat com vendedor"
+          />
+        </div>
       ) : null}
 
       <p style={{ marginTop: 16 }}>

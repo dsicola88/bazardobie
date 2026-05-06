@@ -305,9 +305,12 @@ export default function OrdersPage() {
               </div>
             ) : null}
 
-            <div style={{ marginTop: 12 }}>
-                <Link to={`/orders/${encodeURIComponent(o.id)}/seguir`} className="btn btn-ghost">
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Link to={`/orders/${encodeURIComponent(o.id)}/seguir`} className="btn btn-ghost">
                 Seguir encomenda
+              </Link>
+              <Link to={`/orders/${encodeURIComponent(o.id)}/seguir#chat`} className="btn">
+                Chat com vendedor
               </Link>
             </div>
 

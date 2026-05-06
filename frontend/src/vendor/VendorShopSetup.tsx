@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 
@@ -9,9 +9,14 @@ type GeoMunicipalityDto = { id: string; namePt: string; provinceId: string };
 type ShopMe = {
   id: string;
   name: string;
+  ownerResponsibleName?: string | null;
+  description?: string | null;
   isApproved: boolean;
   province: string;
   city: string;
+  phone?: string | null;
+  whatsapp?: string | null;
+  logoUrl?: string | null;
   municipalityId?: string | null;
   municipality?: {
     id: string;
@@ -24,6 +29,7 @@ type ShopMe = {
 export default function VendorShopSetup() {
   const { token } = useAuth();
   const nav = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
   const [existing, setExisting] = useState<ShopMe | null | undefined>(undefined);
   const [name, setName] = useState("");
@@ -42,6 +48,8 @@ export default function VendorShopSetup() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
+  const editRequested = searchParams.get("editar") === "1";
+  const isEditing = Boolean(existing && editRequested);
 
   useEffect(() => {
     void apiFetch<{ items: GeoProvinceDto[] }>("/shipping/geo/provinces")
@@ -77,6 +85,19 @@ export default function VendorShopSetup() {
       });
   }, [token, loadKey]);
 
+  useEffect(() => {
+    if (!existing || !isEditing) return;
+    setName(existing.name ?? "");
+    setOwnerResponsibleName(existing.ownerResponsibleName ?? "");
+    setDescription(existing.description ?? "");
+    setPhone(existing.phone ?? "");
+    setWhatsapp(existing.whatsapp ?? "");
+    setLogoUrl(existing.logoUrl ?? "");
+    const provId = geoProvinces.find((p) => p.namePt.toLowerCase() === (existing.province ?? "").toLowerCase())?.id ?? "";
+    if (provId) setGeoProvinceId(provId);
+    if (existing.municipalityId) setMunicipalityId(existing.municipalityId);
+  }, [existing, isEditing, geoProvinces]);
+
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     e.target.value = "";
@@ -105,8 +126,9 @@ export default function VendorShopSetup() {
     }
     setSaving(true);
     try {
+      const method = existing ? "PATCH" : "POST";
       await apiFetch("/vendor/shop", {
-        method: "POST",
+        method,
         token,
         body: JSON.stringify({
           name: name.trim(),
@@ -118,10 +140,23 @@ export default function VendorShopSetup() {
           logoUrl: logoUrl.trim() || undefined,
         }),
       });
-      setMsg("Loja registada. A nossa equipa vai analisar e aprovar antes de aparecer na loja pública.");
-      setTimeout(() => nav("/vendor", { replace: true }), 1600);
+      setMsg(
+        existing
+          ? "Dados da loja actualizados com sucesso."
+          : "Loja registada. A nossa equipa vai analisar e aprovar antes de aparecer na loja pública."
+      );
+      if (existing) {
+        setTimeout(() => {
+          const next = new URLSearchParams(searchParams);
+          next.delete("editar");
+          setSearchParams(next, { replace: true });
+          setLoadKey((k) => k + 1);
+        }, 800);
+      } else {
+        setTimeout(() => nav("/vendor", { replace: true }), 1600);
+      }
     } catch (ex: unknown) {
-      setErr(ex instanceof Error ? ex.message : "Não foi possível registar a loja.");
+      setErr(ex instanceof Error ? ex.message : "Não foi possível guardar os dados da loja.");
     } finally {
       setSaving(false);
     }
@@ -145,7 +180,7 @@ export default function VendorShopSetup() {
     return <p className="ae-muted">A carregar…</p>;
   }
 
-  if (existing) {
+  if (existing && !isEditing) {
     const catLabel =
       existing.municipality?.namePt && existing.municipality?.province?.namePt
         ? `${existing.municipality.namePt} · ${existing.municipality.province.namePt} (catálogo)`
@@ -182,6 +217,18 @@ export default function VendorShopSetup() {
           <Link to="/vendor" className="btn btn-primary" style={{ marginTop: 12 }}>
             Voltar ao painel
           </Link>
+          <button
+            type="button"
+            className="btn"
+            style={{ marginTop: 12, marginLeft: 8 }}
+            onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.set("editar", "1");
+              setSearchParams(next, { replace: true });
+            }}
+          >
+            Editar dados da loja
+          </button>
         </div>
       </div>
     );
@@ -191,7 +238,7 @@ export default function VendorShopSetup() {
     <div>
       <header className="ae-v-head">
         <div>
-          <h1 className="ae-v-title">Dados da loja (nível 1)</h1>
+          <h1 className="ae-v-title">{isEditing ? "Editar dados da loja" : "Dados da loja (nível 1)"}</h1>
           <p className="ae-muted" style={{ margin: "6px 0 0" }}>
             A localização da loja utiliza o mesmo catálogo oficial de Angola que o cliente vê no checkout — sem texto
             livre de província/município, para alinhar com fretes e estatísticas. Depois de submeter, a equipa BAZAR DO BIÉ
@@ -285,7 +332,7 @@ export default function VendorShopSetup() {
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => void onLogo(e)} />
         </div>
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "A enviar…" : "Submeter loja para análise"}
+          {saving ? "A guardar…" : isEditing ? "Guardar alterações da loja" : "Submeter loja para análise"}
         </button>
       </form>
     </div>
