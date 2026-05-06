@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import multer from "multer";
 import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env.js";
@@ -11,7 +12,9 @@ if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, dir),
   filename: (_req, file, cb) => {
-    const safe = `${Date.now()}-${file.originalname.replace(/[^\w.-]/g, "_")}`;
+    const ext = path.extname(file.originalname || "").toLowerCase().replace(/[^.\w]/g, "");
+    const base = path.basename(file.originalname || "upload", ext).replace(/[^\w-]/g, "_").slice(0, 48) || "upload";
+    const safe = `${Date.now()}-${crypto.randomUUID()}-${base}${ext}`;
     cb(null, safe);
   },
 });

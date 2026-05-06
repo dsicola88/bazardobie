@@ -322,6 +322,7 @@ a:hover {
     width: 100%;
     justify-content: flex-start;
     gap: 12px;
+    flex-wrap: wrap;
   }
   .ae-ico-link {
     min-width: auto;
@@ -368,6 +369,19 @@ a:hover {
   .ae-catnav__strip a {
     font-size: 12px;
     line-height: 1.25;
+  }
+  .ae-grid,
+  .grid-products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ae-section__head {
+    margin: 10px 0;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .ae-section__head h2 {
+    font-size: 0.98rem;
   }
 }
 
@@ -492,6 +506,19 @@ a:hover {
 .ae-hero-side a:hover {
   background: #fff8f8;
   color: var(--ae-red);
+}
+@media (max-width: 900px) {
+  .ae-hero {
+    gap: 10px;
+  }
+  .ae-hero-main {
+    min-height: 150px;
+    aspect-ratio: 16 / 9;
+    order: 1;
+  }
+  .ae-hero-side {
+    order: 2;
+  }
 }
 .ae-hero-main {
   position: relative;
@@ -1807,6 +1834,37 @@ a:hover {
 }
 .ae-v-main__toggle:hover {
   border-color: #b8c2cf;
+}
+@media (max-width: 900px) {
+  .ae-v-main {
+    padding: 12px;
+  }
+  .ae-v-main__topbar {
+    margin-bottom: 8px;
+  }
+  .ae-v-main__toggle {
+    width: 100%;
+    text-align: center;
+    padding: 9px 12px;
+  }
+  .ae-admin-pro__head {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .ae-admin-pro__title {
+    font-size: 18px;
+  }
+  .ae-admin-pro__sub {
+    font-size: 13px;
+  }
+  .ae-admin-toolbar {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .ae-admin-filter-input {
+    min-width: 100%;
+    flex-basis: 100%;
+  }
 }
 .ae-v-head {
   display: flex;
