@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { SeoRouteControl } from "./seo/SeoRouteControl.js";
+import { FaviconSync } from "./seo/FaviconSync.js";
 
 const AdminBanners = lazy(() => import("./admin/AdminBanners.js"));
 const AdminCredibility = lazy(() => import("./admin/AdminCredibility.js"));
@@ -46,6 +47,7 @@ const VendorShopSetup = lazy(() => import("./vendor/VendorShopSetup.js"));
 export default function App() {
   return (
     <Suspense fallback={<p className="ae-muted" style={{ padding: 16 }}>A carregar…</p>}>
+      <FaviconSync />
       <SeoRouteControl />
       <Routes>
         <Route path="/logistica" element={<LogisticsLayout />}>

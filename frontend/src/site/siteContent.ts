@@ -7,6 +7,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.footer_col_trust": "COD · verificação de lojas · avaliações · entrega local",
   "public.footer_col_support":
     "Suporte BAZAR DO BIÉ: ligue ou envie mensagem para o número indicado na barra inferior.",
+  "public.favicon_url": "",
   "public.header_promo_text": "",
   "public.home_hero_fallback": "BAZAR DO BIÉ — Marketplace nacional",
   "public.home_featured_title": "Sugestões em destaque",

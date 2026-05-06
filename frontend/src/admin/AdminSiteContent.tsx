@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch } from "../api.js";
+import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Item = {
   key: string;
@@ -18,6 +19,7 @@ export default function AdminSiteContent() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -54,6 +56,22 @@ export default function AdminSiteContent() {
       setErr(e instanceof Error ? e.message : "Erro");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onUploadFavicon(file: File | null) {
+    if (!token || !file) return;
+    setErr(null);
+    setMsg(null);
+    setUploadingFavicon(true);
+    try {
+      const url = await uploadAdminFile(token, file);
+      setValues((prev) => ({ ...prev, "public.favicon_url": url }));
+      setMsg("Favicon carregado. Clique em \"Guardar textos\" para publicar.");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Não foi possível carregar favicon.");
+    } finally {
+      setUploadingFavicon(false);
     }
   }
 
@@ -99,6 +117,30 @@ export default function AdminSiteContent() {
           Os valores por defeito aparecem em cinza sob cada campo. A faixa de confiança usa o formato{" "}
           <code>título|descrição</code>.
         </p>
+        <div className="ae-panel" style={{ marginBottom: 16, background: "#fafbfc" }}>
+          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Favicon do site</h3>
+          <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>
+            Recomendado: ícone quadrado 64x64 ou 128x128 em PNG/ICO/SVG.
+          </p>
+          <div className="ae-admin-toolbar">
+            <input
+              type="file"
+              accept=".ico,image/png,image/svg+xml,image/x-icon"
+              disabled={uploadingFavicon}
+              onChange={(e) => void onUploadFavicon(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          {values["public.favicon_url"] ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <img
+                src={resolveMediaUrl(values["public.favicon_url"])}
+                alt="Pré-visualização do favicon"
+                style={{ width: 20, height: 20, borderRadius: 4, border: "1px solid var(--ae-line)" }}
+              />
+              <code style={{ fontSize: 12 }}>{values["public.favicon_url"]}</code>
+            </div>
+          ) : null}
+        </div>
         <div className="ae-form" style={{ gap: 16 }}>
           {items.map((it) => (
             <div key={it.key} className="ae-admin-field-block">

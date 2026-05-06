@@ -31,6 +31,11 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue:
       "Suporte BAZAR DO BIÉ: ligue ou envie mensagem para o número indicado na barra inferior.",
   },
+  "public.favicon_url": {
+    label: "Favicon (URL ou /uploads/...)",
+    defaultValue: "",
+    hint: "Use ícone quadrado (.ico, .png ou .svg). Pode fazer upload no painel e colar aqui a URL retornada.",
+  },
   "public.header_promo_text": {
     label: "Barra promocional (topo, abaixo da pesquisa)",
     defaultValue: "",
