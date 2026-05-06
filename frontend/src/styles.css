@@ -785,11 +785,55 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 .ae-pdp-main img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+.ae-pdp-main--zoomable {
+  cursor: zoom-in;
+}
+.ae-pdp-loupe {
+  display: none;
+}
+.ae-pdp-zoom {
+  display: none;
+}
+.ae-pdp-main--zooming .ae-pdp-loupe {
+  display: block;
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  border: 2px solid rgba(255, 71, 71, 0.8);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.06);
+}
+.ae-pdp-main--zooming .ae-pdp-zoom {
+  display: block;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 240px;
+  height: 240px;
+  border-radius: 10px;
+  border: 1px solid var(--ae-line);
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-size: 260%;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+@media (max-width: 1024px) {
+  .ae-pdp-loupe,
+  .ae-pdp-zoom {
+    display: none !important;
+  }
 }
 .ae-buybox {
   border: 1px solid var(--ae-line);

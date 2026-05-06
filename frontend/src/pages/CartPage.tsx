@@ -8,8 +8,8 @@ import { resolveMediaUrl } from "../utils/media.js";
 type CartItem = {
   id: string;
   quantity: number;
-  product: { id: string; name: string; images?: { url: string }[] };
-  variant?: { name?: string | null } | null;
+  product: { id: string; name: string; stock: number; images?: { url: string }[] };
+  variant?: { id: string; name?: string | null; stock: number } | null;
   productDeliveryOption: {
     tipoEntrega: string;
     custoEntrega: string;
@@ -21,6 +21,7 @@ type CartItem = {
 export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
   async function reload() {
     const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
@@ -35,6 +36,27 @@ export default function CartPage() {
     await apiFetch(`/cart/items/${id}`, { method: "DELETE", headers: cartSessionHeaders(), token });
     window.dispatchEvent(new Event("cart-updated"));
     await reload();
+  }
+
+  async function changeQty(item: CartItem, nextQty: number) {
+    const maxStock = item.variant ? item.variant.stock : item.product.stock;
+    const clamped = Math.max(1, Math.min(maxStock, nextQty));
+    if (clamped === item.quantity) return;
+    setBusyItemId(item.id);
+    try {
+      await apiFetch(`/cart/items/${item.id}`, {
+        method: "PATCH",
+        headers: cartSessionHeaders(),
+        token,
+        body: JSON.stringify({ quantity: clamped }),
+      });
+      window.dispatchEvent(new Event("cart-updated"));
+      await reload();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Não foi possível actualizar a quantidade.");
+    } finally {
+      setBusyItemId(null);
+    }
   }
 
   if (!cart) return <p className="ae-muted">A carregar o seu carrinho…</p>;
@@ -98,7 +120,41 @@ export default function CartPage() {
                         {item.productDeliveryOption.prazoEstimado} dias úteis
                       </div>
                     </td>
-                    <td>{item.quantity}</td>
+                    <td>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          className="ae-mini-btn"
+                          disabled={busyItemId === item.id || item.quantity <= 1}
+                          onClick={() => void changeQty(item, item.quantity - 1)}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={item.variant ? item.variant.stock : item.product.stock}
+                          value={item.quantity}
+                          disabled={busyItemId === item.id}
+                          onChange={(e) => void changeQty(item, Number(e.target.value) || 1)}
+                          style={{ width: 68, textAlign: "center" }}
+                        />
+                        <button
+                          type="button"
+                          className="ae-mini-btn"
+                          disabled={
+                            busyItemId === item.id ||
+                            item.quantity >= (item.variant ? item.variant.stock : item.product.stock)
+                          }
+                          onClick={() => void changeQty(item, item.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="ae-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                        Stock: {item.variant ? item.variant.stock : item.product.stock}
+                      </div>
+                    </td>
                     <td>
                       <button type="button" className="ae-link-remove" onClick={() => void remove(item.id)}>
                         Eliminar

@@ -29,6 +29,7 @@ type ProductDetail = {
   promoPrice?: string | null;
   displayPrice: string;
   soldCount: number;
+  stock: number;
   averageRating?: string | null;
   reviewCount: number;
   images: Img[];
@@ -72,6 +73,8 @@ export default function ProductPage() {
   const [mainImg, setMainImg] = useState("");
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
+  const [zoomOn, setZoomOn] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
     if (!id) return;
@@ -86,8 +89,26 @@ export default function ProductPage() {
   }, [id]);
 
   const needVariant = (product?.variants.length ?? 0) > 0;
-  const canAdd = product && deliveryId && (!needVariant || variantId);
+  const selectedVariant = useMemo(
+    () => (needVariant ? product?.variants.find((v) => v.id === variantId) ?? null : null),
+    [needVariant, product, variantId]
+  );
+  const stockAvailable = needVariant ? selectedVariant?.stock ?? 0 : product?.stock ?? 0;
+  const outOfStock = stockAvailable <= 0;
+  const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
   const meta = useMemo(() => product?.deliveryOptions.find((d) => d.id === deliveryId), [deliveryId, product]);
+  const mainResolved = resolveMediaUrl(mainImg || product.images[0]?.url);
+
+  function onMainImageMove(ev: React.MouseEvent<HTMLDivElement>) {
+    const rect = ev.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = ((ev.clientX - rect.left) / rect.width) * 100;
+    const y = ((ev.clientY - rect.top) / rect.height) * 100;
+    setZoomPos({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+    });
+  }
 
   async function addToCart() {
     if (!product || !deliveryId || (needVariant && !variantId)) return;
@@ -111,6 +132,14 @@ export default function ProductPage() {
       setAdding(false);
     }
   }
+
+  useEffect(() => {
+    if (stockAvailable <= 0) {
+      setQty(1);
+      return;
+    }
+    setQty((n) => Math.max(1, Math.min(stockAvailable, n)));
+  }, [stockAvailable]);
 
   if (err) return <div className="page-panel" style={{ color: "#c00" }}>{err}</div>;
   if (!product) return <p className="ae-muted">A carregar ficha de produto…</p>;
@@ -144,23 +173,44 @@ export default function ProductPage() {
                 type="button"
                 className={mainImg === im.url ? "ae-on" : ""}
                 onClick={() => setMainImg(im.url)}
+                onMouseEnter={() => setMainImg(im.url)}
               >
                 <img src={resolveMediaUrl(im.url)} alt="" />
               </button>
             ))}
           </div>
-          <div className="ae-pdp-main">
+          <div
+            className={`ae-pdp-main ${!product.demoVideoUrl ? "ae-pdp-main--zoomable" : ""} ${zoomOn ? "ae-pdp-main--zooming" : ""}`}
+            onMouseMove={!product.demoVideoUrl ? onMainImageMove : undefined}
+            onMouseEnter={!product.demoVideoUrl ? () => setZoomOn(true) : undefined}
+            onMouseLeave={!product.demoVideoUrl ? () => setZoomOn(false) : undefined}
+          >
             {product.demoVideoUrl ? (
               <video
                 src={product.demoVideoUrl}
                 controls
                 preload="metadata"
                 playsInline
-                poster={resolveMediaUrl(mainImg || product.images[0]?.url)}
+                poster={mainResolved}
                 style={{ width: "100%", borderRadius: 8, border: "1px solid var(--ae-line)", background: "#000" }}
               />
             ) : (
-              <img src={resolveMediaUrl(mainImg || product.images[0]?.url)} alt="" />
+              <>
+                <img src={mainResolved} alt="" />
+                <div
+                  className="ae-pdp-loupe"
+                  style={{ left: `${zoomPos.x}%`, top: `${zoomPos.y}%` }}
+                  aria-hidden
+                />
+                <div
+                  className="ae-pdp-zoom"
+                  style={{
+                    backgroundImage: `url("${mainResolved}")`,
+                    backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+                  }}
+                  aria-hidden
+                />
+              </>
             )}
           </div>
 
@@ -223,6 +273,9 @@ export default function ProductPage() {
                 </select>
               </div>
             ) : null}
+            <p className="ae-muted" style={{ fontSize: 12, marginTop: 0 }}>
+              {outOfStock ? "Sem stock disponível no momento." : `Stock disponível: ${stockAvailable} unidade(s).`}
+            </p>
 
             <div className="ae-field">
               <label>
@@ -246,14 +299,23 @@ export default function ProductPage() {
                 Quantidade
               </span>
               <div className="ae-buybox__qty">
-                <button type="button" onClick={() => setQty((n) => Math.max(1, n - 1))}>
+                <button type="button" disabled={outOfStock} onClick={() => setQty((n) => Math.max(1, n - 1))}>
                   −
                 </button>
                 <input
+                  disabled={outOfStock}
                   value={qty}
-                  onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value) || 1;
+                    if (stockAvailable <= 0) return setQty(1);
+                    setQty(Math.max(1, Math.min(stockAvailable, raw)));
+                  }}
                 />
-                <button type="button" onClick={() => setQty((n) => n + 1)}>
+                <button
+                  type="button"
+                  disabled={outOfStock || qty >= stockAvailable}
+                  onClick={() => setQty((n) => Math.min(stockAvailable, n + 1))}
+                >
                   +
                 </button>
               </div>
