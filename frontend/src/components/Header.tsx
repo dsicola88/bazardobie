@@ -24,6 +24,7 @@ export function Header() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
   const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
+  const [searchCatId, setSearchCatId] = useState<string>("");
 
   useEffect(() => {
     ensureCartSession();
@@ -91,7 +92,10 @@ export function Header() {
     e.preventDefault();
     const term = q.trim();
     setSuggestOpen(false);
-    nav(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
+    const params = new URLSearchParams();
+    if (term) params.set("q", term);
+    if (searchCatId) params.set("categoryId", searchCatId);
+    nav(params.toString() ? `/search?${params.toString()}` : "/search");
   }
 
   const { content } = useSiteContent();
@@ -140,6 +144,7 @@ export function Header() {
   }, [q]);
 
   const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
+  const searchRoots = roots.slice(0, 20);
 
   return (
     <header className="ae-header-wrap">
@@ -202,10 +207,23 @@ export function Header() {
 
           <div className="ae-search-wrap">
             <form className="ae-search" onSubmit={onSearch}>
+              <select
+                className="ae-search__cat"
+                aria-label="Filtrar por categoria"
+                value={searchCatId}
+                onChange={(e) => setSearchCatId(e.target.value)}
+              >
+                <option value="">Todas as categorias</option>
+                {searchRoots.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <input
                 type="search"
                 className="ae-search__input"
-                placeholder="Pesquisar no catálogo…"
+                placeholder="Pesquisar produtos, marcas e categorias"
                 value={q}
                 onFocus={() => setSuggestOpen(true)}
                 onBlur={() => window.setTimeout(() => setSuggestOpen(false), 120)}
@@ -238,7 +256,7 @@ export function Header() {
                 autoComplete="off"
               />
               <button type="submit" className="ae-search__btn" aria-label="Pesquisar no catálogo">
-                Pesquisar
+                🔎
               </button>
             </form>
             {suggestOpen && q.trim().length >= 2 ? (

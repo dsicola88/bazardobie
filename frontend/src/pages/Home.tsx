@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
@@ -8,6 +8,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = { id: string; name: string; parentId: string | null };
+type MegaProduct = { id: string; name: string; images?: { url: string }[] };
 
 export default function Home() {
   const { content } = useSiteContent();
@@ -21,7 +22,10 @@ export default function Home() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bi, setBi] = useState(0);
   const [cats, setCats] = useState<Category[]>([]);
-  const [catsOpen, setCatsOpen] = useState(true);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [activeRootId, setActiveRootId] = useState<string>("");
+  const [megaProducts, setMegaProducts] = useState<Record<string, MegaProduct[]>>({});
+  const [megaLoading, setMegaLoading] = useState(false);
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
   const [top, setTop] = useState<ProductCardData[]>([]);
   const [recent, setRecent] = useState<ProductCardData[]>([]);
@@ -54,26 +58,89 @@ export default function Home() {
     return () => clearInterval(t);
   }, [banners.length]);
 
-  const roots = cats.filter((c) => !c.parentId).slice(0, 14);
+  const roots = useMemo(() => cats.filter((c) => !c.parentId).slice(0, 12), [cats]);
+  const byParent = useMemo(() => {
+    const map = new Map<string, Category[]>();
+    for (const c of cats) {
+      if (!c.parentId) continue;
+      const list = map.get(c.parentId) ?? [];
+      list.push(c);
+      map.set(c.parentId, list);
+    }
+    return map;
+  }, [cats]);
+  const activeRoot = roots.find((r) => r.id === activeRootId) ?? roots[0];
+  const activeChildren = activeRoot ? byParent.get(activeRoot.id) ?? [] : [];
+
+  useEffect(() => {
+    if (!roots.length) return;
+    setActiveRootId((prev) => prev || roots[0].id);
+  }, [roots]);
+
+  useEffect(() => {
+    if (!activeRootId || megaProducts[activeRootId]) return;
+    setMegaLoading(true);
+    void apiFetch<{ items: MegaProduct[] }>(`/products?categoryId=${encodeURIComponent(activeRootId)}&sort=mais_vendidos&take=8`)
+      .then((r) => setMegaProducts((prev) => ({ ...prev, [activeRootId]: r.items ?? [] })))
+      .catch(() => setMegaProducts((prev) => ({ ...prev, [activeRootId]: [] })))
+      .finally(() => setMegaLoading(false));
+  }, [activeRootId, megaProducts]);
 
   const hero = banners[bi];
 
   return (
     <>
-      <div className="ae-hero">
-        <nav className="ae-hero-side" aria-label="Categorias">
-          <button type="button" className="ae-hero-side__toggle" onClick={() => setCatsOpen((v) => !v)}>
-            {catsOpen ? "Encolher categorias" : "Expandir categorias"}
-          </button>
-          <div className={catsOpen ? "ae-hero-side__body" : "ae-hero-side__body ae-hero-side__body--collapsed"}>
-            {roots.map((c) => (
-              <Link key={c.id} to={`/search?categoryId=${c.id}`}>
-                {c.name}
-              </Link>
-            ))}
-            <Link to="/search">Catálogo por categoria →</Link>
+      <section className="ae-shell ae-home-cats" onMouseLeave={() => setMegaOpen(false)}>
+        <div className="ae-home-cats__row">
+          {roots.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`ae-home-cats__item ${activeRootId === c.id ? "ae-home-cats__item--on" : ""}`}
+              onMouseEnter={() => {
+                setActiveRootId(c.id);
+                setMegaOpen(true);
+              }}
+              onFocus={() => {
+                setActiveRootId(c.id);
+                setMegaOpen(true);
+              }}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+        <div className={`ae-home-mega ${megaOpen ? "ae-home-mega--open" : ""}`}>
+          <div className="ae-home-mega__left">
+            <h3>{activeRoot?.name ?? "Categorias"}</h3>
+            <div className="ae-home-mega__children">
+              {activeChildren.slice(0, 12).map((child) => (
+                <Link key={child.id} to={`/search?categoryId=${child.id}`}>
+                  {child.name}
+                </Link>
+              ))}
+              <Link to={activeRoot ? `/search?categoryId=${activeRoot.id}` : "/search"}>Ver tudo nesta categoria</Link>
+            </div>
           </div>
-        </nav>
+          <div className="ae-home-mega__right">
+            <h3>Produtos em destaque</h3>
+            {megaLoading && !megaProducts[activeRootId] ? <div className="ae-home-mega__state">A carregar produtos…</div> : null}
+            {!megaLoading && (megaProducts[activeRootId]?.length ?? 0) === 0 ? (
+              <div className="ae-home-mega__state">Sem produtos nesta categoria por agora.</div>
+            ) : null}
+            <div className="ae-home-mega__products">
+              {(megaProducts[activeRootId] ?? []).slice(0, 8).map((p) => (
+                <Link key={p.id} className="ae-home-mega__product" to={`/product/${p.id}`}>
+                  <img src={resolveMediaUrl(p.images?.[0]?.url)} alt={p.name} loading="lazy" decoding="async" />
+                  <span>{p.name}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="ae-hero">
         <div className="ae-hero-main">
           {hero ? (
             hero.linkUrl ? (
