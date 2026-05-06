@@ -150,20 +150,28 @@ a:hover {
   height: 42px;
   overflow: hidden;
 }
-.ae-search__input {
+.ae-search .ae-search__input {
   flex: 1;
   border: none;
+  border-radius: 0;
+  background: #fff;
   padding: 0 14px;
   font: inherit;
   outline: none;
+  box-shadow: none;
 }
-.ae-search__btn {
+.ae-search .ae-search__btn {
   background: linear-gradient(180deg, var(--ae-red), var(--ae-deep));
   color: #fff;
   border: none;
+  border-radius: 0;
   padding: 0 18px;
   font-weight: 700;
   cursor: pointer;
+}
+.ae-search .ae-search__input:focus {
+  border: none;
+  box-shadow: none;
 }
 .ae-mainhead__actions {
   display: flex;
@@ -877,6 +885,15 @@ a:hover {
 .ae-shell input::placeholder,
 .ae-shell textarea::placeholder {
   color: #9aa5b1;
+}
+
+/* Override explícito para a barra de pesquisa principal (não herdar o visual genérico dos inputs). */
+.ae-shell .ae-search .ae-search__input,
+.ae-shell .ae-search .ae-search__input:focus {
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: none;
 }
 .form-stack textarea,
 .ae-form textarea {
