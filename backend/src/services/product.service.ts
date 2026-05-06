@@ -391,6 +391,13 @@ export const productService = {
     return { items: safe, total, skip, take };
   },
 
+  async suggest(q: string, take = 8) {
+    const term = q.trim();
+    if (term.length < 2) return [];
+    const repo = productRepo();
+    return repo.suggestPublic(term, Math.min(Math.max(take, 1), 12));
+  },
+
   async setFeatured(_adminUserId: string, productId: string, isFeatured: boolean) {
     return prisma.product.update({
       where: { id: productId },

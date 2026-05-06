@@ -57,6 +57,13 @@ export const productController = {
     res.json(out);
   }),
 
+  suggest: asyncHandler(async (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const take = Math.min(Math.max(Number(req.query.take) || 8, 1), 12);
+    const out = await productService.suggest(q, take);
+    res.json({ items: out });
+  }),
+
   setFeatured: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");

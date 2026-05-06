@@ -74,6 +74,7 @@ r.get("/shops", shopController.list);
 r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);
+r.get("/products/suggest", productController.suggest);
 r.get("/products/:productId/reviews", reviewController.list);
 r.get("/products/:id", productController.get);
 

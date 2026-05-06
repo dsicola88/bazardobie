@@ -8,6 +8,7 @@ import { buildSearchPath } from "../buildSearchPath.js";
 import { NotificationsBell } from "./NotificationsBell.js";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
+type SearchSuggestProduct = { id: string; name: string };
 
 export function Header() {
   const { user, logout, token } = useAuth();
@@ -19,6 +20,10 @@ export function Header() {
   const [favCount, setFavCount] = useState(0);
   const [cats, setCats] = useState<Category[]>([]);
   const [mobileCatsOpen, setMobileCatsOpen] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
+  const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
 
   useEffect(() => {
     ensureCartSession();
@@ -85,6 +90,7 @@ export function Header() {
   function onSearch(e: FormEvent) {
     e.preventDefault();
     const term = q.trim();
+    setSuggestOpen(false);
     nav(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
   }
 
@@ -100,6 +106,40 @@ export function Header() {
     .filter(Boolean)
     .slice(0, 12);
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
+  const smartCategorySuggestions =
+    q.trim().length >= 2
+      ? roots
+          .filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()))
+          .slice(0, 4)
+      : [];
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setSuggestProducts([]);
+      setSuggestLoading(false);
+      setSuggestActiveIdx(-1);
+      return;
+    }
+    setSuggestLoading(true);
+    const t = window.setTimeout(() => {
+      void apiFetch<{ items: { id: string; name: string }[] }>(
+        `/products/suggest?q=${encodeURIComponent(term)}&take=6`
+      )
+        .then((r) => {
+          setSuggestProducts((r.items ?? []).map((p) => ({ id: p.id, name: p.name })));
+          setSuggestActiveIdx(-1);
+        })
+        .catch(() => {
+          setSuggestProducts([]);
+          setSuggestActiveIdx(-1);
+        })
+        .finally(() => setSuggestLoading(false));
+    }, 220);
+    return () => window.clearTimeout(t);
+  }, [q]);
+
+  const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
 
   return (
     <header className="ae-header-wrap">
@@ -160,19 +200,97 @@ export function Header() {
             <span className="ae-logo__sub">DO BIÉ</span>
           </Link>
 
-          <form className="ae-search" onSubmit={onSearch}>
-            <input
-              type="search"
-              className="ae-search__input"
-              placeholder="Pesquisar no catálogo…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              autoComplete="off"
-            />
-            <button type="submit" className="ae-search__btn" aria-label="Pesquisar no catálogo">
-              Pesquisar
-            </button>
-          </form>
+          <div className="ae-search-wrap">
+            <form className="ae-search" onSubmit={onSearch}>
+              <input
+                type="search"
+                className="ae-search__input"
+                placeholder="Pesquisar no catálogo…"
+                value={q}
+                onFocus={() => setSuggestOpen(true)}
+                onBlur={() => window.setTimeout(() => setSuggestOpen(false), 120)}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setSuggestOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (!suggestOpen || suggestTotal === 0) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSuggestActiveIdx((n) => (n + 1) % suggestTotal);
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSuggestActiveIdx((n) => (n <= 0 ? suggestTotal - 1 : n - 1));
+                  } else if (e.key === "Enter" && suggestActiveIdx >= 0) {
+                    e.preventDefault();
+                    if (suggestActiveIdx < suggestProducts.length) {
+                      nav(`/product/${suggestProducts[suggestActiveIdx].id}`);
+                    } else {
+                      const ci = suggestActiveIdx - suggestProducts.length;
+                      const cat = smartCategorySuggestions[ci];
+                      if (cat) nav(`/search?categoryId=${encodeURIComponent(cat.id)}`);
+                    }
+                    setSuggestOpen(false);
+                  } else if (e.key === "Escape") {
+                    setSuggestOpen(false);
+                  }
+                }}
+                autoComplete="off"
+              />
+              <button type="submit" className="ae-search__btn" aria-label="Pesquisar no catálogo">
+                Pesquisar
+              </button>
+            </form>
+            {suggestOpen && q.trim().length >= 2 ? (
+              <div className="ae-search-suggest">
+                {suggestLoading ? <div className="ae-search-suggest__state">A sugerir produtos…</div> : null}
+                {!suggestLoading && suggestTotal === 0 ? (
+                  <div className="ae-search-suggest__state">Sem sugestões para este termo.</div>
+                ) : null}
+                {!suggestLoading && suggestProducts.length > 0 ? (
+                  <div className="ae-search-suggest__group">
+                    <div className="ae-search-suggest__title">Produtos</div>
+                    {suggestProducts.map((p, i) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`ae-search-suggest__item ${suggestActiveIdx === i ? "ae-search-suggest__item--on" : ""}`}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          nav(`/product/${p.id}`);
+                          setSuggestOpen(false);
+                        }}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {!suggestLoading && smartCategorySuggestions.length > 0 ? (
+                  <div className="ae-search-suggest__group">
+                    <div className="ae-search-suggest__title">Categorias</div>
+                    {smartCategorySuggestions.map((c, j) => {
+                      const idx = suggestProducts.length + j;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={`ae-search-suggest__item ${suggestActiveIdx === idx ? "ae-search-suggest__item--on" : ""}`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            nav(`/search?categoryId=${encodeURIComponent(c.id)}`);
+                            setSuggestOpen(false);
+                          }}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
           <div className="ae-mainhead__actions">
             <NotificationsBell />

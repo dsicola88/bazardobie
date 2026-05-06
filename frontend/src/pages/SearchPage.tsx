@@ -59,9 +59,23 @@ export default function SearchPage() {
 
   function applyPrice() {
     const n = new URLSearchParams(params);
-    if (minPrice) n.set("minPrice", minPrice);
+    const minN = minPrice ? Number(minPrice) : undefined;
+    const maxN = maxPrice ? Number(maxPrice) : undefined;
+    const safeMin =
+      minN != null && Number.isFinite(minN) && minN >= 0
+        ? maxN != null && Number.isFinite(maxN) && maxN >= 0 && minN > maxN
+          ? maxN
+          : minN
+        : undefined;
+    const safeMax =
+      maxN != null && Number.isFinite(maxN) && maxN >= 0
+        ? minN != null && Number.isFinite(minN) && minN >= 0 && maxN < minN
+          ? minN
+          : maxN
+        : undefined;
+    if (safeMin != null) n.set("minPrice", String(safeMin));
     else n.delete("minPrice");
-    if (maxPrice) n.set("maxPrice", maxPrice);
+    if (safeMax != null) n.set("maxPrice", String(safeMax));
     else n.delete("maxPrice");
     setParams(n);
   }

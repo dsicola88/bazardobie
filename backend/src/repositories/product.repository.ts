@@ -33,10 +33,23 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   if (filters.categoryId) where.categoryId = filters.categoryId;
   if (filters.featuredOnly) where.isFeatured = true;
   if (filters.q) {
-    where.OR = [
-      { name: { contains: filters.q, mode: "insensitive" } },
-      { description: { contains: filters.q, mode: "insensitive" } },
-    ];
+    const terms = filters.q
+      .trim()
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    if (terms.length > 0) {
+      where.AND = terms.map((term) => ({
+        OR: [
+          { name: { contains: term, mode: "insensitive" } },
+          { description: { contains: term, mode: "insensitive" } },
+          { sku: { contains: term, mode: "insensitive" } },
+          { category: { is: { name: { contains: term, mode: "insensitive" } } } },
+          { shop: { is: { name: { contains: term, mode: "insensitive" } } } },
+        ],
+      }));
+    }
   }
   if (filters.minRating != null) {
     where.averageRating = { gte: filters.minRating };
@@ -106,6 +119,20 @@ export function productRepo() {
     },
     countPublic(filters: ProductListFilters) {
       return prisma.product.count({ where: buildWhere(filters) });
+    },
+    suggestPublic(q: string, take: number) {
+      const term = q.trim();
+      if (!term) return Promise.resolve([]);
+      const where = buildWhere({ q: term });
+      return prisma.product.findMany({
+        where,
+        take,
+        orderBy: [{ soldCount: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          name: true,
+        },
+      });
     },
   };
 }
