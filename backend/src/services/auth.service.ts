@@ -8,6 +8,7 @@ import { prisma } from "../lib/prisma.js";
 import type { z } from "zod";
 import type { registerSchema, loginSchema, patchProfileSchema, becomeVendorSchema } from "../validators/auth.validators.js";
 import { env } from "../config/env.js";
+import { mailerService } from "./mailer.service.js";
 
 type RegisterInput = z.infer<typeof registerSchema>;
 type LoginInput = z.infer<typeof loginSchema>;
@@ -161,9 +162,25 @@ export const authService = {
       data: { userId: user.id, tokenHash, expiresAt },
     });
     const resetUrl = `${env.FRONTEND_URL.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(rawToken)}`;
-    // Até integrar SMTP, registrar URL no servidor para operação imediata.
-    console.info(`[auth] password reset link for ${email}: ${resetUrl}`);
-    return { ok: true as const, devResetUrl: env.NODE_ENV === "production" ? undefined : resetUrl };
+    let sent = false;
+    try {
+      sent = await mailerService.sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+        ttlMinutes: RESET_TTL_MINUTES,
+      });
+    } catch {
+      sent = false;
+    }
+    if (!sent || env.NODE_ENV !== "production") {
+      console.info(`[auth] password reset link for ${email}: ${resetUrl}`);
+    }
+    return {
+      ok: true as const,
+      devResetUrl: sent ? undefined : resetUrl,
+      emailSent: sent,
+    };
   },
 
   async resetPassword(token: string, password: string) {

@@ -24,6 +24,13 @@ export const env = {
   FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID ?? "",
   FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET ?? "",
   FACEBOOK_REDIRECT_URI: process.env.FACEBOOK_REDIRECT_URI ?? "",
+  SMTP_HOST: process.env.SMTP_HOST ?? "",
+  SMTP_PORT: Number(process.env.SMTP_PORT) || 587,
+  SMTP_SECURE: String(process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
+  SMTP_USER: process.env.SMTP_USER ?? "",
+  SMTP_PASS: process.env.SMTP_PASS ?? "",
+  SMTP_FROM: process.env.SMTP_FROM ?? "",
+  SMTP_FROM_NAME: process.env.SMTP_FROM_NAME ?? "BAZAR DO BIE",
   /** Horas até libertação automática ao vendedor se o comprador não confirmar nem abrir disputa */
   ESCROW_AUTO_CONFIRM_HOURS: Math.max(
     1,
