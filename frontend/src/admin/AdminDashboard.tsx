@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const { token } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [customDateMsg, setCustomDateMsg] = useState<string | null>(null);
   const [period, setPeriod] = useState<"day" | "month" | "year" | "custom">("month");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -44,9 +45,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!token) return;
     if (period === "custom" && (!start || !end)) {
-      setErr("Selecione data inicial e final para o período personalizado.");
+      setCustomDateMsg("Selecione data inicial e final para o período personalizado.");
       return;
     }
+    setCustomDateMsg(null);
     setErr(null);
     const params = new URLSearchParams({ period });
     if (period === "custom" && start && end) {
@@ -103,6 +105,9 @@ export default function AdminDashboard() {
               <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
               <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
             </>
+          ) : null}
+          {customDateMsg ? (
+            <span style={{ color: "crimson", fontSize: 12, fontWeight: 600 }}>{customDateMsg}</span>
           ) : null}
           <button type="button" className="btn btn-ghost" onClick={exportCsv}>
             Exportar CSV
