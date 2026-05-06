@@ -93,7 +93,7 @@ export default function AdminSellers() {
       </header>
       {err && <p className="ae-admin-alert ae-admin-alert--err">{err}</p>}
       {msg && <p className="ae-admin-alert ae-admin-alert--ok">{msg}</p>}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      <div className="ae-admin-toolbar">
         {(["pending", "ranking"] as const).map((t) => (
           <button
             key={t}
@@ -104,10 +104,8 @@ export default function AdminSellers() {
             {t === "pending" ? "Aprovar lojas" : "Ranking de vendas"}
           </button>
         ))}
-      </div>
-      <div style={{ marginBottom: 12, maxWidth: 420 }}>
         <input
-          className="ae-input"
+          className="ae-admin-filter-input"
           placeholder="Filtrar por loja, cidade, nome ou email..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -115,34 +113,46 @@ export default function AdminSellers() {
       </div>
 
       {tab === "pending" && (
-        <div className="ae-panel">
-          <h2 style={{ marginTop: 0 }}>Lojas pendentes de aprovação</h2>
-          {!pendingFiltered.length ? (
-            <p className="ae-muted">Nenhuma fila pendente.</p>
-          ) : (
-            <ul style={{ listStyle: "none", padding: 0 }}>
+        <div className="ae-admin-table-wrap">
+          <table className="ae-admin-table">
+            <thead>
+              <tr>
+                <th>Loja</th>
+                <th>Responsável</th>
+                <th>Localização</th>
+                <th className="ae-admin-table__actions">Acções</th>
+              </tr>
+            </thead>
+            <tbody>
               {pendingFiltered.map((s) => (
-                <li key={s.id} style={{ borderBottom: "1px solid var(--ae-line)", padding: "12px 0" }}>
-                  <strong>{s.name}</strong> — {s.city}, {s.province}
-                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                <tr key={s.id}>
+                  <td className="ae-admin-cell-title">{s.name}</td>
+                  <td>
+                    {s.user?.name ?? "—"}
+                    <div className="ae-muted" style={{ fontSize: 12 }}>{s.user?.email ?? ""}</div>
+                  </td>
+                  <td>{s.city}, {s.province}</td>
+                  <td className="ae-admin-row-actions">
                     <button type="button" className="btn btn-primary" onClick={() => void approveShop(s.id, true)}>
                       Aprovar loja
                     </button>
                     <button type="button" className="btn" onClick={() => void approveShop(s.id, false)}>
                       Recusar
                     </button>
-                  </div>
-                </li>
+                  </td>
+                </tr>
               ))}
-            </ul>
-          )}
+            </tbody>
+          </table>
+          {!pendingFiltered.length ? (
+            <div className="ae-empty-center ae-muted">Nenhuma fila pendente.</div>
+          ) : null}
         </div>
       )}
 
       {tab === "ranking" && (
-        <div className="ae-panel">
-          <h2 style={{ marginTop: 0 }}>Ranking por volume vendido</h2>
-          <table className="ae-data-table">
+        <div className="ae-admin-table-wrap">
+          <table className="ae-admin-table">
             <thead>
               <tr>
                 <th>Loja</th>
@@ -160,6 +170,9 @@ export default function AdminSellers() {
               ))}
             </tbody>
           </table>
+          {!rankingFiltered.length ? (
+            <div className="ae-empty-center ae-muted">Sem dados para o filtro actual.</div>
+          ) : null}
         </div>
       )}
     </div>

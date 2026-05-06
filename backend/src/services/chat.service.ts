@@ -1,6 +1,7 @@
 import type { ChatMessageType, UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
+import { notificationService } from "./notification.service.js";
 
 type Actor = { userId: string; role: UserRole };
 
@@ -29,6 +30,18 @@ async function assertOrderChatAccess(orderId: string, actor: Actor) {
   throw new HttpError(403, "Chat disponível apenas para comprador e vendedor.");
 }
 
+async function getOrderChatContext(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      userId: true,
+      items: { select: { shop: { select: { userId: true } } } },
+    },
+  });
+  if (!order) throw new HttpError(404, "Pedido não encontrado");
+  return order;
+}
+
 function detectType(mediaUrl?: string, text?: string): ChatMessageType {
   if (mediaUrl && /\.(mp4|webm|mov)(\?.*)?$/i.test(mediaUrl)) return "VIDEO";
   if (mediaUrl) return "IMAGE";
@@ -48,10 +61,11 @@ export const chatService = {
 
   async postOrderMessage(orderId: string, actor: Actor, body: { text?: string; mediaUrl?: string }) {
     await assertOrderChatAccess(orderId, actor);
+    const ctx = await getOrderChatContext(orderId);
     const text = body.text?.trim() || null;
     const mediaUrl = body.mediaUrl?.trim() || null;
     const type = detectType(mediaUrl ?? undefined, text ?? undefined);
-    return prisma.orderChatMessage.create({
+    const created = await prisma.orderChatMessage.create({
       data: {
         orderId,
         senderId: actor.userId,
@@ -61,5 +75,15 @@ export const chatService = {
       },
       include: { sender: { select: { id: true, name: true, role: true } } },
     });
+    const preview = text || (type === "VIDEO" ? "Enviou um vídeo" : type === "IMAGE" ? "Enviou uma imagem" : "Nova mensagem");
+    void notificationService
+      .notifyChatCounterparty(orderId, {
+        senderUserId: actor.userId,
+        senderRole: actor.role,
+        buyerUserId: ctx.userId,
+        preview: preview.slice(0, 90),
+      })
+      .catch(() => undefined);
+    return created;
   },
 };

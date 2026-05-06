@@ -12,6 +12,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import { env } from "../config/env.js";
+import { notificationService } from "./notification.service.js";
 
 async function shopIdFromOrder(tx: Prisma.TransactionClient, orderId: string): Promise<string | null> {
   const row = await tx.orderItem.findFirst({
@@ -203,7 +204,7 @@ export async function tryAutoReleaseIfDue(orderId: string): Promise<boolean> {
 
 /** Cliente confirmou «recebi» — apenas com pagamento em escrow pendente */
 export async function buyerConfirmReceipt(orderId: string, buyerUserId: string) {
-  return prisma.$transaction(async (tx) => {
+  const out = await prisma.$transaction(async (tx) => {
     const o = await tx.order.findFirst({
       where: { id: orderId, userId: buyerUserId },
     });
@@ -247,6 +248,13 @@ export async function buyerConfirmReceipt(orderId: string, buyerUserId: string) 
     if (!out) throw new HttpError(500, "Pedido incompleto após confirmação");
     return out;
   });
+  void notificationService
+    .notifyBuyerActionToVendors(orderId, {
+      buyerUserId,
+      action: "CONFIRM_RECEIPT",
+    })
+    .catch(() => undefined);
+  return out;
 }
 
 /** Após marcação ENTREGUE: define prazo automático para libertação */

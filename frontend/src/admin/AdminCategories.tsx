@@ -173,22 +173,20 @@ export default function AdminCategories() {
 
       <div className="ae-panel">
         <h2 style={{ marginTop: 0 }}>Nova categoria</h2>
-        <div className="ae-admin-next" style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-          <label style={{ display: "block", fontWeight: 600 }}>
+        <div className="ae-admin-form-grid">
+          <label className="ae-admin-field">
             Nome
             <input
               className="ae-input"
-              style={{ width: "100%", marginTop: 4 }}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Ex.: Electrodomésticos"
             />
           </label>
-          <label style={{ display: "block", fontWeight: 600 }}>
+          <label className="ae-admin-field">
             Dentro da categoria pai (opcional)
             <select
-              className="ae-status-select"
-              style={{ width: "100%", marginTop: 4 }}
+              className="ae-input"
               value={newParentId}
               onChange={(e) => setNewParentId(e.target.value)}
             >
@@ -200,12 +198,11 @@ export default function AdminCategories() {
               ))}
             </select>
           </label>
-          <label style={{ display: "block", fontWeight: 600 }}>
+          <label className="ae-admin-field">
             Ordem (numérico, menor aparece primeiro)
             <input
               type="number"
               className="ae-input"
-              style={{ width: 120, marginTop: 4 }}
               value={newOrder}
               onChange={(e) => setNewOrder(Number(e.target.value) || 0)}
             />
@@ -264,21 +261,19 @@ export default function AdminCategories() {
       {editing ? (
         <div className="ae-panel" role="dialog" aria-modal="true" style={{ marginTop: 24 }}>
           <h2 style={{ marginTop: 0 }}>Editar: {editing.name}</h2>
-          <div style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-            <label style={{ display: "block", fontWeight: 600 }}>
+          <div className="ae-admin-form-grid">
+            <label className="ae-admin-field">
               Nome
               <input
                 className="ae-input"
-                style={{ width: "100%", marginTop: 4 }}
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
             </label>
-            <label style={{ display: "block", fontWeight: 600 }}>
+            <label className="ae-admin-field">
               Pai (reorganizar hierarquia)
               <select
-                className="ae-status-select"
-                style={{ width: "100%", marginTop: 4 }}
+                className="ae-input"
                 value={editParentId}
                 onChange={(e) => setEditParentId(e.target.value)}
               >
@@ -290,12 +285,11 @@ export default function AdminCategories() {
                 ))}
               </select>
             </label>
-            <label style={{ display: "block", fontWeight: 600 }}>
+            <label className="ae-admin-field">
               Ordem
               <input
                 type="number"
                 className="ae-input"
-                style={{ width: 120, marginTop: 4 }}
                 value={editOrder}
                 onChange={(e) => setEditOrder(Number(e.target.value) || 0)}
               />

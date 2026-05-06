@@ -96,26 +96,34 @@ export default function AdminProducts() {
   }
 
   return (
-    <div>
-      <div className="ae-v-head">
-        <h1 className="ae-v-title">Produtos e moderação</h1>
-      </div>
-      <p className="ae-muted">
-        Novos anúncios ficam em <strong>PENDING</strong> (separador <strong>Em fila</strong>) até aprovação. Na pesquisa e
-        na loja pública só aparecem produtos <strong>APPROVED</strong> com loja aprovada e nível 1 completo.
-      </p>
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
-      {msg && <p style={{ color: "var(--ae-ok)" }}>{msg}</p>}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+    <div className="ae-admin-pro">
+      <header className="ae-admin-pro__head">
+        <div>
+          <h1 className="ae-admin-pro__title">Produtos e moderação</h1>
+          <p className="ae-admin-pro__sub">
+            Novos anúncios ficam em <strong>PENDING</strong> até revisão operacional. A loja pública e a pesquisa mostram
+            apenas itens <strong>APPROVED</strong> com parceiro aprovado e dados comerciais completos.
+          </p>
+        </div>
+      </header>
+      {err ? (
+        <div className="ae-admin-alert ae-admin-alert--err" role="alert">
+          {err}
+        </div>
+      ) : null}
+      {msg ? (
+        <div className="ae-admin-alert ae-admin-alert--ok" role="status">
+          {msg}
+        </div>
+      ) : null}
+      <div className="ae-admin-toolbar">
         {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
           <button key={s} type="button" className={status === s ? "btn btn-primary" : "btn"} onClick={() => setStatus(s)}>
             {s === "PENDING" ? "Em fila" : s === "APPROVED" ? "Aprovados" : "Rejeitados"}
           </button>
         ))}
-      </div>
-      <div style={{ marginBottom: 12, maxWidth: 420 }}>
         <input
-          className="ae-input"
+          className="ae-admin-filter-input"
           placeholder="Filtrar por produto, SKU ou loja..."
           value={q}
           onChange={(e) => {
@@ -124,51 +132,53 @@ export default function AdminProducts() {
           }}
         />
       </div>
-      <table className="ae-data-table">
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Loja</th>
-            <th>Estado</th>
-            <th>Acções</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.items.map((p) => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{p.shop.name}</td>
-              <td>
-                {p.moderationStatus} · {p.isActive ? "activo" : "inactivo"}
-                {p.isFeatured ? " · destacado" : ""}
-              </td>
-              <td style={{ whiteSpace: "nowrap" }}>
-                {p.moderationStatus === "PENDING" && (
-                  <>
-                    <button type="button" className="btn btn-primary" style={{ marginRight: 6 }} onClick={() => void moderate(p.id, "APPROVED")}>
-                      Aprovar
-                    </button>
-                    <button type="button" className="btn" onClick={() => void moderate(p.id, "REJECTED")}>
-                      Rejeitar
-                    </button>
-                  </>
-                )}
-                {p.moderationStatus === "APPROVED" && (
-                  <>
-                    <button type="button" className="btn" style={{ marginRight: 6 }} onClick={() => void featured(p.id, !p.isFeatured)}>
-                      {p.isFeatured ? "Tirar destaque" : "Destacar"}
-                    </button>
-                    <button type="button" className="btn" onClick={() => void active(p.id, !p.isActive)}>
-                      {p.isActive ? "Desactivar" : "Reactivar"}
-                    </button>
-                  </>
-                )}
-              </td>
+      <div className="ae-admin-table-wrap">
+        <table className="ae-admin-table">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Loja</th>
+              <th>Estado</th>
+              <th>Acções</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+          </thead>
+          <tbody>
+            {data?.items.map((p) => (
+              <tr key={p.id}>
+                <td className="ae-admin-cell-title">{p.name}</td>
+                <td>{p.shop.name}</td>
+                <td>
+                  {p.moderationStatus} · {p.isActive ? "activo" : "inactivo"}
+                  {p.isFeatured ? " · destacado" : ""}
+                </td>
+                <td className="ae-admin-row-actions">
+                  {p.moderationStatus === "PENDING" && (
+                    <>
+                      <button type="button" className="btn btn-primary" onClick={() => void moderate(p.id, "APPROVED")}>
+                        Aprovar
+                      </button>
+                      <button type="button" className="btn" onClick={() => void moderate(p.id, "REJECTED")}>
+                        Rejeitar
+                      </button>
+                    </>
+                  )}
+                  {p.moderationStatus === "APPROVED" && (
+                    <>
+                      <button type="button" className="btn" onClick={() => void featured(p.id, !p.isFeatured)}>
+                        {p.isFeatured ? "Tirar destaque" : "Destacar"}
+                      </button>
+                      <button type="button" className="btn" onClick={() => void active(p.id, !p.isActive)}>
+                        {p.isActive ? "Desactivar" : "Reactivar"}
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="ae-admin-pager">
         <p className="ae-muted" style={{ margin: 0 }}>
           Total na base: <strong>{data?.total ?? 0}</strong>
           {data?.total ? (

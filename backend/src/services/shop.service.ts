@@ -9,6 +9,7 @@ import type {
 } from "../validators/shop.validators.js";
 import { prisma } from "../lib/prisma.js";
 import { calcularSearchRankBoost, lojaPaginaPublica } from "../utils/shopCredibility.js";
+import { notificationService } from "./notification.service.js";
 
 type ShopInput = z.infer<typeof upsertShopSchema>;
 type Tier2Input = z.infer<typeof submitTier2Schema>;
@@ -130,7 +131,7 @@ export const shopService = {
     if (!shop) throw new HttpError(404, "Crie e complete primeiro os dados da loja");
     if (!shop.tier1CompletedAt || !shop.isApproved) throw new HttpError(400, "Complete o nível 1 antes");
 
-    await prisma.shop.update({
+    const updated = await prisma.shop.update({
       where: { id: shop.id },
       data: {
         biPhotoUrl: input.biPhotoUrl,
@@ -142,10 +143,18 @@ export const shopService = {
       },
     });
     await atualizarRankingLoja(shop.id);
-    return prisma.shop.findUniqueOrThrow({
+    const full = await prisma.shop.findUniqueOrThrow({
       where: { id: shop.id },
       include: { user: { select: { id: true, email: true, name: true, phone: true } } },
     });
+    void notificationService
+      .notifyVendorSubmissionToAdmins("CRED_TIER2", {
+        shopId: shop.id,
+        shopName: shop.name,
+        vendorName: full.user?.name,
+      })
+      .catch(() => undefined);
+    return full;
   },
 
   /** Nível 3 — após nível 2 verificado pelo admin */
@@ -154,7 +163,7 @@ export const shopService = {
     if (!shop) throw new HttpError(404, "Loja não encontrada");
     if (!shop.tier2ApprovedAt) throw new HttpError(400, "Conclua e obtenha aprovação do nível 2 primeiro");
 
-    await prisma.shop.update({
+    const updated = await prisma.shop.update({
       where: { id: shop.id },
       data: {
         nif: input.nif.trim(),
@@ -168,10 +177,18 @@ export const shopService = {
       },
     });
     await atualizarRankingLoja(shop.id);
-    return prisma.shop.findUniqueOrThrow({
+    const full = await prisma.shop.findUniqueOrThrow({
       where: { id: shop.id },
       include: { user: { select: { id: true, email: true, name: true } } },
     });
+    void notificationService
+      .notifyVendorSubmissionToAdmins("CRED_TIER3", {
+        shopId: shop.id,
+        shopName: shop.name,
+        vendorName: full.user?.name,
+      })
+      .catch(() => undefined);
+    return full;
   },
 
   async adminApplyCredibilidade(_adminUserId: string, shopId: string, input: CredAdminInput) {
@@ -229,6 +246,27 @@ export const shopService = {
 
     await atualizarRankingLoja(shopId);
     const full = await repo.findById(shopId);
+    const vendorUserId = full?.userId;
+    if (vendorUserId) {
+      if (input.acao === "aprovar_nivel2" || input.acao === "reprovar_nivel2") {
+        void notificationService
+          .notifyCredibilityDecisionToVendor(vendorUserId, {
+            level: 2,
+            approved: input.acao === "aprovar_nivel2",
+            reason: input.motivo ?? null,
+          })
+          .catch(() => undefined);
+      }
+      if (input.acao === "aprovar_nivel3" || input.acao === "reprovar_nivel3") {
+        void notificationService
+          .notifyCredibilityDecisionToVendor(vendorUserId, {
+            level: 3,
+            approved: input.acao === "aprovar_nivel3",
+            reason: input.motivo ?? null,
+          })
+          .catch(() => undefined);
+      }
+    }
     return full!;
   },
 
@@ -262,10 +300,18 @@ export const shopService = {
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
     /* Compatível com dados antigos: aprovação manual + marcar nível 1 completo. */
-    return repo.update(shopId, {
+    const updated = await repo.update(shopId, {
       isApproved,
       ...(isApproved ? { tier1CompletedAt: shop.tier1CompletedAt ?? new Date() } : {}),
     });
+    void notificationService
+      .notifyShopDecisionToVendor(shop.userId, {
+        shopId: shop.id,
+        shopName: shop.name,
+        approved: isApproved,
+      })
+      .catch(() => undefined);
+    return updated;
   },
 
   /** Lojas com dados mínimos ainda incompletos (ex.: migração de BD sem tier1CompletedAt). */

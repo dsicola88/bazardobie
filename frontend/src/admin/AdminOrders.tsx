@@ -32,15 +32,24 @@ export default function AdminOrders() {
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Erro"));
   }, [token, page]);
 
-  if (err) return <p style={{ color: "crimson" }}>{err}</p>;
-
   return (
-    <div>
-      <div className="ae-v-head">
-        <h1 className="ae-v-title">Todas as encomendas</h1>
-      </div>
-      <p className="ae-muted">Cancelamento e alteração de estado seguem as mesmas regras de negócio do painel comercial (a administração pode forçar transições em situações de suporte).</p>
-      <table className="ae-data-table">
+    <div className="ae-admin-pro">
+      <header className="ae-admin-pro__head">
+        <div>
+          <h1 className="ae-admin-pro__title">Todas as encomendas</h1>
+          <p className="ae-admin-pro__sub">
+            Monitorização transversal de compras, pagamentos e operação logística. A administração pode intervir em
+            transições de estado em contexto de suporte.
+          </p>
+        </div>
+      </header>
+      {err ? (
+        <div className="ae-admin-alert ae-admin-alert--err" role="alert">
+          {err}
+        </div>
+      ) : null}
+      <div className="ae-admin-table-wrap">
+        <table className="ae-admin-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -56,12 +65,12 @@ export default function AdminOrders() {
         <tbody>
           {data?.items.map((o) => (
             <tr key={o.id}>
-              <td><code>{o.id.slice(0, 12)}…</code></td>
+              <td><code className="ae-admin-mono">{o.id.slice(0, 12)}…</code></td>
               <td>{o.user.name}</td>
               <td>
                 <div>{etiquetaEstadoPedidoCliente(o.status)}</div>
                 <div className="ae-muted" style={{ fontSize: 11 }}>
-                  <code>{o.status}</code>
+                  <code className="ae-admin-mono">{o.status}</code>
                 </div>
               </td>
               <td style={{ fontSize: 13 }}>
@@ -83,8 +92,9 @@ export default function AdminOrders() {
             </tr>
           ))}
         </tbody>
-      </table>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+        </table>
+      </div>
+      <div className="ae-admin-pager">
         <p className="ae-muted" style={{ margin: 0 }}>
           Total na base: <strong>{data?.total ?? 0}</strong>
           {data?.total ? (

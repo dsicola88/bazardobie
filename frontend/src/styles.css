@@ -2010,6 +2010,24 @@ a:hover {
   flex-wrap: wrap;
   margin-top: 4px;
 }
+.ae-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.ae-admin-filter-input {
+  min-width: min(100%, 360px);
+  flex: 1 280px;
+}
+.ae-admin-pager {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 12px;
+}
 
 .ae-chat-panel {
   margin-top: 14px;
@@ -2131,11 +2149,14 @@ a:hover {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .ae-admin-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  min-width: 760px;
 }
 .ae-admin-table th {
   text-align: left;

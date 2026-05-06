@@ -507,27 +507,22 @@ export const orderService = {
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
-      const shopIds = [...grouped.keys()];
-      const shops = await tx.shop.findMany({
-        where: { id: { in: shopIds } },
-        select: { userId: true, id: true },
-      });
-
-      const messages = results.flatMap((o) =>
-        shops
-          .filter((s) => o.items.some((i) => i.shopId === s.id))
-          .map((s) => ({
-            userId: s.userId,
-            type: "PEDIDO" as const,
-            title: "Novo pedido — BAZAR DO BIÉ",
-            message: `Recebeu o pedido ${o.id.substring(0, 8)}… na sua loja.`,
-          }))
-      );
-
-      if (messages.length) await tx.notification.createMany({ data: messages });
-
       return results;
     });
+
+    for (const o of createdOrders) {
+      const vendorIds = [...new Set(o.items.map((it) => it.shop.userId))];
+      if (vendorIds.length) {
+        void notificationService
+          .notifyOrderStatusChanged(o.id, {
+            previous: "—",
+            next: o.status,
+            actorRole: "CLIENTE",
+            buyerUserId: o.userId,
+          })
+          .catch(() => undefined);
+      }
+    }
 
     return { checkoutGroupId, orders: createdOrders };
   },
@@ -722,6 +717,17 @@ export const orderService = {
         .catch(() => undefined);
     }
 
+    if (!same) {
+      void notificationService
+        .notifyOrderStatusChanged(order.id, {
+          previous: prevStatus,
+          next: status,
+          actorRole: actor.role,
+          buyerUserId: order.userId,
+        })
+        .catch(() => undefined);
+    }
+
     return updated;
   },
 
@@ -774,10 +780,18 @@ export const orderService = {
       updatePayload.trackingUrl = data.trackingUrl === "" ? null : trimOrNull(data.trackingUrl as string);
     }
 
-    return prisma.order.update({
+    const updated = await prisma.order.update({
       where: { id: orderId },
       data: updatePayload,
     });
+    void notificationService
+      .notifyOrderTrackingUpdated(orderId, {
+        buyerUserId: order.userId,
+        actorUserId: actor.userId,
+        actorRole: actor.role,
+      })
+      .catch(() => undefined);
+    return updated;
   },
 
   async adminList(skip = 0, take = 50) {

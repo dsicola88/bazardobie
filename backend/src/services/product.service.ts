@@ -13,6 +13,7 @@ import {
 } from "../validators/product.validators.js";
 import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
+import { notificationService } from "./notification.service.js";
 
 const deliveryOptionsPublicInclude = {
   include: { logisticsPartner: { select: { id: true, name: true } } },
@@ -401,14 +402,21 @@ export const productService = {
   },
 
   async adminSetModeration(_productId: string, status: "APPROVED" | "REJECTED") {
-    return prisma.product.update({
+    const out = await prisma.product.update({
       where: { id: _productId },
       data: {
         moderationStatus: status,
         ...(status === "REJECTED" ? { isActive: false } : { isActive: true }),
       },
-      include: { shop: { select: { id: true, name: true } }, images: { take: 1 } },
+      include: { shop: { select: { id: true, name: true, userId: true } }, images: { take: 1 } },
     });
+    void notificationService
+      .notifyProductModerationDecision(out.shop.userId, {
+        productName: out.name,
+        status,
+      })
+      .catch(() => undefined);
+    return out;
   },
 
   async adminSetActive(_productId: string, isActive: boolean) {

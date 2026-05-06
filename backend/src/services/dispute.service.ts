@@ -11,6 +11,7 @@ import {
   applyFullBuyerRefund,
   applyPartialRefundAndRelease,
 } from "./escrow.service.js";
+import { notificationService } from "./notification.service.js";
 
 export const disputeService = {
   async open(userId: string, orderId: string, reason: string) {
@@ -50,6 +51,19 @@ export const disputeService = {
         order: { select: { id: true, grandTotal: true, escrowState: true, status: true } },
       },
     });
+    void notificationService
+      .notifyBuyerActionToVendors(orderId, {
+        buyerUserId: userId,
+        action: "OPEN_DISPUTE",
+      })
+      .catch(() => undefined);
+    void notificationService
+      .notifyAdmins(
+        "PEDIDO",
+        "Nova disputa aberta",
+        `Disputa aberta no pedido ${orderId.slice(0, 12)}… pelo comprador.`
+      )
+      .catch(() => undefined);
     return row;
   },
 
