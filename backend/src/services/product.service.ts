@@ -419,10 +419,28 @@ export const productService = {
     });
   },
 
-  async adminListModeration(status: "PENDING" | "REJECTED" | "APPROVED", skip: number, take: number) {
+  async adminListModeration(
+    status: "PENDING" | "REJECTED" | "APPROVED",
+    skip: number,
+    take: number,
+    q?: string
+  ) {
+    const term = q?.trim();
+    const where: Prisma.ProductWhereInput = {
+      moderationStatus: status,
+      ...(term
+        ? {
+            OR: [
+              { name: { contains: term, mode: "insensitive" } },
+              { sku: { contains: term, mode: "insensitive" } },
+              { shop: { is: { name: { contains: term, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       prisma.product.findMany({
-        where: { moderationStatus: status },
+        where,
         orderBy: { createdAt: "desc" },
         skip,
         take,
@@ -431,7 +449,7 @@ export const productService = {
           images: { take: 1, orderBy: { sortOrder: "asc" } },
         },
       }),
-      prisma.product.count({ where: { moderationStatus: status } }),
+      prisma.product.count({ where }),
     ]);
     return { items, total, skip, take };
   },

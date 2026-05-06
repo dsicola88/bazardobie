@@ -70,6 +70,26 @@ async function seedAngolaGeoCatalog() {
       sortOrder: 0,
     },
   });
+
+  /** Base de comunas: cria pelo menos a comuna-sede para cada municipio.
+   *  Permite UX completa no admin enquanto o catálogo detalhado vai sendo enriquecido. */
+  const allMunicipalities = await prisma.angolaMunicipality.findMany({
+    where: { active: true },
+    select: { id: true, namePt: true },
+  });
+  for (const m of allMunicipalities) {
+    await prisma.angolaCommune.upsert({
+      where: { municipalityId_code: { municipalityId: m.id, code: "SEDE" } },
+      update: { namePt: `Comuna sede de ${m.namePt}`, active: true, sortOrder: 0 },
+      create: {
+        municipalityId: m.id,
+        code: "SEDE",
+        namePt: `Comuna sede de ${m.namePt}`,
+        active: true,
+        sortOrder: 0,
+      },
+    });
+  }
 }
 
 async function main() {

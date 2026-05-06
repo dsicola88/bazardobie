@@ -66,6 +66,7 @@ r.get("/freight/quote", freightController.quote);
 r.get("/freight/localities", freightController.localities);
 r.get("/shipping/geo/provinces", shippingGeoController.provinces);
 r.get("/shipping/geo/municipalities", shippingGeoController.municipalities);
+r.get("/shipping/geo/communes", shippingGeoController.communes);
 r.get("/shipping/geo/pickup-points", shippingGeoController.pickupPoints);
 r.get("/shipping-carriers", logisticsPartnerController.shippingCarriers);
 
@@ -233,6 +234,7 @@ admin.patch("/products/:id/active", productController.adminSetActive);
 admin.patch("/products/:id/featured", productController.setFeatured);
 
 admin.get("/shipping/geo/municipalities", shippingGeoController.municipalitiesAdmin);
+admin.get("/shipping/geo/communes", shippingGeoController.communesAdmin);
 
 admin.get("/freight/distance-bands", freightController.bandsList);
 admin.post("/freight/distance-bands", freightController.bandsCreate);

@@ -20,6 +20,7 @@ export default function AdminProducts() {
   const [status, setStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">("PENDING");
   const [data, setData] = useState<ModList | null>(null);
   const [page, setPage] = useState(0);
+  const [q, setQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -28,15 +29,16 @@ export default function AdminProducts() {
     setErr(null);
     try {
       const skip = page * MOD_PAGE;
-      const q = await apiFetch<ModList>(
-        `/admin/products/moderation?status=${status}&take=${MOD_PAGE}&skip=${skip}`,
+      const query = q.trim() ? `&q=${encodeURIComponent(q.trim())}` : "";
+      const resp = await apiFetch<ModList>(
+        `/admin/products/moderation?status=${status}&take=${MOD_PAGE}&skip=${skip}${query}`,
         { token },
       );
-      setData(q);
+      setData(resp);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro");
     }
-  }, [token, status, page]);
+  }, [token, status, page, q]);
 
   useEffect(() => {
     setPage(0);
@@ -110,6 +112,17 @@ export default function AdminProducts() {
             {s === "PENDING" ? "Em fila" : s === "APPROVED" ? "Aprovados" : "Rejeitados"}
           </button>
         ))}
+      </div>
+      <div style={{ marginBottom: 12, maxWidth: 420 }}>
+        <input
+          className="ae-input"
+          placeholder="Filtrar por produto, SKU ou loja..."
+          value={q}
+          onChange={(e) => {
+            setPage(0);
+            setQ(e.target.value);
+          }}
+        />
       </div>
       <table className="ae-data-table">
         <thead>

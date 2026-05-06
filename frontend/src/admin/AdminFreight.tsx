@@ -77,6 +77,7 @@ export default function AdminFreight() {
   const [catalogMunicipalities, setCatalogMunicipalities] = useState<GeoMunicipalityAdmin[] | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [qZone, setQZone] = useState("");
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -220,6 +221,11 @@ export default function AdminFreight() {
     }
   }
 
+  const filteredZones = (zones ?? []).filter((z) => {
+    const blob = `${z.label ?? ""} ${z.city} ${z.province} ${z.municipality?.namePt ?? ""}`.toLowerCase();
+    return blob.includes(qZone.trim().toLowerCase());
+  });
+
   return (
     <div className="ae-admin-page" style={{ maxWidth: 1100 }}>
       <h1 className="ae-v-title">Fretes por morada e por distância</h1>
@@ -252,6 +258,14 @@ export default function AdminFreight() {
           <p className="ae-muted">A carregar…</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
+            <div style={{ marginBottom: 10, maxWidth: 360 }}>
+              <input
+                className="ae-input"
+                value={qZone}
+                onChange={(e) => setQZone(e.target.value)}
+                placeholder="Filtrar zonas por provincia, municipio..."
+              />
+            </div>
             <table className="ae-admin-table" style={{ minWidth: 620 }}>
               <thead>
                 <tr>
@@ -265,7 +279,7 @@ export default function AdminFreight() {
                 </tr>
               </thead>
               <tbody>
-                {zones.map((z) => (
+                {filteredZones.map((z) => (
                   <tr key={z.id}>
                     <td>{z.label ?? "—"}</td>
                     <td>

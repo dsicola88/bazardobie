@@ -224,6 +224,36 @@ a:hover {
   padding: 8px 16px;
   font-weight: 600;
 }
+.ae-promo-keywords {
+  margin-top: 6px;
+  overflow: hidden;
+}
+.ae-promo-keywords__track {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+.ae-promo-keywords__chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #f3c2b1;
+  background: #fff;
+  color: #9a2f0e;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.ae-promo-keywords--marquee .ae-promo-keywords__track {
+  min-width: max-content;
+  animation: aePromoSlide 22s linear infinite;
+}
+@keyframes aePromoSlide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
 .ae-catnav {
   background: var(--ae-deep);
 }
@@ -771,6 +801,27 @@ a:hover {
   font: inherit;
   box-sizing: border-box;
   height: auto;
+}
+
+/* Unificação visual dos campos em toda a app */
+.ae-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.ae-shell select,
+.ae-shell textarea {
+  border: 1px solid #ccd5e2;
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.ae-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.ae-shell select:focus,
+.ae-shell textarea:focus {
+  outline: none;
+  border-color: #2f6feb;
+  box-shadow: 0 0 0 3px rgba(47, 111, 235, 0.14);
+}
+.ae-shell input::placeholder,
+.ae-shell textarea::placeholder {
+  color: #9aa5b1;
 }
 .form-stack textarea,
 .ae-form textarea {

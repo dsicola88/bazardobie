@@ -140,11 +140,30 @@ model AngolaMunicipality {
   shippingZones   ShippingZone[]
   freightAnchors FreightLocality[]
   pickupPoints    DeliveryPickupPoint[]
+  communes        AngolaCommune[]
   orders          Order[]
   shops           Shop[]
 
   @@unique([provinceId, code])
   @@index([provinceId, active, sortOrder])
+}
+
+/// Comuna dentro do municipio (estrutura administrativa complementar para UX e filtros).
+model AngolaCommune {
+  id             String @id @default(cuid())
+  municipalityId String
+  /// Codigo estavel dentro do municipio (ex.: SEDE, BENFICA, etc.)
+  code           String
+  namePt         String
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  municipality AngolaMunicipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+
+  @@unique([municipalityId, code])
+  @@index([municipalityId, active, sortOrder])
 }
 
 /// Ponto estruturado de entrega/recolha (locker ou loja associada — escalável tipo marketplace AliExpress pickup).

@@ -9,6 +9,9 @@ const munQuerySchema = z.object({
 const pickupQuerySchema = z.object({
   municipalityId: z.string().min(3),
 });
+const communeQuerySchema = z.object({
+  municipalityId: z.string().min(3),
+});
 
 export const shippingGeoController = {
   provinces: asyncHandler(async (_req, res) => {
@@ -28,8 +31,19 @@ export const shippingGeoController = {
     res.json({ items });
   }),
 
+  communes: asyncHandler(async (req, res) => {
+    const q = communeQuerySchema.parse(req.query);
+    const items = await angolaGeoService.listCommunesPublic(q.municipalityId);
+    res.json({ items });
+  }),
+
   municipalitiesAdmin: asyncHandler(async (_req, res) => {
     const items = await angolaGeoService.listAllMunicipalitiesAdmin();
+    res.json({ items });
+  }),
+
+  communesAdmin: asyncHandler(async (_req, res) => {
+    const items = await angolaGeoService.listAllCommunesAdmin();
     res.json({ items });
   }),
 };

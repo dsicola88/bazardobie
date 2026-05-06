@@ -71,7 +71,8 @@ export const productController = {
       st === "REJECTED" || st === "APPROVED" || st === "PENDING" ? st : "PENDING";
     const skip = Number(req.query.skip) || 0;
     const take = Math.min(Number(req.query.take) || 50, 200);
-    const out = await productService.adminListModeration(status, skip, take);
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
+    const out = await productService.adminListModeration(status, skip, take, q);
     res.json(out);
   }),
 

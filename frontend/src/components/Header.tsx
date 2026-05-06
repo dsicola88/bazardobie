@@ -84,6 +84,15 @@ export function Header() {
 
   const { content } = useSiteContent();
   const promo = (content["public.header_promo_text"] ?? "").trim();
+  const promoKeywordsRaw = (content["public.header_promo_keywords"] ?? "").trim();
+  const promoMarqueeRaw = (content["public.header_promo_marquee"] ?? "true").trim().toLowerCase();
+  const promoMarqueeOn =
+    promoMarqueeRaw === "true" || promoMarqueeRaw === "1" || promoMarqueeRaw === "sim" || promoMarqueeRaw === "yes";
+  const promoKeywords = promoKeywordsRaw
+    .split("|")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .slice(0, 12);
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
 
   return (
@@ -194,7 +203,27 @@ export function Header() {
 
       {promo ? (
         <div className="ae-promo-bar">
-          <div className="ae-shell ae-promo-bar__inner">{promo}</div>
+          <div className="ae-shell ae-promo-bar__inner">
+            {promo}
+            {promoKeywords.length > 0 ? (
+              <div className={`ae-promo-keywords ${promoMarqueeOn ? "ae-promo-keywords--marquee" : ""}`}>
+                <div className="ae-promo-keywords__track">
+                  {promoKeywords.map((k) => (
+                    <span key={k} className="ae-promo-keywords__chip">
+                      {k}
+                    </span>
+                  ))}
+                  {promoMarqueeOn
+                    ? promoKeywords.map((k) => (
+                        <span key={`dup-${k}`} className="ae-promo-keywords__chip" aria-hidden>
+                          {k}
+                        </span>
+                      ))
+                    : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

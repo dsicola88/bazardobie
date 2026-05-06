@@ -30,6 +30,7 @@ export default function AdminSellers() {
   const [pending, setPending] = useState<Shop[] | null>(null);
   const [ranking, setRanking] = useState<RankRow[] | null>(null);
   const [tab, setTab] = useState<"pending" | "ranking">("pending");
+  const [q, setQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -68,6 +69,16 @@ export default function AdminSellers() {
     }
   }
 
+  const pendingFiltered = (pending ?? []).filter((s) => {
+    const blob = `${s.name} ${s.city} ${s.province} ${s.user?.name ?? ""} ${s.user?.email ?? ""}`.toLowerCase();
+    return blob.includes(q.trim().toLowerCase());
+  });
+
+  const rankingFiltered = (ranking ?? []).filter((r) => {
+    const blob = `${r.shop?.name ?? ""} ${r.shop?.user?.name ?? ""} ${r.shop?.user?.email ?? ""}`.toLowerCase();
+    return blob.includes(q.trim().toLowerCase());
+  });
+
   return (
     <div className="ae-admin-pro">
       <header className="ae-admin-pro__head">
@@ -94,15 +105,23 @@ export default function AdminSellers() {
           </button>
         ))}
       </div>
+      <div style={{ marginBottom: 12, maxWidth: 420 }}>
+        <input
+          className="ae-input"
+          placeholder="Filtrar por loja, cidade, nome ou email..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
 
       {tab === "pending" && (
         <div className="ae-panel">
           <h2 style={{ marginTop: 0 }}>Lojas pendentes de aprovação</h2>
-          {!pending?.length ? (
+          {!pendingFiltered.length ? (
             <p className="ae-muted">Nenhuma fila pendente.</p>
           ) : (
             <ul style={{ listStyle: "none", padding: 0 }}>
-              {pending.map((s) => (
+              {pendingFiltered.map((s) => (
                 <li key={s.id} style={{ borderBottom: "1px solid var(--ae-line)", padding: "12px 0" }}>
                   <strong>{s.name}</strong> — {s.city}, {s.province}
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
@@ -132,7 +151,7 @@ export default function AdminSellers() {
               </tr>
             </thead>
             <tbody>
-              {ranking?.map((row) => (
+              {rankingFiltered.map((row) => (
                 <tr key={row.shopId}>
                   <td>{row.shop?.name ?? row.shopId}</td>
                   <td>{row.orderCount}</td>

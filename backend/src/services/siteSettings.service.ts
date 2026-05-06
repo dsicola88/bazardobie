@@ -36,6 +36,16 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "",
     hint: "Deixe vazio para ocultar. Texto curto (ex.: campanha, envio grátis acima de X Kz).",
   },
+  "public.header_promo_keywords": {
+    label: "Barra promocional — palavras em destaque (separadas por |)",
+    defaultValue: "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",
+    hint: "Ex.: Smartphone|Moda|Eletronica|Casa. As palavras rodam com animacao no topo.",
+  },
+  "public.header_promo_marquee": {
+    label: "Barra promocional — activar faixa animada",
+    defaultValue: "true",
+    hint: "true / 1 / sim para animar a faixa de promocoes estilo marketplace.",
+  },
   "public.home_hero_fallback": {
     label: "Mensagem quando não há banners",
       defaultValue: "BAZAR DO BIÉ — Marketplace nacional",
