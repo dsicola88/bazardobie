@@ -97,7 +97,7 @@ export default function ProductPage() {
   const outOfStock = stockAvailable <= 0;
   const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
   const meta = useMemo(() => product?.deliveryOptions.find((d) => d.id === deliveryId), [deliveryId, product]);
-  const mainResolved = resolveMediaUrl(mainImg || product.images[0]?.url);
+  const mainResolved = resolveMediaUrl(mainImg || product?.images[0]?.url);
 
   function onMainImageMove(ev: React.MouseEvent<HTMLDivElement>) {
     const rect = ev.currentTarget.getBoundingClientRect();
