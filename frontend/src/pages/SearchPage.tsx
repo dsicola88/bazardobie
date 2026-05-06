@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
+import { useSeo } from "../seo/useSeo.js";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
 
@@ -28,6 +29,18 @@ export default function SearchPage() {
   const [data, setData] = useState<{ items: ProductCardData[]; total: number } | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
+
+  const seoTitle = q.trim()
+    ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
+    : "Pesquisar produtos — BAZAR DO BIÉ";
+  const seoDescription = q.trim()
+    ? `Resultados para "${q.trim()}" no marketplace BAZAR DO BIÉ. Compare preços, avaliações e prazos de envio em Angola.`
+    : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
+  useSeo({
+    title: seoTitle,
+    description: seoDescription,
+    canonicalPath: `/search${window.location.search}`,
+  });
 
   useEffect(() => {
     setMinPrice(minPriceParam ?? "");

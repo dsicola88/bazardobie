@@ -5,6 +5,7 @@ import { ProductCard, type ProductCardData } from "../components/ProductCard.js"
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { parseTrustCell } from "../site/siteContent.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { useSeo } from "../seo/useSeo.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = { id: string; name: string; parentId: string | null };
@@ -29,6 +30,24 @@ export default function Home() {
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
   const [top, setTop] = useState<ProductCardData[]>([]);
   const [recent, setRecent] = useState<ProductCardData[]>([]);
+
+  useSeo({
+    title: "BAZAR DO BIÉ — Marketplace em Angola",
+    description:
+      "Compre online em kwanzas angolanos com lojas parceiras verificadas, envio nacional e acompanhamento de encomendas.",
+    canonicalPath: "/",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "BAZAR DO BIÉ",
+      url: window.location.origin,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${window.location.origin}/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  });
 
   useEffect(() => {
     void apiFetch<Banner[]>("/banners").then(setBanners).catch(() => setBanners([]));

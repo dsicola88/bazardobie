@@ -7,6 +7,7 @@ import { ProductReportModal } from "../components/ProductReportModal.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { useSeo } from "../seo/useSeo.js";
 
 type Img = { url: string };
 type Variant = { id: string; sku: string; name?: string | null; stock: number };
@@ -75,6 +76,51 @@ export default function ProductPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [zoomOn, setZoomOn] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
+  const seoDescription = product
+    ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ.`
+    : "Detalhes do produto no marketplace BAZAR DO BIÉ.";
+  const seoImage = product?.images[0]?.url ? resolveMediaUrl(product.images[0].url) : undefined;
+  const seoVariant = product?.variants.find((v) => v.id === variantId);
+  const seoJsonLd = product
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        description: product.description,
+        image: product.images.map((im) => resolveMediaUrl(im.url)).slice(0, 6),
+        sku: seoVariant?.sku ?? undefined,
+        brand: {
+          "@type": "Brand",
+          name: "BAZAR DO BIÉ",
+        },
+        offers: {
+          "@type": "Offer",
+          priceCurrency: "AOA",
+          price: Number(product.displayPrice),
+          availability:
+            (seoVariant?.stock ?? product.stock) > 0
+              ? "https://schema.org/InStock"
+              : "https://schema.org/OutOfStock",
+          url: window.location.href,
+        },
+        aggregateRating:
+          product.reviewCount > 0 && product.averageRating
+            ? {
+                "@type": "AggregateRating",
+                ratingValue: Number(product.averageRating),
+                reviewCount: product.reviewCount,
+              }
+            : undefined,
+      }
+    : null;
+  useSeo({
+    title: seoTitle,
+    description: seoDescription,
+    canonicalPath: id ? `/product/${id}` : "/product",
+    image: seoImage,
+    jsonLd: seoJsonLd,
+  });
 
   useEffect(() => {
     if (!id) return;
