@@ -1,6 +1,13 @@
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "/api/v1").replace(/\/$/, "");
+const MEDIA_ORIGIN = String(import.meta.env.VITE_MEDIA_ORIGIN ?? "").trim().replace(/\/$/, "");
+
+function normalizeUploadsPath(p: string): string {
+  if (p.startsWith("/api/v1/uploads/")) return p.slice("/api/v1".length);
+  return p;
+}
 
 function apiOriginFromBase(): string {
+  if (MEDIA_ORIGIN) return MEDIA_ORIGIN;
   if (API_BASE.startsWith("http://") || API_BASE.startsWith("https://")) {
     try {
       return new URL(API_BASE).origin;
@@ -19,22 +26,27 @@ export function resolveMediaUrl(raw: string | null | undefined): string {
   if (url.startsWith("http://") || url.startsWith("https://")) {
     try {
       const u = new URL(url);
+      const path = normalizeUploadsPath(u.pathname);
+      if (path !== u.pathname) {
+        return `${u.origin}${path}${u.search}${u.hash}`;
+      }
       if (
         (u.hostname === "localhost" || u.hostname === "127.0.0.1") &&
         typeof window !== "undefined" &&
         window.location.hostname !== "localhost" &&
         window.location.hostname !== "127.0.0.1" &&
-        u.pathname.startsWith("/uploads/")
+        path.startsWith("/uploads/")
       ) {
-        return `${apiOriginFromBase()}${u.pathname}`;
+        return `${apiOriginFromBase()}${path}`;
       }
     } catch {
       return url;
     }
     return url;
   }
-  if (url.startsWith("/uploads/")) {
-    return `${apiOriginFromBase()}${url}`;
+  const norm = normalizeUploadsPath(url);
+  if (norm.startsWith("/uploads/")) {
+    return `${apiOriginFromBase()}${norm}`;
   }
   return url;
 }

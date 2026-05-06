@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch, uploadAdminFile } from "../api.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 const MAX_REVIEW_PHOTOS = 6;
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -144,7 +145,7 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
             <ul className="ae-review-uploads">
               {photoUrls.map((url) => (
                 <li key={url} className="ae-review-uploads__item">
-                  <img src={url} alt="" />
+                  <img src={resolveMediaUrl(url)} alt="" />
                   <button
                     type="button"
                     className="ae-review-uploads__rm"

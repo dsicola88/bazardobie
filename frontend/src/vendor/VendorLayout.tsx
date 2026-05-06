@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 
 export default function VendorLayout() {
   const { user, loading } = useAuth();
+  const [sideCollapsed, setSideCollapsed] = useState(false);
 
   if (loading) {
     return (
@@ -19,7 +21,7 @@ export default function VendorLayout() {
   if (user.role !== "VENDEDOR") return <Navigate to="/unauthorized" replace />;
 
   return (
-    <div className="ae-vendor-shell">
+    <div className={`ae-vendor-shell ${sideCollapsed ? "ae-vendor-shell--collapsed" : ""}`}>
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
           BAZAR DO BIÉ · Parceiros
@@ -51,6 +53,11 @@ export default function VendorLayout() {
         </nav>
       </aside>
       <main className="ae-v-main">
+        <div className="ae-v-main__topbar">
+          <button type="button" className="ae-v-main__toggle" onClick={() => setSideCollapsed((v) => !v)}>
+            {sideCollapsed ? "Expandir menu" : "Encolher menu"}
+          </button>
+        </div>
         <Outlet />
       </main>
     </div>

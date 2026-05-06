@@ -27,6 +27,7 @@ export default function SearchPage() {
   const [cats, setCats] = useState<Category[]>([]);
   const [data, setData] = useState<{ items: ProductCardData[]; total: number } | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [sideCollapsed, setSideCollapsed] = useState(false);
 
   useEffect(() => {
     setMinPrice(minPriceParam ?? "");
@@ -69,7 +70,7 @@ export default function SearchPage() {
 
   return (
     <div className="ae-layout-search">
-      <aside className="ae-filters">
+      <aside className={`ae-filters ${sideCollapsed ? "ae-filters--collapsed" : ""}`}>
         <button
           type="button"
           className="ae-filters__toggle"
@@ -78,8 +79,18 @@ export default function SearchPage() {
         >
           Filtros e categorias
         </button>
+        <button
+          type="button"
+          className="ae-filters__collapse"
+          aria-expanded={!sideCollapsed}
+          onClick={() => setSideCollapsed((v) => !v)}
+        >
+          {sideCollapsed ? "Expandir filtros" : "Encolher filtros"}
+        </button>
         <h3>Critérios</h3>
-        <div className={`ae-filters__body ${mobileFiltersOpen ? "ae-filters__body--open" : ""}`}>
+        <div
+          className={`ae-filters__body ${mobileFiltersOpen ? "ae-filters__body--open" : ""} ${sideCollapsed ? "ae-filters__body--collapsed" : ""}`}
+        >
           <div className="ae-filters__group">
           <strong>Categoria</strong>
           <nav className="ae-chip-list" style={{ marginTop: 8 }}>

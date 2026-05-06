@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Banner = {
   id: string;
@@ -252,8 +253,8 @@ export default function AdminBanners() {
               {sortedPreview.map((b) => (
                 <tr key={b.id}>
                   <td>
-                    <a href={b.imageUrl} target="_blank" rel="noopener noreferrer" className="ae-admin-thumb-link">
-                      <img src={b.imageUrl} alt="" className="ae-admin-thumb" />
+                    <a href={resolveMediaUrl(b.imageUrl)} target="_blank" rel="noopener noreferrer" className="ae-admin-thumb-link">
+                      <img src={resolveMediaUrl(b.imageUrl)} alt="" className="ae-admin-thumb" />
                     </a>
                   </td>
                   <td>
@@ -348,7 +349,7 @@ export default function AdminBanners() {
                   </div>
                   {imageUrl.trim() ? (
                     <div className="ae-editor-preview">
-                      <img src={imageUrl.trim()} alt="Pré-visualização" />
+                      <img src={resolveMediaUrl(imageUrl.trim())} alt="Pré-visualização" />
                     </div>
                   ) : null}
                 </div>

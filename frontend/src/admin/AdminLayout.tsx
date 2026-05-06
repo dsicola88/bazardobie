@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 
@@ -8,6 +8,7 @@ function NavSep({ children }: { children: ReactNode }) {
 
 export default function AdminLayout() {
   const { user, loading } = useAuth();
+  const [sideCollapsed, setSideCollapsed] = useState(false);
   if (loading) {
     return (
       <div className="ae-vendor-shell ae-admin-shell">
@@ -21,7 +22,7 @@ export default function AdminLayout() {
   if (user.role !== "ADMIN") return <Navigate to="/unauthorized" replace />;
 
   return (
-    <div className="ae-vendor-shell ae-admin-shell">
+    <div className={`ae-vendor-shell ae-admin-shell ${sideCollapsed ? "ae-vendor-shell--collapsed" : ""}`}>
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
           Administração
@@ -92,6 +93,11 @@ export default function AdminLayout() {
         </nav>
       </aside>
       <main className="ae-v-main">
+        <div className="ae-v-main__topbar">
+          <button type="button" className="ae-v-main__toggle" onClick={() => setSideCollapsed((v) => !v)}>
+            {sideCollapsed ? "Expandir menu" : "Encolher menu"}
+          </button>
+        </div>
         <Outlet />
       </main>
     </div>

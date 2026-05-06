@@ -4,6 +4,7 @@ import { apiFetch, apiErrorDetailsCode, cartSessionHeaders, uploadAdminFile } fr
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -1009,7 +1010,7 @@ export default function CheckoutPage() {
                   <li key={it.id}>
                     <div className="ae-checkout-sum-line">
                       {thumb ? (
-                        <img src={thumb} alt="" className="ae-checkout-sum-line__img" />
+                        <img src={resolveMediaUrl(thumb)} alt="" className="ae-checkout-sum-line__img" />
                       ) : (
                         <div className="ae-checkout-sum-line__img ae-checkout-sum-line__ph" />
                       )}

@@ -21,6 +21,7 @@ export default function Home() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bi, setBi] = useState(0);
   const [cats, setCats] = useState<Category[]>([]);
+  const [catsOpen, setCatsOpen] = useState(true);
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
   const [top, setTop] = useState<ProductCardData[]>([]);
   const [recent, setRecent] = useState<ProductCardData[]>([]);
@@ -61,12 +62,17 @@ export default function Home() {
     <>
       <div className="ae-hero">
         <nav className="ae-hero-side" aria-label="Categorias">
-          {roots.map((c) => (
-            <Link key={c.id} to={`/search?categoryId=${c.id}`}>
-              {c.name}
-            </Link>
-          ))}
-          <Link to="/search">Catálogo por categoria →</Link>
+          <button type="button" className="ae-hero-side__toggle" onClick={() => setCatsOpen((v) => !v)}>
+            {catsOpen ? "Encolher categorias" : "Expandir categorias"}
+          </button>
+          <div className={catsOpen ? "ae-hero-side__body" : "ae-hero-side__body ae-hero-side__body--collapsed"}>
+            {roots.map((c) => (
+              <Link key={c.id} to={`/search?categoryId=${c.id}`}>
+                {c.name}
+              </Link>
+            ))}
+            <Link to="/search">Catálogo por categoria →</Link>
+          </div>
         </nav>
         <div className="ae-hero-main">
           {hero ? (
