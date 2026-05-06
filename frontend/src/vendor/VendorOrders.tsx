@@ -11,6 +11,7 @@ import { orderLogisticsFromItems, vendorSelectableStatuses } from "../utils/vend
 
 type Row = {
   id: string;
+  orderCode?: string | null;
   status: string;
   grandTotal: string;
   createdAt: string;
@@ -71,7 +72,8 @@ export default function VendorOrders() {
 
   const orders = bundle?.items ?? [];
   const filtered = orders.filter((o) => {
-    const blob = `${o.id} ${o.user?.name ?? ""} ${o.items.map((i) => i.productNameSnapshot).join(" ")}`.toLowerCase();
+    const ref = o.orderCode || o.id;
+    const blob = `${ref} ${o.user?.name ?? ""} ${o.items.map((i) => i.productNameSnapshot).join(" ")}`.toLowerCase();
     return !q.trim() || blob.includes(q.trim().toLowerCase());
   });
 
@@ -164,7 +166,7 @@ export default function VendorOrders() {
               }}
             >
               <div>
-                <strong style={{ fontFamily: "monospace", fontSize: 13 }}>{o.id}</strong>
+                <strong style={{ fontFamily: "monospace", fontSize: 13 }}>{o.orderCode || o.id}</strong>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
                   {new Date(o.createdAt).toLocaleString("pt-AO")} · {(o.user && o.user.name) || ""} ·{" "}
                   {etiquetaPagamento(o.paymentMethod)}

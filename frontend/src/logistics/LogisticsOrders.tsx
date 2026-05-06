@@ -9,6 +9,7 @@ import { logisticsSelectableStatuses } from "../utils/vendorOrderStatuses.js";
 
 type Row = {
   id: string;
+  orderCode?: string | null;
   status: string;
   grandTotal: string;
   createdAt: string;
@@ -112,7 +113,7 @@ export default function LogisticsOrders() {
               }}
             >
               <div>
-                <strong style={{ fontFamily: "monospace", fontSize: 13 }}>{o.id.slice(0, 14)}…</strong>
+                <strong style={{ fontFamily: "monospace", fontSize: 13 }}>{o.orderCode || `${o.id.slice(0, 14)}…`}</strong>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
                   {new Date(o.createdAt).toLocaleString("pt-AO")} · {o.user?.name ?? ""} ·{" "}
                   {etiquetaPagamento(o.paymentMethod)}

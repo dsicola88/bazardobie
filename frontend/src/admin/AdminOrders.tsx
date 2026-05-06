@@ -7,6 +7,7 @@ import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
 
 type OrderRow = {
   id: string;
+  orderCode?: string | null;
   status: string;
   grandTotal: string;
   createdAt: string;
@@ -65,7 +66,7 @@ export default function AdminOrders() {
         <tbody>
           {data?.items.map((o) => (
             <tr key={o.id}>
-              <td><code className="ae-admin-mono">{o.id.slice(0, 12)}…</code></td>
+              <td><code className="ae-admin-mono">{o.orderCode || `${o.id.slice(0, 12)}…`}</code></td>
               <td>{o.user.name}</td>
               <td>
                 <div>{etiquetaEstadoPedidoCliente(o.status)}</div>

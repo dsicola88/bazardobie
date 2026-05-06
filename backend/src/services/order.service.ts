@@ -48,6 +48,30 @@ function groupCartByShop<T extends { product: { shopId: string } }>(items: T[]) 
   return map;
 }
 
+function datePart(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}${m}${day}`;
+}
+
+function randomPart(len = 6): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < len; i += 1) out += chars[Math.floor(Math.random() * chars.length)]!;
+  return out;
+}
+
+async function generateUniqueOrderCode(tx: Prisma.TransactionClient): Promise<string> {
+  const prefix = `ORD-${datePart()}-`;
+  for (let i = 0; i < 25; i += 1) {
+    const code = `${prefix}${randomPart(6)}`;
+    const exists = await tx.order.findFirst({ where: { orderCode: code }, select: { id: true } });
+    if (!exists) return code;
+  }
+  throw new HttpError(500, "Não foi possível gerar código único para a encomenda.");
+}
+
 /** Tipo de envio dominante do pedido (linhas são uniformizadas no checkout). */
 function orderLogistics(items: { deliveryTipo: TipoEntrega }[]): TipoEntrega {
   if (items.length === 0) return "VENDEDOR";
@@ -466,6 +490,7 @@ export const orderService = {
 
         const order = await tx.order.create({
           data: {
+            orderCode: await generateUniqueOrderCode(tx),
             checkoutGroupId,
             userId,
             paymentMethod,

@@ -26,6 +26,7 @@ type OrderItem = {
 
 type Order = {
   id: string;
+  orderCode?: string | null;
   checkoutGroupId?: string | null;
   status: string;
   grandTotal: string;
@@ -259,7 +260,7 @@ export default function OrdersPage() {
           <li key={o.id} className="page-panel ae-order-card" style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
               <div>
-                <strong>Encomenda {o.id.slice(0, 10)}…</strong>
+                <strong>Encomenda {o.orderCode || `${o.id.slice(0, 10)}…`}</strong>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
                   {new Date(o.createdAt).toLocaleString("pt-AO")}
                 </div>

@@ -11,6 +11,7 @@ type DisputeRow = {
   opener: { name: string; email: string };
   order: {
     id: string;
+    orderCode?: string | null;
     status: string;
     grandTotal: string;
     paymentMethod: string;
@@ -110,7 +111,7 @@ export default function AdminDisputes() {
               <tr>
                 <td>{new Date(d.createdAt).toLocaleString("pt-AO")}</td>
                 <td>
-                  <code>{d.order.id.slice(0, 10)}…</code>
+                  <code>{d.order.orderCode || `${d.order.id.slice(0, 10)}…`}</code>
                 </td>
                 <td>{d.opener.email}</td>
                 <td>{d.status}</td>

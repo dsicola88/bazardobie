@@ -17,6 +17,7 @@ type ProductRow = {
 };
 type OrderMini = {
   id: string;
+  orderCode?: string | null;
   status: string;
   grandTotal: string;
   createdAt: string;
@@ -445,7 +446,7 @@ export default function VendorDashboard() {
           <tbody>
             {orders.slice(0, 6).map((o) => (
               <tr key={o.id}>
-                <td style={{ fontFamily: "monospace", fontSize: 12 }}>{o.id.slice(0, 12)}…</td>
+                <td style={{ fontFamily: "monospace", fontSize: 12 }}>{o.orderCode || `${o.id.slice(0, 12)}…`}</td>
                 <td>
                   <span className="ae-badge ae-badge--live">{o.status}</span>
                 </td>

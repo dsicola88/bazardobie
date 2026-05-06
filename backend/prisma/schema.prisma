@@ -454,6 +454,8 @@ model CartItem {
 
 model Order {
   id               String        @id @default(cuid())
+  /// Código público de encomenda (gerado no backend; vendedor só consulta).
+  orderCode        String?       @unique
   checkoutGroupId  String?
   userId           String
   status           OrderStatus   @default(PENDENTE)
