@@ -20,6 +20,47 @@ export type ProductSortKey =
   | "melhor_avaliados"
   | "recentes";
 
+const TERM_SYNONYMS: Record<string, string[]> = {
+  telemovel: ["celular", "smartphone", "telefone", "iphone", "android"],
+  celular: ["telemovel", "smartphone", "telefone", "iphone", "android"],
+  smartphone: ["telemovel", "celular", "telefone", "iphone", "android"],
+  computador: ["pc", "desktop", "laptop", "portatil", "notebook"],
+  pc: ["computador", "desktop", "laptop", "portatil", "notebook"],
+  laptop: ["computador", "pc", "notebook", "portatil"],
+  notebook: ["computador", "pc", "laptop", "portatil"],
+  portatil: ["laptop", "notebook", "computador", "pc"],
+  fones: ["auscultadores", "auriculares", "headset"],
+  auscultadores: ["fones", "auriculares", "headset"],
+  auriculares: ["fones", "auscultadores", "headset"],
+  tenis: ["sapatilhas", "sapatos"],
+  sapatilhas: ["tenis", "sapatos"],
+  camisola: ["camisa", "tshirt", "t-shirt"],
+  tshirt: ["camisola", "camisa", "t-shirt"],
+  camisa: ["camisola", "tshirt", "t-shirt"],
+};
+
+function normalizeToken(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function expandedTerms(q: string): string[][] {
+  const base = q
+    .trim()
+    .split(/\s+/)
+    .map((t) => normalizeToken(t))
+    .filter(Boolean)
+    .slice(0, 6);
+  return base.map((t) => {
+    const seen = new Set<string>([t]);
+    for (const s of TERM_SYNONYMS[t] ?? []) seen.add(normalizeToken(s));
+    return Array.from(seen).slice(0, 6);
+  });
+}
+
 function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {
     isActive: true,
@@ -33,20 +74,17 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   if (filters.categoryId) where.categoryId = filters.categoryId;
   if (filters.featuredOnly) where.isFeatured = true;
   if (filters.q) {
-    const terms = filters.q
-      .trim()
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean)
-      .slice(0, 6);
+    const terms = expandedTerms(filters.q);
     if (terms.length > 0) {
-      where.AND = terms.map((term) => ({
+      where.AND = terms.map((alts) => ({
         OR: [
-          { name: { contains: term, mode: "insensitive" } },
-          { description: { contains: term, mode: "insensitive" } },
-          { sku: { contains: term, mode: "insensitive" } },
-          { category: { is: { name: { contains: term, mode: "insensitive" } } } },
-          { shop: { is: { name: { contains: term, mode: "insensitive" } } } },
+          ...alts.flatMap((term) => [
+            { name: { contains: term, mode: "insensitive" as const } },
+            { description: { contains: term, mode: "insensitive" as const } },
+            { sku: { contains: term, mode: "insensitive" as const } },
+            { category: { is: { name: { contains: term, mode: "insensitive" as const } } } },
+            { shop: { is: { name: { contains: term, mode: "insensitive" as const } } } },
+          ]),
         ],
       }));
     }
@@ -123,11 +161,7 @@ export function productRepo() {
     suggestPublic(q: string, take: number) {
       const term = q.trim();
       if (!term) return Promise.resolve([]);
-      const terms = term
-        .split(/\s+/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 6);
+      const terms = expandedTerms(term).flat().slice(0, 12);
       const where: Prisma.ProductWhereInput = {
         ...buildWhere({}),
         ...(terms.length > 0

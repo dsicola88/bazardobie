@@ -23,6 +23,47 @@ type CreateProduct = z.infer<typeof createProductSchema>;
 type UpdateProduct = z.infer<typeof updateProductSchema>;
 type ProductListQuery = z.infer<typeof productListQuerySchema>;
 
+const TERM_SYNONYMS: Record<string, string[]> = {
+  telemovel: ["celular", "smartphone", "telefone", "iphone", "android"],
+  celular: ["telemovel", "smartphone", "telefone", "iphone", "android"],
+  smartphone: ["telemovel", "celular", "telefone", "iphone", "android"],
+  computador: ["pc", "desktop", "laptop", "portatil", "notebook"],
+  pc: ["computador", "desktop", "laptop", "portatil", "notebook"],
+  laptop: ["computador", "pc", "notebook", "portatil"],
+  notebook: ["computador", "pc", "laptop", "portatil"],
+  portatil: ["laptop", "notebook", "computador", "pc"],
+  fones: ["auscultadores", "auriculares", "headset"],
+  auscultadores: ["fones", "auriculares", "headset"],
+  auriculares: ["fones", "auscultadores", "headset"],
+  tenis: ["sapatilhas", "sapatos"],
+  sapatilhas: ["tenis", "sapatos"],
+  camisola: ["camisa", "tshirt", "t-shirt"],
+  tshirt: ["camisola", "camisa", "t-shirt"],
+  camisa: ["camisola", "tshirt", "t-shirt"],
+};
+
+function normalizeToken(v: string): string {
+  return v
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function expandedQueryTerms(raw: string): string[][] {
+  const base = raw
+    .trim()
+    .split(/\s+/)
+    .map((t) => normalizeToken(t))
+    .filter(Boolean)
+    .slice(0, 6);
+  return base.map((t) => {
+    const out = new Set<string>([t]);
+    for (const s of TERM_SYNONYMS[t] ?? []) out.add(normalizeToken(s));
+    return Array.from(out).slice(0, 6);
+  });
+}
+
 function displayPriceFrom(price: number, promo?: number): Decimal {
   const p = promo != null && promo > 0 ? promo : price;
   return new Decimal(String(p));
@@ -378,12 +419,8 @@ export const productService = {
       repo.listPublic(filters, sort, skip, take),
       repo.countPublic(filters),
     ]);
-    const qTerms = (query.q ?? "")
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-    const useSmartRanking = qTerms.length > 0 && (!sort || sort === "recentes");
+    const qTermSets = expandedQueryTerms(query.q ?? "");
+    const useSmartRanking = qTermSets.length > 0 && (!sort || sort === "recentes");
     const scored = useSmartRanking
       ? [...items].sort((a, b) => {
           const score = (p: (typeof items)[number]) => {
@@ -393,17 +430,19 @@ export const productService = {
             const shop = (p.shop?.name ?? "").toLowerCase();
             const text = `${name} ${sku} ${cat} ${shop}`.trim();
             let s = 0;
-            for (const t of qTerms) {
-              if (!t) continue;
-              if (name === t) s += 300;
-              if (name.startsWith(t)) s += 120;
-              if (sku === t) s += 200;
-              if (sku.startsWith(t)) s += 100;
-              if (name.includes(t)) s += 50;
-              if (sku.includes(t)) s += 35;
-              if (cat.includes(t)) s += 18;
-              if (shop.includes(t)) s += 14;
-              if (text.includes(t)) s += 8;
+            for (const alts of qTermSets) {
+              for (const t of alts) {
+                if (!t) continue;
+                if (name === t) s += 300;
+                if (name.startsWith(t)) s += 120;
+                if (sku === t) s += 200;
+                if (sku.startsWith(t)) s += 100;
+                if (name.includes(t)) s += 50;
+                if (sku.includes(t)) s += 35;
+                if (cat.includes(t)) s += 18;
+                if (shop.includes(t)) s += 14;
+                if (text.includes(t)) s += 8;
+              }
             }
             s += Math.min(40, Math.log10(Number(p.soldCount || 0) + 1) * 16);
             s += Math.min(20, Number(p.reviewCount || 0) * 0.8);
@@ -430,11 +469,7 @@ export const productService = {
     if (term.length < 2) return [];
     const repo = productRepo();
     const rows = await repo.suggestPublic(term, Math.min(Math.max(take, 1), 12));
-    const terms = term
-      .toLowerCase()
-      .split(/\s+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const termSets = expandedQueryTerms(term);
     const ranked = rows
       .map((r) => {
         const name = r.name.toLowerCase();
@@ -442,16 +477,18 @@ export const productService = {
         const cat = (r.category?.name ?? "").toLowerCase();
         const shop = (r.shop?.name ?? "").toLowerCase();
         let score = 0;
-        for (const t of terms) {
-          if (!t) continue;
-          if (name === t) score += 300;
-          if (name.startsWith(t)) score += 150;
-          if (sku === t) score += 210;
-          if (sku.startsWith(t)) score += 120;
-          if (name.includes(t)) score += 60;
-          if (sku.includes(t)) score += 40;
-          if (cat.includes(t)) score += 20;
-          if (shop.includes(t)) score += 16;
+        for (const alts of termSets) {
+          for (const t of alts) {
+            if (!t) continue;
+            if (name === t) score += 300;
+            if (name.startsWith(t)) score += 150;
+            if (sku === t) score += 210;
+            if (sku.startsWith(t)) score += 120;
+            if (name.includes(t)) score += 60;
+            if (sku.includes(t)) score += 40;
+            if (cat.includes(t)) score += 20;
+            if (shop.includes(t)) score += 16;
+          }
         }
         score += Math.min(40, Math.log10(Number(r.soldCount || 0) + 1) * 16);
         score += Math.min(20, Number(r.reviewCount || 0) * 0.8);
