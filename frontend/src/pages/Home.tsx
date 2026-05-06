@@ -78,10 +78,22 @@ export default function Home() {
           {hero ? (
             hero.linkUrl ? (
               <a href={hero.linkUrl}>
-                <img src={resolveMediaUrl(hero.imageUrl)} alt={hero.title ?? ""} />
+                <img
+                  src={resolveMediaUrl(hero.imageUrl)}
+                  alt={hero.title ?? ""}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                />
               </a>
             ) : (
-              <img src={resolveMediaUrl(hero.imageUrl)} alt={hero.title ?? ""} />
+              <img
+                src={resolveMediaUrl(hero.imageUrl)}
+                alt={hero.title ?? ""}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
             )
           ) : (
             <div

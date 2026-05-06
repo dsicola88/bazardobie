@@ -97,7 +97,7 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          <img src={resolveMediaUrl(item.product.images?.[0]?.url)} alt="" />
+                          <img src={resolveMediaUrl(item.product.images?.[0]?.url)} alt="" loading="lazy" decoding="async" />
                         </Link>
                         <div>
                           <Link to={`/product/${item.product.id}`} style={{ fontWeight: 600 }}>

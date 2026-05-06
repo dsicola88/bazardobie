@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 import sharp from "sharp";
 
 const MAX_EDGE = 2048;
@@ -38,9 +39,9 @@ export async function normalizeUploadedImage(
     : await resized.jpeg({ quality: 88, mozjpeg: true }).toBuffer();
 
   const ext = hasAlpha ? ".png" : ".jpg";
-  const outName = `${base}${ext}`;
+  const outName = `${base}-${crypto.randomUUID()}${ext}`;
   const finalPath = path.join(uploadDir, outName);
-  const tmpPath = path.join(uploadDir, `.tmp-${Date.now()}-${base}${ext}`);
+  const tmpPath = path.join(uploadDir, `.tmp-${Date.now()}-${crypto.randomUUID()}-${base}${ext}`);
 
   await fs.writeFile(tmpPath, buf);
   await fs.unlink(inputPath);

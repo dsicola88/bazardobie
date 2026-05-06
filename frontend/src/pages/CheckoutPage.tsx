@@ -1010,7 +1010,13 @@ export default function CheckoutPage() {
                   <li key={it.id}>
                     <div className="ae-checkout-sum-line">
                       {thumb ? (
-                        <img src={resolveMediaUrl(thumb)} alt="" className="ae-checkout-sum-line__img" />
+                        <img
+                          src={resolveMediaUrl(thumb)}
+                          alt=""
+                          className="ae-checkout-sum-line__img"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <div className="ae-checkout-sum-line__img ae-checkout-sum-line__ph" />
                       )}

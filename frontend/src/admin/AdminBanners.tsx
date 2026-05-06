@@ -254,7 +254,7 @@ export default function AdminBanners() {
                 <tr key={b.id}>
                   <td>
                     <a href={resolveMediaUrl(b.imageUrl)} target="_blank" rel="noopener noreferrer" className="ae-admin-thumb-link">
-                      <img src={resolveMediaUrl(b.imageUrl)} alt="" className="ae-admin-thumb" />
+                      <img src={resolveMediaUrl(b.imageUrl)} alt="" className="ae-admin-thumb" loading="lazy" decoding="async" />
                     </a>
                   </td>
                   <td>
@@ -349,7 +349,7 @@ export default function AdminBanners() {
                   </div>
                   {imageUrl.trim() ? (
                     <div className="ae-editor-preview">
-                      <img src={resolveMediaUrl(imageUrl.trim())} alt="Pré-visualização" />
+                      <img src={resolveMediaUrl(imageUrl.trim())} alt="Pré-visualização" loading="lazy" decoding="async" />
                     </div>
                   ) : null}
                 </div>

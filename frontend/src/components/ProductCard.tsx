@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { formatKz, formatRating } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
@@ -14,14 +15,18 @@ export type ProductCardData = {
   images: { url: string }[];
 };
 
-export function ProductCard({ p, className }: { p: ProductCardData; className?: string }) {
+function ProductCardInner({ p, className }: { p: ProductCardData; className?: string }) {
   const img = resolveMediaUrl(p.images[0]?.url);
   const hasPromo = p.promoPrice != null && p.promoPrice !== "";
 
   return (
     <Link to={`/product/${p.id}`} className={["ae-pcard", className].filter(Boolean).join(" ")}>
       <div className="ae-pcard__img-wrap">
-        {img ? <img src={img} alt="" className="ae-pcard__img" /> : <div className="ae-pcard__ph" />}
+        {img ? (
+          <img src={img} alt="" className="ae-pcard__img" loading="lazy" decoding="async" />
+        ) : (
+          <div className="ae-pcard__ph" />
+        )}
         {hasPromo ? <span className="ae-pcard__badge">Em promoção</span> : null}
       </div>
       <div className="ae-pcard__body">
@@ -45,3 +50,5 @@ export function ProductCard({ p, className }: { p: ProductCardData; className?: 
     </Link>
   );
 }
+
+export const ProductCard = memo(ProductCardInner);

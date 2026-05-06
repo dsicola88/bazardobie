@@ -2000,7 +2000,7 @@ a:hover {
     white-space: normal;
   }
   .ae-table-cart {
-    min-width: 520px;
+    min-width: 420px;
   }
 }
 .ae-table-cart__product {
@@ -2119,6 +2119,20 @@ a:hover {
 @media (max-width: 520px) {
   .ae-form--compact .ae-field-grid {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .ae-input-row {
+    flex-direction: column;
+  }
+  .ae-input-row > * {
+    width: 100%;
+  }
+  .ae-form .ae-field-grid,
+  .ae-form--compact .ae-field-grid,
+  .ae-field-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 .ae-field-hint {

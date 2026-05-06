@@ -175,7 +175,7 @@ export default function ProductPage() {
                 onClick={() => setMainImg(im.url)}
                 onMouseEnter={() => setMainImg(im.url)}
               >
-                <img src={resolveMediaUrl(im.url)} alt="" />
+                <img src={resolveMediaUrl(im.url)} alt="" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>
@@ -196,7 +196,7 @@ export default function ProductPage() {
               />
             ) : (
               <>
-                <img src={mainResolved} alt="" />
+                <img src={mainResolved} alt="" loading="eager" fetchPriority="high" decoding="async" />
                 <div
                   className="ae-pdp-loupe"
                   style={{ left: `${zoomPos.x}%`, top: `${zoomPos.y}%` }}
@@ -369,6 +369,8 @@ export default function ProductPage() {
                       <img
                         src={resolveMediaUrl(guarantees.fachadaParceiraUrl)}
                         alt="Fachada ou actividade do parceiro, revista pela plataforma"
+                        loading="lazy"
+                        decoding="async"
                       />
                       <figcaption className="ae-muted">Imagem facultada pelo parceiro e aceite após revisão da equipa.</figcaption>
                     </figure>
@@ -426,6 +428,8 @@ export default function ProductPage() {
                             <img
                               src={resolveMediaUrl(u)}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid var(--ae-line)" }}
                             />
                           </a>

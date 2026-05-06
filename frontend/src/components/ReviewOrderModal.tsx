@@ -145,7 +145,7 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
             <ul className="ae-review-uploads">
               {photoUrls.map((url) => (
                 <li key={url} className="ae-review-uploads__item">
-                  <img src={resolveMediaUrl(url)} alt="" />
+                  <img src={resolveMediaUrl(url)} alt="" loading="lazy" decoding="async" />
                   <button
                     type="button"
                     className="ae-review-uploads__rm"
