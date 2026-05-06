@@ -20,4 +20,4 @@ ENV UPLOAD_DIR=/app/uploads
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "mkdir -p \"$UPLOAD_DIR\" && npx prisma migrate deploy && node dist/server.js"]
+CMD ["sh", "-c", "mkdir -p \"$UPLOAD_DIR\" && npx prisma migrate deploy && npx prisma db seed && node dist/server.js"]
