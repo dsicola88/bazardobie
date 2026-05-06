@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const absoluteHttpUrl = z.string().url().refine((v) => /^https?:\/\//i.test(v), {
+  message: "Use URL http/https válida.",
+});
+const uploadRelativeUrl = z.string().regex(/^\/uploads\/[^\s]+$/i, {
+  message: "Use caminho relativo de upload válido (/uploads/...).",
+});
+const imageUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl]);
+
 export const createCategorySchema = z.object({
   name: z.string().min(2),
   parentId: z.string().nullable().optional(),
@@ -16,7 +24,7 @@ export const updateCategorySchema = z
 
 export const createBannerSchema = z.object({
   title: z.string().optional(),
-  imageUrl: z.string().url(),
+  imageUrl: imageUrlSchema,
   linkUrl: z.string().url().optional().or(z.literal("")),
   sortOrder: z.number().int().optional(),
   active: z.boolean().optional(),
@@ -25,7 +33,7 @@ export const createBannerSchema = z.object({
 export const updateBannerSchema = z
   .object({
     title: z.union([z.string(), z.null()]).optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: imageUrlSchema.optional(),
     linkUrl: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
     sortOrder: z.number().int().optional(),
     active: z.boolean().optional(),

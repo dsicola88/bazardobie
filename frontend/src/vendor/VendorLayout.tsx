@@ -44,6 +44,9 @@ export default function VendorLayout() {
           <NavLink to="/vendor/orders" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Encomendas
           </NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Notificações
+          </NavLink>
           <Link to="/">Loja pública</Link>
         </nav>
       </aside>

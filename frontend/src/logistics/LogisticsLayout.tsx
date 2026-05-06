@@ -33,6 +33,9 @@ export default function LogisticsLayout() {
           <NavLink to="/logistica" end className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Fila de pedidos
           </NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Notificações
+          </NavLink>
           <Link to="/">← Voltar à loja</Link>
         </nav>
       </aside>

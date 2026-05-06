@@ -29,6 +29,7 @@ import CheckoutPage from "./pages/CheckoutPage.js";
 import FavoritesPage from "./pages/FavoritesPage.js";
 import OrdersPage from "./pages/OrdersPage.js";
 import OrderTrackPage from "./pages/OrderTrackPage.js";
+import NotificationsPage from "./pages/NotificationsPage.js";
 import UnauthorizedPage from "./pages/UnauthorizedPage.js";
 import VendorLayout from "./vendor/VendorLayout.js";
 import VendorCredibility from "./vendor/VendorCredibility.js";
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:orderId/seguir" element={<OrderTrackPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
     </Routes>
   );

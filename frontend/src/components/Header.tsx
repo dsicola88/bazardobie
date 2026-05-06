@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { apiFetch, cartSessionHeaders, ensureCartSession } from "../api.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { buildSearchPath } from "../buildSearchPath.js";
+import { NotificationsBell } from "./NotificationsBell.js";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
 
@@ -174,6 +175,7 @@ export function Header() {
           </form>
 
           <div className="ae-mainhead__actions">
+            <NotificationsBell />
             {user?.role === "CLIENTE" && (
               <>
                 <Link to="/favorites" className="ae-ico-link ae-ico-link--fav">
