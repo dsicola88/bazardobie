@@ -168,6 +168,10 @@ async function main() {
     console.warn("Aviso: textos do site não foram inicializados (corra as migrações).", e);
   });
 
+  /** Catalogo geográfico (províncias + municípios) deve existir
+   *  mesmo que falhe a parte de frete por distância. */
+  await seedAngolaGeoCatalog();
+
   /** Faixas exemplo (distância em linha recta até ao ponto cadastrado da localidade). */
   try {
     const bandCount = await prisma.shippingDistanceBand.count();
@@ -180,8 +184,6 @@ async function main() {
         ],
       });
     }
-
-    await seedAngolaGeoCatalog();
 
     const upsertLoc = async (
       label: string,
