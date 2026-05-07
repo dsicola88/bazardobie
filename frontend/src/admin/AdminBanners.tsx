@@ -198,9 +198,10 @@ export default function AdminBanners() {
         <div>
           <h1 className="ae-admin-pro__title">Carrossel da página inicial</h1>
           <p className="ae-admin-pro__sub">
-            Banners em destaque no topo da loja — proporção recomendada <strong>16∶9</strong> ou <strong>3∶1</strong>,
-            imagens nítidas e leves. Use o upload para guardar ficheiros no servidor ou cole uma URL HTTPS
-            fidedigna.
+            Banners em destaque no topo da loja. Para ocupar toda a área com acabamento profissional, use{" "}
+            <strong>proporção 4:1</strong> e tamanho recomendado <strong>1920×480 px</strong> (mínimo{" "}
+            <strong>1600×400 px</strong>). Evite texto muito nas bordas. Use o upload para guardar ficheiros no
+            servidor ou cole uma URL HTTPS fidedigna.
           </p>
         </div>
         <div className="ae-admin-pro__actions">
@@ -329,7 +330,9 @@ export default function AdminBanners() {
 
                 <div>
                   <label htmlFor="bn-img">URL da imagem</label>
-                  <p className="ae-field-hint">HTTPS recomendado. Tamanho típico 1400–1920 px de largura.</p>
+                  <p className="ae-field-hint">
+                    HTTPS recomendado. Ideal: <strong>1920×480 px (4:1)</strong>. Mínimo: 1600×400 px.
+                  </p>
                   <div className="ae-input-row">
                     <input
                       id="bn-img"
