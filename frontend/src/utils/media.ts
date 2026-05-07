@@ -2,6 +2,10 @@ const API_BASE = (import.meta.env.VITE_API_BASE ?? "/api/v1").replace(/\/$/, "")
 const MEDIA_ORIGIN = String(import.meta.env.VITE_MEDIA_ORIGIN ?? "").trim().replace(/\/$/, "");
 
 function normalizeUploadsPath(p: string): string {
+  if (p.startsWith("uploads/")) return `/${p}`;
+  if (p.startsWith("./uploads/")) return `/${p.slice(2)}`;
+  if (p.startsWith("api/v1/uploads/")) return `/${p}`;
+  if (p.startsWith("./api/v1/uploads/")) return `/${p.slice(2)}`;
   if (p.startsWith("/api/v1/uploads/")) return p.slice("/api/v1".length);
   return p;
 }

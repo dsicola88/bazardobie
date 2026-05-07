@@ -20,6 +20,8 @@ export type ProductCardData = {
 function ProductCardInner({ p, className }: { p: ProductCardData; className?: string }) {
   const img = resolveMediaUrl(p.images[0]?.url);
   const hasPromo = p.promoPrice != null && p.promoPrice !== "";
+  const condition = p.condition ?? "NEW";
+  const conditionBadge = condition === "USED" ? "Usado" : condition === "REFURBISHED" ? "Recond." : "Novo";
 
   return (
     <Link to={`/product/${p.id}`} className={["ae-pcard", className].filter(Boolean).join(" ")}>
@@ -29,6 +31,7 @@ function ProductCardInner({ p, className }: { p: ProductCardData; className?: st
         ) : (
           <div className="ae-pcard__ph" />
         )}
+        <span className={`ae-pcard__cond ae-pcard__cond--${condition.toLowerCase()}`}>{conditionBadge}</span>
         {hasPromo ? <span className="ae-pcard__badge">Em promoção</span> : null}
       </div>
       <div className="ae-pcard__body">

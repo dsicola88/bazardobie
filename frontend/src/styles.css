@@ -681,6 +681,25 @@ a:hover {
   padding: 2px 6px;
   border-radius: 2px;
 }
+.ae-pcard__cond {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.ae-pcard__cond--new {
+  background: #0f7d42;
+}
+.ae-pcard__cond--used {
+  background: #8a5a18;
+}
+.ae-pcard__cond--refurbished {
+  background: #365ec9;
+}
 .ae-pcard__body,
 .card-product .body {
   padding: 9px 10px 11px;
