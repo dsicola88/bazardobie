@@ -316,21 +316,15 @@ async function seedDemoAeGalleryProduct() {
 
     const cat = await prisma.category.findUnique({ where: { slug: "geral-angola" } });
 
-    const galleryUrls = [
-      "https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=960&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=960&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1529175283574-c764e36d7baa?q=80&w=960&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=960&auto=format&fit=crop",
-    ] as const;
+    /** Caminhos `/demo/*` → ficheiros em `frontend/public/demo` (mesmo domínio no deploy). */
+    const galleryUrls = ["/demo/gallery-a.svg", "/demo/gallery-b.svg", "/demo/gallery-c.svg", "/demo/gallery-d.svg"] as const;
 
-    const rosadoM = galleryUrls[0];
-    const rosadoL =
-      "https://images.unsplash.com/photo-1618366712010-f4abe9ebcdc3?q=80&w=960&auto=format&fit=crop";
-    const verdeM = galleryUrls[1];
-    const verdeL =
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=960&auto=format&fit=crop";
-    const azulM = galleryUrls[2];
-    const azulL = galleryUrls[3];
+    const rosadoM = "/demo/v-rosado-m.svg";
+    const rosadoL = "/demo/v-rosado-l.svg";
+    const verdeM = "/demo/v-verde-m.svg";
+    const verdeL = "/demo/v-verde-l.svg";
+    const azulM = "/demo/v-azul-m.svg";
+    const azulL = "/demo/v-azul-l.svg";
 
     await prisma.product.create({
       data: {

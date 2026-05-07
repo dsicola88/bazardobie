@@ -7,7 +7,10 @@ const absoluteHttpUrl = z.string().url().refine((v) => /^https?:\/\//i.test(v), 
 const uploadRelativeUrl = z.string().regex(/^\/uploads\/[^\s]+$/i, {
   message: "Use caminho relativo de upload válido (/uploads/...).",
 });
-const mediaUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl]);
+const publicDemoAssetUrl = z.string().regex(/^\/demo\/[^\s]+\.(svg|png|jpe?g|webp|gif)$/i, {
+  message: "Asset público: use /demo/... (SVG, PNG, JPG, WEBP ou GIF).",
+});
+const mediaUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl, publicDemoAssetUrl]);
 const productConditionSchema = z.enum([
   "NEW",
   "USED",

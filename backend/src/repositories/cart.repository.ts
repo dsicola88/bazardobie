@@ -7,7 +7,7 @@ const cartWithItemsInclude = {
       product: {
         include: {
           shop: true,
-          images: { orderBy: { sortOrder: "asc" as const }, take: 1 },
+          images: { orderBy: { sortOrder: "asc" as const }, take: 8 },
           variants: true,
           deliveryOptions: true,
         },

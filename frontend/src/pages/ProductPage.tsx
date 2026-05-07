@@ -142,6 +142,7 @@ export default function ProductPage() {
   const [tab, setTab] = useState<Tab>("overview");
   const [zoomOn, setZoomOn] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [heroImgBroken, setHeroImgBroken] = useState(false);
   const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
   const seoDescription = product
     ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ.`
@@ -256,13 +257,29 @@ export default function ProductPage() {
     );
   }, [needVariant, product?.id, setSearchParams, variantId]);
 
+  useEffect(() => {
+    setHeroImgBroken(false);
+  }, [id, mainImg, variantId]);
+
   const stockAvailable = needVariant ? selectedVariant?.stock ?? 0 : product?.stock ?? 0;
   const outOfStock = stockAvailable <= 0;
   const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
   const meta = useMemo(() => product?.deliveryOptions.find((d) => d.id === deliveryId), [deliveryId, product]);
-  const selectedVariantImage = selectedVariant?.imageUrl ? resolveMediaUrl(selectedVariant.imageUrl) : "";
-  const firstVariantImage = product?.variants.find((v) => v.imageUrl?.trim())?.imageUrl ?? "";
-  const mainResolved = resolveMediaUrl(mainImg || product?.images[0]?.url || selectedVariantImage || firstVariantImage);
+  const mainResolved = useMemo(() => {
+    if (!product) return "";
+    const rawVariantFallback =
+      (selectedVariant?.imageUrl ?? "").trim() ||
+      product.variants.find((v) => v.imageUrl?.trim())?.imageUrl?.trim() ||
+      "";
+    const raw = (mainImg || "").trim() || (product.images[0]?.url ?? "").trim() || rawVariantFallback;
+    return resolveMediaUrl(raw);
+  }, [mainImg, product, selectedVariant]);
+
+  const displayMainResolved = useMemo(() => {
+    if (!mainResolved.trim()) return resolveMediaUrl("/demo/placeholder-product.svg");
+    if (heroImgBroken) return resolveMediaUrl("/demo/placeholder-product.svg");
+    return mainResolved;
+  }, [heroImgBroken, mainResolved]);
   const variantGallery = useMemo(() => {
     if (!product) return [];
     return product.variants
@@ -389,12 +406,19 @@ export default function ProductPage() {
                 controls
                 preload="metadata"
                 playsInline
-                poster={mainResolved}
+                poster={displayMainResolved}
                 style={{ width: "100%", borderRadius: 8, border: "1px solid var(--ae-line)", background: "#000" }}
               />
             ) : (
               <>
-                <img src={mainResolved} alt="" loading="eager" fetchPriority="high" decoding="async" />
+                <img
+                  src={displayMainResolved}
+                  alt=""
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  onError={() => setHeroImgBroken(true)}
+                />
                 <div
                   className="ae-pdp-loupe"
                   style={{ left: `${zoomPos.x}%`, top: `${zoomPos.y}%` }}
@@ -403,7 +427,7 @@ export default function ProductPage() {
                 <div
                   className="ae-pdp-zoom"
                   style={{
-                    backgroundImage: `url("${mainResolved}")`,
+                    backgroundImage: `url(${JSON.stringify(displayMainResolved)})`,
                     backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
                   }}
                   aria-hidden

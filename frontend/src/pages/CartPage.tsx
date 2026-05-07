@@ -42,6 +42,8 @@ export default function CartPage() {
   const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<
     Record<string, { productUrl?: string; variantThumbById?: Record<string, string> }>
   >({});
+  /** Clique nas miniaturas laterais — qual URL mostrar ao centro com zoom (estilo vitrine AE). */
+  const [cartHeroRawByLineId, setCartHeroRawByLineId] = useState<Record<string, string>>({});
 
   async function reload() {
     const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
@@ -79,16 +81,41 @@ export default function CartPage() {
     }
   }
 
-  function cartThumbCandidates(item: CartItem): string[] {
+  function uniqThumbRaws(parts: (string | undefined | null)[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (let x of parts) {
+      x = String(x ?? "").trim();
+      if (!x || seen.has(x)) continue;
+      seen.add(x);
+      out.push(x);
+    }
+    return out;
+  }
+
+  function baselineThumbRaws(item: CartItem): string[] {
     const extra = fallbackThumbByProductId[item.product.id];
     const byId = item.variant?.id ? extra?.variantThumbById?.[item.variant.id] : undefined;
-    const rawCandidates = [
-      item.variant?.imageUrl,
-      byId,
-      item.product.images?.[0]?.url,
-      extra?.productUrl,
-    ];
-    return Array.from(new Set(rawCandidates.map((u) => resolveMediaUrl(u)).filter(Boolean)));
+    const galleryUrls = (item.product.images ?? []).map((im) => im.url.trim()).filter(Boolean);
+    return uniqThumbRaws([item.variant?.imageUrl, byId, ...galleryUrls, extra?.productUrl]);
+  }
+
+  function heroRawForCartLine(item: CartItem): string | undefined {
+    const base = baselineThumbRaws(item);
+    const pick = cartHeroRawByLineId[item.id];
+    if (pick && base.includes(pick)) return pick;
+    return base[0];
+  }
+
+  function resolvedThumbCandidates(item: CartItem): string[] {
+    const hero = heroRawForCartLine(item);
+    const base = baselineThumbRaws(item);
+    const orderedRaw = uniqThumbRaws(hero ? [hero, ...base] : base);
+    return orderedRaw.map((u) => resolveMediaUrl(u)).filter(Boolean);
+  }
+
+  function cartThumbCandidates(item: CartItem): string[] {
+    return resolvedThumbCandidates(item);
   }
 
   function cartThumbUrl(item: CartItem): string {
@@ -103,7 +130,7 @@ export default function CartPage() {
     const missingProductIds = Array.from(
       new Set(
         cart.items
-          .filter((item) => !resolveMediaUrl(item.product.images?.[0]?.url || item.variant?.imageUrl))
+          .filter((item) => baselineThumbRaws(item).length === 0 && !fallbackThumbByProductId[item.product.id])
           .map((item) => item.product.id)
       )
     ).filter((pid) => !fallbackThumbByProductId[pid]);
@@ -119,8 +146,8 @@ export default function CartPage() {
               const raw = v.imageUrl?.trim();
               if (raw) variantThumbById[v.id] = raw;
             }
-            const fromProduct = resolveMediaUrl(p.images?.[0]?.url);
-            return { pid, productUrl: fromProduct || "", variantThumbById };
+            const fromProductRaw = (p.images ?? []).map((img) => img.url.trim()).filter(Boolean)[0] ?? "";
+            return { pid, productUrl: fromProductRaw || "", variantThumbById };
           })
           .catch(() => ({ pid, productUrl: "", variantThumbById: {} as Record<string, string> }))
       )
@@ -128,7 +155,10 @@ export default function CartPage() {
       const next: Record<string, { productUrl?: string; variantThumbById?: Record<string, string> }> = {};
       for (const r of rows) {
         if (r.status === "fulfilled" && (r.value.productUrl || Object.keys(r.value.variantThumbById).length > 0)) {
-          next[r.value.pid] = { productUrl: r.value.productUrl, variantThumbById: r.value.variantThumbById };
+          next[r.value.pid] = {
+            productUrl: r.value.productUrl || "",
+            variantThumbById: r.value.variantThumbById,
+          };
         }
       }
       if (Object.keys(next).length) {
@@ -173,27 +203,51 @@ export default function CartPage() {
                 {cart.items.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <div className="ae-table-cart__product">
-                        {cartThumbUrl(item) ? (
-                          <CartThumbWithZoom
-                            thumbUrl={cartThumbUrl(item)!}
-                            to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}
-                            onImgError={() =>
-                              setThumbTryIndexByItemId((prev) => {
-                                const options = cartThumbCandidates(item);
-                                const current = prev[item.id] ?? 0;
-                                const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
-                                if (nextIdx === current) return prev;
-                                return { ...prev, [item.id]: nextIdx };
-                              })
-                            }
-                          />
-                        ) : (
-                          <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}>
-                            <div className="ae-table-cart__product-ph" aria-hidden />
-                          </Link>
-                        )}
-                        <div>
+                      <div className="ae-table-cart__product ae-table-cart__product--gallery">
+                        <div className="ae-table-cart__thumb-col" aria-label="Miniaturas do produto">
+                          {baselineThumbRaws(item)
+                            .slice(0, 6)
+                            .map((raw) => {
+                              const active = heroRawForCartLine(item) === raw;
+                              return (
+                                <button
+                                  key={raw}
+                                  type="button"
+                                  title="Amplia ao centro · clique"
+                                  className={`ae-table-cart__side-thumb ${active ? "ae-on" : ""}`}
+                                  onClick={() =>
+                                    setCartHeroRawByLineId((prev) =>
+                                      prev[item.id] === raw ? prev : { ...prev, [item.id]: raw }
+                                    )
+                                  }
+                                >
+                                  <img src={resolveMediaUrl(raw)} alt="" loading="lazy" decoding="async" />
+                                </button>
+                              );
+                            })}
+                        </div>
+                        <div className="ae-table-cart__hero-wrap">
+                          {cartThumbUrl(item) ? (
+                            <CartThumbWithZoom
+                              thumbUrl={cartThumbUrl(item)!}
+                              to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}
+                              onImgError={() =>
+                                setThumbTryIndexByItemId((prev) => {
+                                  const options = cartThumbCandidates(item);
+                                  const current = prev[item.id] ?? 0;
+                                  const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
+                                  if (nextIdx === current) return prev;
+                                  return { ...prev, [item.id]: nextIdx };
+                                })
+                              }
+                            />
+                          ) : (
+                            <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}>
+                              <div className="ae-table-cart__product-ph" aria-hidden />
+                            </Link>
+                          )}
+                        </div>
+                        <div className="ae-table-cart__meta">
                           <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`} style={{ fontWeight: 600 }}>
                             {item.product.name}
                           </Link>
