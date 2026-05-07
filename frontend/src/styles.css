@@ -345,11 +345,16 @@ a:hover {
   text-align: center;
 }
 .ae-promo-bar__inner {
-  padding: 8px 16px;
+  padding: 6px 12px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .ae-promo-keywords {
-  margin-top: 6px;
+  margin-top: 0;
   overflow: hidden;
 }
 .ae-promo-keywords__track {
@@ -365,8 +370,8 @@ a:hover {
   background: #fff;
   color: #9a2f0e;
   border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 11px;
+  padding: 2px 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }

@@ -41,6 +41,16 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "",
     hint: "Deixe vazio para ocultar. Texto curto (ex.: campanha, envio grátis acima de X Kz).",
   },
+  "public.header_promo_enabled": {
+    label: "Ativar barra/popup promocional",
+    defaultValue: "false",
+    hint: "Se false, nada aparece no topo (nem barra nem popup).",
+  },
+  "public.header_promo_mode": {
+    label: "Modo da promo",
+    defaultValue: "bar",
+    hint: "bar = barra vermelha compacta. popup = mostra um popup ao visitar.",
+  },
   "public.header_promo_keywords": {
     label: "Barra promocional — palavras em destaque (separadas por |)",
     defaultValue: "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",

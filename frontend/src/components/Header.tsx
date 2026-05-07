@@ -101,6 +101,9 @@ export function Header() {
   const { content } = useSiteContent();
   const promo = (content["public.header_promo_text"] ?? "").trim();
   const promoKeywordsRaw = (content["public.header_promo_keywords"] ?? "").trim();
+  const promoEnabledRaw = (content["public.header_promo_enabled"] ?? "false").trim().toLowerCase();
+  const promoEnabled = promoEnabledRaw === "true" || promoEnabledRaw === "1" || promoEnabledRaw === "sim" || promoEnabledRaw === "yes";
+  const promoMode = (content["public.header_promo_mode"] ?? "bar").trim().toLowerCase(); // bar | popup
   const promoMarqueeRaw = (content["public.header_promo_marquee"] ?? "true").trim().toLowerCase();
   const promoMarqueeOn =
     promoMarqueeRaw === "true" || promoMarqueeRaw === "1" || promoMarqueeRaw === "sim" || promoMarqueeRaw === "yes";
@@ -108,7 +111,7 @@ export function Header() {
     .split("|")
     .map((x) => x.trim())
     .filter(Boolean)
-    .slice(0, 12);
+    .slice(0, 4); // mantém a barra simples (menos “textos demais”)
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
   const smartCategorySuggestions =
     q.trim().length >= 2
@@ -145,6 +148,29 @@ export function Header() {
 
   const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
   const searchRoots = roots.slice(0, 20);
+
+  const [promoPopupOpen, setPromoPopupOpen] = useState(false);
+
+  useEffect(() => {
+    if (!promoEnabled) return;
+    if (promoMode !== "popup") return;
+    if (!promo) return;
+
+    const kw = promoKeywords.join(",");
+    const rawKey = `promo_popup_seen_v1:${promo}|${kw}`;
+    const safeKey = rawKey.replace(/[^a-z0-9]+/gi, "_").slice(0, 120);
+    const seen = localStorage.getItem(safeKey) === "1";
+    if (seen) return;
+    setPromoPopupOpen(true);
+  }, [promoEnabled, promoMode, promo, promoKeywords]);
+
+  function closePromoPopup() {
+    const kw = promoKeywords.join(",");
+    const rawKey = `promo_popup_seen_v1:${promo}|${kw}`;
+    const safeKey = rawKey.replace(/[^a-z0-9]+/gi, "_").slice(0, 120);
+    localStorage.setItem(safeKey, "1");
+    setPromoPopupOpen(false);
+  }
 
   return (
     <header className="ae-header-wrap">
@@ -344,7 +370,7 @@ export function Header() {
         </div>
       </div>
 
-      {promo ? (
+      {promoEnabled && promoMode !== "popup" && promo ? (
         <div className="ae-promo-bar">
           <div className="ae-shell ae-promo-bar__inner">
             {promo}
@@ -366,6 +392,41 @@ export function Header() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {promoEnabled && promoMode === "popup" && promo && promoPopupOpen ? (
+        <div className="ae-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="ae-modal" style={{ maxWidth: 560 }}>
+            <div className="ae-modal__head">
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800 }}>Promoção</h2>
+              <button type="button" className="ae-modal__close" aria-label="Fechar" onClick={closePromoPopup}>
+                ×
+              </button>
+            </div>
+            <div className="ae-modal__body">
+              <p style={{ marginTop: 0, fontSize: 14, fontWeight: 900, color: "var(--ae-deep)" }}>{promo}</p>
+              {promoKeywords.length > 0 ? (
+                <div className="ae-promo-keywords" style={{ marginTop: 10 }}>
+                  <div className="ae-promo-keywords__track" style={{ flexWrap: "wrap", whiteSpace: "normal" }}>
+                    {promoKeywords.map((k) => (
+                      <span key={k} className="ae-promo-keywords__chip">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <p className="ae-muted" style={{ marginBottom: 0, marginTop: 12, fontSize: 12 }}>
+                Ajuste pelo admin: pode desativar esta promo em <strong>Conteúdo do site</strong>.
+              </p>
+            </div>
+            <div className="ae-modal__foot">
+              <button type="button" className="btn btn-primary" onClick={closePromoPopup}>
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

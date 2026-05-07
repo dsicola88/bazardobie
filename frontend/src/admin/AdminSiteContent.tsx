@@ -146,7 +146,7 @@ export default function AdminSiteContent() {
             <div key={it.key} className="ae-admin-field-block">
               <label htmlFor={it.key}>{it.label}</label>
               {it.hint ? <p className="ae-field-hint">{it.hint}</p> : null}
-              {it.value.length > 80 || it.key.includes("note") || it.key.includes("promo") ? (
+              {it.value.length > 80 || it.key.includes("note") || it.key.includes("checkout_transfer_instructions") || it.key.includes("promo_keywords") ? (
                 <textarea
                   id={it.key}
                   rows={it.key.includes("note") ? 4 : 2}
