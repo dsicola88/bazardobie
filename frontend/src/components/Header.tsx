@@ -119,6 +119,12 @@ export function Header() {
   const promoCtaText = (content["public.header_promo_cta_text"] ?? "Comprar agora").trim() || "Comprar agora";
   const promoPriceText = (content["public.header_promo_price"] ?? "").trim();
   const promoImage = resolveMediaUrl((content["public.header_promo_image_url"] ?? "").trim()) ?? "";
+  const categoryBarEnabledRaw = (content["public.header_category_bar_enabled"] ?? "true").trim().toLowerCase();
+  const categoryBarEnabled =
+    categoryBarEnabledRaw === "true" ||
+    categoryBarEnabledRaw === "1" ||
+    categoryBarEnabledRaw === "sim" ||
+    categoryBarEnabledRaw === "yes";
   const promoMarqueeRaw = (content["public.header_promo_marquee"] ?? "true").trim().toLowerCase();
   const promoMarqueeOn =
     promoMarqueeRaw === "true" || promoMarqueeRaw === "1" || promoMarqueeRaw === "sim" || promoMarqueeRaw === "yes";
@@ -256,6 +262,16 @@ export function Header() {
     }
   }
 
+  function applyCategoryFromSearchBar(id: string) {
+    setSearchCatId(id);
+    setCatOpen(false);
+    const term = q.trim();
+    const params = new URLSearchParams();
+    if (term) params.set("q", term);
+    if (id) params.set("categoryId", id);
+    nav(params.toString() ? `/search?${params.toString()}` : "/search");
+  }
+
   return (
     <header className="ae-header-wrap">
       <div className="ae-topbar">
@@ -333,10 +349,7 @@ export function Header() {
                     <button
                       type="button"
                       className={`ae-search__catitem ${searchCatId === "" ? "ae-search__catitem--on" : ""}`}
-                      onClick={() => {
-                        setSearchCatId("");
-                        setCatOpen(false);
-                      }}
+                      onClick={() => applyCategoryFromSearchBar("")}
                     >
                       Todas as categorias
                     </button>
@@ -345,10 +358,7 @@ export function Header() {
                         key={c.id}
                         type="button"
                         className={`ae-search__catitem ${searchCatId === c.id ? "ae-search__catitem--on" : ""}`}
-                        onClick={() => {
-                          setSearchCatId(c.id);
-                          setCatOpen(false);
-                        }}
+                        onClick={() => applyCategoryFromSearchBar(c.id)}
                       >
                         {c.name}
                       </button>
@@ -557,29 +567,31 @@ export function Header() {
         </div>
       ) : null}
 
-      <nav className="ae-catnav" aria-label="Categorias">
-        <div className="ae-shell ae-catnav__inner">
-          <Link to={buildSearchPath(loc.pathname, searchParams, { categoryId: null })} className="ae-catnav__all">
-            Catálogo completo
-          </Link>
-          <button
-            type="button"
-            className="ae-catnav__toggle"
-            aria-expanded={mobileCatsOpen}
-            onClick={() => setMobileCatsOpen((v) => !v)}
-          >
-            Categorias
-          </button>
-          <div className={`ae-catnav__strip ${mobileCatsOpen ? "ae-catnav__strip--open" : ""}`}>
-            {roots.map((c) => (
-              <Link key={c.id} to={buildSearchPath(loc.pathname, searchParams, { categoryId: c.id })}>
-                {c.name}
-              </Link>
-            ))}
-            <Link to={buildSearchPath(loc.pathname, searchParams, { sort: "mais_vendidos" })}>Mais vendidos</Link>
+      {categoryBarEnabled ? (
+        <nav className="ae-catnav" aria-label="Categorias">
+          <div className="ae-shell ae-catnav__inner">
+            <Link to={buildSearchPath(loc.pathname, searchParams, { categoryId: null })} className="ae-catnav__all">
+              Catálogo completo
+            </Link>
+            <button
+              type="button"
+              className="ae-catnav__toggle"
+              aria-expanded={mobileCatsOpen}
+              onClick={() => setMobileCatsOpen((v) => !v)}
+            >
+              Categorias
+            </button>
+            <div className={`ae-catnav__strip ${mobileCatsOpen ? "ae-catnav__strip--open" : ""}`}>
+              {roots.map((c) => (
+                <Link key={c.id} to={buildSearchPath(loc.pathname, searchParams, { categoryId: c.id })}>
+                  {c.name}
+                </Link>
+              ))}
+              <Link to={buildSearchPath(loc.pathname, searchParams, { sort: "mais_vendidos" })}>Mais vendidos</Link>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      ) : null}
     </header>
   );
 }

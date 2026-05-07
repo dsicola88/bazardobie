@@ -100,6 +100,11 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "true",
     hint: "true / 1 / sim para animar a faixa de promocoes estilo marketplace.",
   },
+  "public.header_category_bar_enabled": {
+    label: "Barra de categorias (topo) — activar",
+    defaultValue: "true",
+    hint: "true / 1 / sim para mostrar a barra de categorias abaixo do cabeçalho.",
+  },
   "public.home_hero_fallback": {
     label: "Mensagem quando não há banners",
       defaultValue: "BAZAR DO BIÉ — Marketplace nacional",

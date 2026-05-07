@@ -21,6 +21,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.header_promo_image_url": "",
   "public.header_promo_keywords": "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",
   "public.header_promo_marquee": "true",
+  "public.header_category_bar_enabled": "true",
   "public.home_hero_fallback": "BAZAR DO BIÉ — Marketplace nacional",
   "public.home_featured_title": "Sugestões em destaque",
   "public.home_bestsellers_title": "Mais vendidos",

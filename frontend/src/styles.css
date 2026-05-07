@@ -443,6 +443,8 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 40px;
 }
 .ae-catnav__all {
@@ -459,8 +461,7 @@ a:hover {
   flex-wrap: wrap;
   gap: 6px 16px;
   padding: 0 14px;
-  flex: 1;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
 }
 .ae-catnav__toggle {
