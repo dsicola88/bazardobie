@@ -20,6 +20,7 @@ export default function AdminSiteContent() {
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingPromoImage, setUploadingPromoImage] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -75,6 +76,22 @@ export default function AdminSiteContent() {
     }
   }
 
+  async function onUploadPromoImage(file: File | null) {
+    if (!token || !file) return;
+    setErr(null);
+    setMsg(null);
+    setUploadingPromoImage(true);
+    try {
+      const url = await uploadAdminFile(token, file);
+      setValues((prev) => ({ ...prev, "public.header_promo_image_url": url }));
+      setMsg("Imagem da promoção carregada. Clique em \"Guardar textos\" para publicar.");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Não foi possível carregar imagem da promoção.");
+    } finally {
+      setUploadingPromoImage(false);
+    }
+  }
+
   const promoEnabled = (values["public.header_promo_enabled"] ?? "").trim().toLowerCase() === "true";
   const promoMode = (values["public.header_promo_mode"] ?? "bar").trim().toLowerCase();
 
@@ -82,6 +99,14 @@ export default function AdminSiteContent() {
     "public.header_promo_enabled",
     "public.header_promo_mode",
     "public.header_promo_text",
+    "public.header_promo_start_at",
+    "public.header_promo_end_at",
+    "public.header_promo_priority",
+    "public.header_promo_position",
+    "public.header_promo_delay_seconds",
+    "public.header_promo_cta_text",
+    "public.header_promo_price",
+    "public.header_promo_image_url",
     "public.header_promo_keywords",
     "public.header_promo_marquee",
   ]);
@@ -193,6 +218,114 @@ export default function AdminSiteContent() {
                 />
               </div>
 
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
+                <div>
+                  <label htmlFor="public.header_promo_start_at" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Início
+                  </label>
+                  <input
+                    id="public.header_promo_start_at"
+                    type="datetime-local"
+                    value={values["public.header_promo_start_at"] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_start_at": e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="public.header_promo_end_at" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Fim
+                  </label>
+                  <input
+                    id="public.header_promo_end_at"
+                    type="datetime-local"
+                    value={values["public.header_promo_end_at"] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_end_at": e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="public.header_promo_delay_seconds" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Atraso (segundos)
+                  </label>
+                  <input
+                    id="public.header_promo_delay_seconds"
+                    type="number"
+                    min={0}
+                    max={180}
+                    value={values["public.header_promo_delay_seconds"] ?? "2"}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_delay_seconds": e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="public.header_promo_priority" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Prioridade
+                  </label>
+                  <input
+                    id="public.header_promo_priority"
+                    type="number"
+                    value={values["public.header_promo_priority"] ?? "50"}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_priority": e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label htmlFor="public.header_promo_position" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                  Posição do popup
+                </label>
+                <select
+                  id="public.header_promo_position"
+                  value={values["public.header_promo_position"] ?? "center"}
+                  onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_position": e.target.value }))}
+                >
+                  <option value="center">Centro</option>
+                  <option value="top-right">Topo à direita</option>
+                  <option value="bottom-right">Fundo à direita</option>
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 12 }}>
+                <div>
+                  <label htmlFor="public.header_promo_price" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Preço em destaque
+                  </label>
+                  <input
+                    id="public.header_promo_price"
+                    value={values["public.header_promo_price"] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_price": e.target.value }))}
+                    placeholder="Ex.: Kz 9.900"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="public.header_promo_cta_text" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    Texto do botão (CTA)
+                  </label>
+                  <input
+                    id="public.header_promo_cta_text"
+                    value={values["public.header_promo_cta_text"] ?? "Comprar agora"}
+                    onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_cta_text": e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>Imagem topo do card</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingPromoImage}
+                  onChange={(e) => void onUploadPromoImage(e.target.files?.[0] ?? null)}
+                />
+                {values["public.header_promo_image_url"] ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                    <img
+                      src={resolveMediaUrl(values["public.header_promo_image_url"])}
+                      alt="Pré-visualização da promoção"
+                      style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--ae-line)" }}
+                    />
+                    <code style={{ fontSize: 12 }}>{values["public.header_promo_image_url"]}</code>
+                  </div>
+                ) : null}
+              </div>
+
               <div style={{ marginTop: 12 }}>
                 <label
                   htmlFor="public.header_promo_keywords"
@@ -208,7 +341,7 @@ export default function AdminSiteContent() {
                   placeholder="Ex.: Super oferta|Entrega rápida|Preço baixo|Qualidade verificada"
                 />
                 <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 11 }}>
-                  Nota: na barra mostramos no máximo 4 chips para não ficar “texto demais”.
+                  Nota: na barra mostramos no máximo 4 chips para manter visual limpo.
                 </p>
               </div>
 

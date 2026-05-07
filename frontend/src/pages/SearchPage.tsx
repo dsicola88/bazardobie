@@ -92,6 +92,7 @@ export default function SearchPage() {
 
   function applyPrice() {
     const n = new URLSearchParams(params);
+    n.delete("visual");
     const minN = minPrice ? Number(minPrice) : undefined;
     const maxN = maxPrice ? Number(maxPrice) : undefined;
     const safeMin =
@@ -187,6 +188,7 @@ export default function SearchPage() {
             onChange={(e) => {
               const v = e.target.value;
               const n = new URLSearchParams(params);
+              n.delete("visual");
               if (v) n.set("minRating", v);
               else n.delete("minRating");
               setParams(n);
@@ -213,6 +215,7 @@ export default function SearchPage() {
                 className={sort === s.k ? "ae-on" : ""}
                 onClick={() => {
                   const n = new URLSearchParams(params);
+                  n.delete("visual");
                   n.set("sort", s.k);
                   setParams(n);
                 }}

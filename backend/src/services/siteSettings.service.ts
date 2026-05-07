@@ -51,6 +51,45 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "bar",
     hint: "bar = barra vermelha compacta. popup = mostra um popup ao visitar.",
   },
+  "public.header_promo_start_at": {
+    label: "Promo — início (ISO ou data)",
+    defaultValue: "",
+    hint: "Ex.: 2026-05-10 ou 2026-05-10T08:00:00Z. Vazio = inicia imediatamente.",
+  },
+  "public.header_promo_end_at": {
+    label: "Promo — fim (ISO ou data)",
+    defaultValue: "",
+    hint: "Ex.: 2026-05-15 ou 2026-05-15T23:59:00Z. Vazio = sem data final.",
+  },
+  "public.header_promo_priority": {
+    label: "Promo — prioridade",
+    defaultValue: "50",
+    hint: "Número inteiro (maior = mais importante). Útil para gestão de campanhas.",
+  },
+  "public.header_promo_position": {
+    label: "Promo — posição do popup",
+    defaultValue: "center",
+    hint: "center, top-right, bottom-right.",
+  },
+  "public.header_promo_delay_seconds": {
+    label: "Promo — atraso para aparecer (segundos)",
+    defaultValue: "2",
+    hint: "Tempo após o utilizador entrar na app para disparar o popup.",
+  },
+  "public.header_promo_cta_text": {
+    label: "Promo — texto do botão (CTA)",
+    defaultValue: "Comprar agora",
+  },
+  "public.header_promo_price": {
+    label: "Promo — preço em destaque",
+    defaultValue: "",
+    hint: "Ex.: Kz 9.900 ou US $1.33",
+  },
+  "public.header_promo_image_url": {
+    label: "Promo — imagem principal (URL ou /uploads/...)",
+    defaultValue: "",
+    hint: "Imagem do topo do card promocional.",
+  },
   "public.header_promo_keywords": {
     label: "Barra promocional — palavras em destaque (separadas por |)",
     defaultValue: "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",

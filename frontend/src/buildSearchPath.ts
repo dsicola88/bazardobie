@@ -9,6 +9,7 @@ export function buildSearchPath(
 ): string {
   if (pathname === "/search") {
     const n = new URLSearchParams(searchParams);
+    if (!Object.prototype.hasOwnProperty.call(patch, "visual")) n.delete("visual");
     for (const [k, v] of Object.entries(patch)) {
       if (v === undefined) continue;
       if (v === null || v === "") n.delete(k);
