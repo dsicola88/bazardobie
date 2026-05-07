@@ -22,7 +22,7 @@ export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [thumbLoadFailedIds, setThumbLoadFailedIds] = useState<Set<string>>(new Set());
 
   async function reload() {
     const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
@@ -98,24 +98,23 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          {(() => {
-                            const variantWithImage = item.variant as { imageUrl?: string | null } | undefined;
-                            const rawImage = item.product.images?.[0]?.url || variantWithImage?.imageUrl || "";
-                            const src = resolveMediaUrl(rawImage);
-                            const broken = brokenImages[item.id];
-                            if (!src || broken) {
-                              return <div className="ae-table-cart__ph" aria-hidden>Sem imagem</div>;
-                            }
-                            return (
-                              <img
-                                src={src}
-                                alt={item.product.name}
-                                loading="lazy"
-                                decoding="async"
-                                onError={() => setBrokenImages((prev) => ({ ...prev, [item.id]: true }))}
-                              />
-                            );
-                          })()}
+                          {resolveMediaUrl(item.product.images?.[0]?.url) && !thumbLoadFailedIds.has(item.id) ? (
+                            <img
+                              src={resolveMediaUrl(item.product.images?.[0]?.url)}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onError={() =>
+                                setThumbLoadFailedIds((prev) => {
+                                  const next = new Set(prev);
+                                  next.add(item.id);
+                                  return next;
+                                })
+                              }
+                            />
+                          ) : (
+                            <div className="ae-table-cart__product-ph" aria-hidden />
+                          )}
                         </Link>
                         <div>
                           <Link to={`/product/${item.product.id}`} style={{ fontWeight: 600 }}>

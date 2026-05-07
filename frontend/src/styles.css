@@ -2442,20 +2442,12 @@ a:hover {
   border: 1px solid var(--ae-line);
   background: #fafafa;
 }
-.ae-table-cart__ph {
+.ae-table-cart__product-ph {
   width: 64px;
   height: 64px;
   border-radius: 4px;
   border: 1px solid var(--ae-line);
-  background: #f6f7f9;
-  color: var(--ae-hint);
-  font-size: 10px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 4px;
+  background: repeating-linear-gradient(-45deg, #f0f0f0, #f0f0f0 6px, #fafafa 6px, #fafafa 12px);
 }
 .ae-table-cart__product > div {
   min-width: 0;
