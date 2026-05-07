@@ -189,9 +189,11 @@ a:hover {
   border: 2px solid #222;
   border-radius: 999px;
   height: 48px;
-  overflow: hidden;
+  overflow: visible;
   background: #fff;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  position: relative;
+  z-index: 40;
 }
 .ae-search-wrap {
   position: relative;
@@ -252,7 +254,7 @@ a:hover {
 }
 .ae-search-cat__menu {
   position: absolute;
-  z-index: 140;
+  z-index: 240;
   top: calc(100% + 6px);
   left: 0;
   width: min(300px, 92vw);
