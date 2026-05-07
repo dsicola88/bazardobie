@@ -50,7 +50,7 @@ export default function AdminSiteContent() {
         token,
         body: JSON.stringify({ settings: values }),
       });
-      setMsg("Textos públicos publicados com sucesso.");
+      setMsg("Configurações publicadas com sucesso.");
       void load();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro");
@@ -74,6 +74,17 @@ export default function AdminSiteContent() {
       setUploadingFavicon(false);
     }
   }
+
+  const promoEnabled = (values["public.header_promo_enabled"] ?? "").trim().toLowerCase() === "true";
+  const promoMode = (values["public.header_promo_mode"] ?? "bar").trim().toLowerCase();
+
+  const PROMO_KEYS = new Set([
+    "public.header_promo_enabled",
+    "public.header_promo_mode",
+    "public.header_promo_text",
+    "public.header_promo_keywords",
+    "public.header_promo_marquee",
+  ]);
 
   return (
     <div className="ae-admin-pro">
@@ -117,6 +128,113 @@ export default function AdminSiteContent() {
           Os valores por defeito aparecem em cinza sob cada campo. A faixa de confiança usa o formato{" "}
           <code>título|descrição</code>.
         </p>
+
+        <div className="ae-panel" style={{ marginBottom: 16, background: "#fff7f2", borderColor: "#f3c2b1" }}>
+          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Promoções (barra vermelha / popup)</h3>
+          <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>
+            Aqui controla se a <strong>barra vermelha</strong> aparece, ou se em vez disso deve aparecer um{" "}
+            <strong>popup</strong> ao visitar o site.
+          </p>
+
+          <label className="ae-check" htmlFor="public.header_promo_enabled">
+            <input
+              id="public.header_promo_enabled"
+              type="checkbox"
+              checked={promoEnabled}
+              onChange={(e) =>
+                setValues((prev) => ({
+                  ...prev,
+                  "public.header_promo_enabled": e.target.checked ? "true" : "false",
+                }))
+              }
+            />
+            <span>Ativar promo (barra/popup)</span>
+          </label>
+
+          {promoEnabled ? (
+            <>
+              <div style={{ marginTop: 10 }}>
+                <div className="ae-muted" style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                  Onde mostrar?
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  <label className="ae-check" htmlFor="promo_mode_bar">
+                    <input
+                      id="promo_mode_bar"
+                      type="radio"
+                      name="promo_mode"
+                      checked={promoMode !== "popup"}
+                      onChange={() => setValues((prev) => ({ ...prev, "public.header_promo_mode": "bar" }))}
+                    />
+                    <span>Barra vermelha (compacta)</span>
+                  </label>
+                  <label className="ae-check" htmlFor="promo_mode_popup">
+                    <input
+                      id="promo_mode_popup"
+                      type="radio"
+                      name="promo_mode"
+                      checked={promoMode === "popup"}
+                      onChange={() => setValues((prev) => ({ ...prev, "public.header_promo_mode": "popup" }))}
+                    />
+                    <span>Popup ao visitar</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label htmlFor="public.header_promo_text" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                  Mensagem principal
+                </label>
+                <input
+                  id="public.header_promo_text"
+                  value={values["public.header_promo_text"] ?? ""}
+                  onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_text": e.target.value }))}
+                  placeholder="Ex.: Promoções até 30% · entrega rápida"
+                />
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label
+                  htmlFor="public.header_promo_keywords"
+                  style={{ fontWeight: 700, display: "block", marginBottom: 6 }}
+                >
+                  Chips (separados por |)
+                </label>
+                <textarea
+                  id="public.header_promo_keywords"
+                  rows={2}
+                  value={values["public.header_promo_keywords"] ?? ""}
+                  onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_keywords": e.target.value }))}
+                  placeholder="Ex.: Super oferta|Entrega rápida|Preço baixo|Qualidade verificada"
+                />
+                <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 11 }}>
+                  Nota: na barra mostramos no máximo 4 chips para não ficar “texto demais”.
+                </p>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <label className="ae-check" htmlFor="public.header_promo_marquee">
+                  <input
+                    id="public.header_promo_marquee"
+                    type="checkbox"
+                    checked={(values["public.header_promo_marquee"] ?? "true").trim().toLowerCase() === "true"}
+                    onChange={(e) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        "public.header_promo_marquee": e.target.checked ? "true" : "false",
+                      }))
+                    }
+                  />
+                  <span>Animar chips (marquee)</span>
+                </label>
+              </div>
+            </>
+          ) : (
+            <p className="ae-muted" style={{ marginTop: 10, marginBottom: 0, fontSize: 12 }}>
+              Estado: <strong>desativado</strong>. A barra vermelha e o popup ficam ocultos.
+            </p>
+          )}
+        </div>
         <div className="ae-panel" style={{ marginBottom: 16, background: "#fafbfc" }}>
           <h3 style={{ marginTop: 0, marginBottom: 8 }}>Favicon do site</h3>
           <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>
@@ -143,6 +261,7 @@ export default function AdminSiteContent() {
         </div>
         <div className="ae-form" style={{ gap: 16 }}>
           {items.map((it) => {
+            if (PROMO_KEYS.has(it.key)) return null;
             const isBool =
               (it.defaultValue === "true" || it.defaultValue === "false") &&
               (it.key.startsWith("public.") || it.key.startsWith("logistics.") || it.key.includes("enabled"));

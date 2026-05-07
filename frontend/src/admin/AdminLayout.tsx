@@ -81,7 +81,7 @@ export default function AdminLayout() {
 
           <NavSep>Site público</NavSep>
           <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Textos da loja
+            Configurações
           </NavLink>
           <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Carrossel inicial
