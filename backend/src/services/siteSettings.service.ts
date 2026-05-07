@@ -80,6 +80,11 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     label: "Promo — texto do botão (CTA)",
     defaultValue: "Comprar agora",
   },
+  "public.header_promo_link_url": {
+    label: "Promo — link do botão (popup)",
+    defaultValue: "",
+    hint: "URL clicável do CTA no popup. Aceita https://... ou caminho interno iniciado por /.",
+  },
   "public.header_promo_price": {
     label: "Promo — preço em destaque",
     defaultValue: "",
@@ -142,6 +147,11 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     label: "Marketplace — permitir envio pela loja (vendedor)",
     defaultValue: "false",
     hint: "Por defeito só o envio BAZAR DO BIÉ (plataforma) está disponível nos anúncios. Defina como true / 1 / sim para as lojas poderem oferecer envio próprio.",
+  },
+  "public.vendor_help_channel_url": {
+    label: "Vendedor — link do canal de ajuda (dashboard/menu)",
+    defaultValue: "",
+    hint: "Ex.: canal no YouTube com vídeos de treinamento para vendedores.",
   },
   "public.checkout_transfer_instructions": {
     label: "Checkout — instruções para transferência bancária",

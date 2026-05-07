@@ -105,6 +105,7 @@ export default function AdminSiteContent() {
     "public.header_promo_position",
     "public.header_promo_delay_seconds",
     "public.header_promo_cta_text",
+    "public.header_promo_link_url",
     "public.header_promo_price",
     "public.header_promo_image_url",
     "public.header_promo_keywords",
@@ -304,6 +305,17 @@ export default function AdminSiteContent() {
                     onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_cta_text": e.target.value }))}
                   />
                 </div>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <label htmlFor="public.header_promo_link_url" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+                  Link do botão no popup
+                </label>
+                <input
+                  id="public.header_promo_link_url"
+                  value={values["public.header_promo_link_url"] ?? ""}
+                  onChange={(e) => setValues((prev) => ({ ...prev, "public.header_promo_link_url": e.target.value }))}
+                  placeholder="https://... ou /search?featured=1"
+                />
               </div>
 
               <div style={{ marginTop: 12 }}>

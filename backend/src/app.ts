@@ -19,6 +19,13 @@ export function createApp() {
 
   app.use("/uploads", express.static(path.resolve(env.UPLOAD_DIR)));
 
+  if (env.NODE_ENV === "production" && env.UPLOAD_DIR === "./uploads") {
+    console.warn(
+      "[uploads] UPLOAD_DIR está no valor padrão ./uploads em produção. " +
+        "Sem volume persistente (ou storage externo), imagens podem desaparecer após deploy/restart."
+    );
+  }
+
   app.use("/api/v1", routes);
 
   app.use(errorHandler);

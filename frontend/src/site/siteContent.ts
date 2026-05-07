@@ -17,6 +17,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.header_promo_position": "center",
   "public.header_promo_delay_seconds": "2",
   "public.header_promo_cta_text": "Comprar agora",
+  "public.header_promo_link_url": "",
   "public.header_promo_price": "",
   "public.header_promo_image_url": "",
   "public.header_promo_keywords": "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",
@@ -33,6 +34,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.product_cod_note":
     "Principal: pagamento na entrega (COD) — paga quando recebes. Opcional: transferência com comprovativo, Multicaixa / online quando a loja ou a plataforma o suportarem.",
   "public.allow_seller_delivery": "false",
+  "public.vendor_help_channel_url": "",
   "public.checkout_transfer_instructions":
     "Transfira o montante total do pedido para a conta que a loja ou o suporte BAZAR DO BIÉ lhe indicar (confirme sempre os dados por canal oficial).\n\nDepois de efectuar a transferência, guarde o comprovativo (PDF ou foto), coloque-o num serviço acessível por HTTPS (drive, etc.) e cole o link no campo «Link do comprovativo».",
 };

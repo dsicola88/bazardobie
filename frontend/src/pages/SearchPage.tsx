@@ -6,6 +6,7 @@ import { buildSearchPath } from "../buildSearchPath.js";
 import { useSeo } from "../seo/useSeo.js";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
+type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
 
 const sorts: { k: string; label: string }[] = [
   { k: "recentes", label: "Novidades" },
@@ -28,6 +29,7 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState(() => params.get("maxPrice") ?? "");
   const [cats, setCats] = useState<Category[]>([]);
   const [data, setData] = useState<{ items: ProductCardData[]; total: number } | null>(null);
+  const [visualRaw, setVisualRaw] = useState<ProductCardData[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
 
@@ -72,27 +74,53 @@ export default function SearchPage() {
       try {
         const raw = sessionStorage.getItem("ae_visual_search_v1");
         if (!raw) {
-          setData({ items: [], total: 0 });
+          setVisualRaw([]);
           return;
         }
-        const parsed = JSON.parse(raw) as { items?: ProductCardData[]; total?: number };
-        setData({
-          items: Array.isArray(parsed.items) ? parsed.items : [],
-          total: Number(parsed.total || (Array.isArray(parsed.items) ? parsed.items.length : 0)),
-        });
+        const parsed = JSON.parse(raw) as VisualSearchPayload;
+        setVisualRaw(Array.isArray(parsed.items) ? parsed.items : []);
       } catch {
-        setData({ items: [], total: 0 });
+        setVisualRaw([]);
       }
       return;
     }
+    setVisualRaw([]);
     void apiFetch<{ items: ProductCardData[]; total: number }>(`/products?${qs}`)
       .then(setData)
       .catch(() => setData({ items: [], total: 0 }));
   }, [qs, visualMode]);
 
+  const visualFiltered = useMemo(() => {
+    if (!visualMode) return null;
+    const term = q.trim().toLowerCase();
+    const minN = Number(minPrice);
+    const maxN = Number(maxPrice);
+    const ratingN = Number(minRating);
+    const items = visualRaw
+      .filter((p) => {
+        if (term && !p.name.toLowerCase().includes(term)) return false;
+        const priceN = Number(p.displayPrice ?? p.promoPrice ?? p.price ?? 0);
+        if (Number.isFinite(minN) && minPrice !== "" && priceN < minN) return false;
+        if (Number.isFinite(maxN) && maxPrice !== "" && priceN > maxN) return false;
+        if (Number.isFinite(ratingN) && ratingN >= 1 && Number(p.averageRating ?? 0) < ratingN) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const priceA = Number(a.displayPrice ?? a.promoPrice ?? a.price ?? 0);
+        const priceB = Number(b.displayPrice ?? b.promoPrice ?? b.price ?? 0);
+        if (sort === "preco_asc") return priceA - priceB;
+        if (sort === "preco_desc") return priceB - priceA;
+        if (sort === "mais_vendidos") return Number(b.soldCount || 0) - Number(a.soldCount || 0);
+        if (sort === "melhor_avaliados") return Number(b.averageRating || 0) - Number(a.averageRating || 0);
+        return Number(b.soldCount || 0) - Number(a.soldCount || 0);
+      });
+    return { items, total: items.length };
+  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, sort]);
+
+  const effectiveData = visualMode ? visualFiltered ?? { items: [], total: 0 } : data;
+
   function applyPrice() {
     const n = new URLSearchParams(params);
-    n.delete("visual");
     const minN = minPrice ? Number(minPrice) : undefined;
     const maxN = maxPrice ? Number(maxPrice) : undefined;
     const safeMin =
@@ -188,7 +216,6 @@ export default function SearchPage() {
             onChange={(e) => {
               const v = e.target.value;
               const n = new URLSearchParams(params);
-              n.delete("visual");
               if (v) n.set("minRating", v);
               else n.delete("minRating");
               setParams(n);
@@ -215,7 +242,6 @@ export default function SearchPage() {
                 className={sort === s.k ? "ae-on" : ""}
                 onClick={() => {
                   const n = new URLSearchParams(params);
-                  n.delete("visual");
                   n.set("sort", s.k);
                   setParams(n);
                 }}
@@ -224,7 +250,7 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-          <span className="ae-toolbar__count">{data?.total ?? "—"} resultado(s)</span>
+          <span className="ae-toolbar__count">{effectiveData?.total ?? "—"} resultado(s)</span>
         </div>
         {visualMode ? (
           <p className="ae-catalog-note">Pesquisa por imagem activa. Para nova imagem, use o ícone de câmara na barra de pesquisa.</p>
@@ -233,15 +259,15 @@ export default function SearchPage() {
           Apresentamos apenas artigos homologados e lojas com registo comercial válido na plataforma. Referências pendentes
           de validação não são exibidas.
         </p>
-        {!data ? (
+        {!effectiveData ? (
           <p className="ae-muted">A consultar o catálogo…</p>
-        ) : data.items.length === 0 ? (
+        ) : effectiveData.items.length === 0 ? (
           <div className="page-panel ae-empty-center ae-search-empty">
             Não foram encontradas referências com os critérios seleccionados. Ajuste filtros ou o termo de pesquisa.
           </div>
         ) : (
           <section className="ae-grid">
-            {data.items.map((p) => (
+            {effectiveData.items.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}
           </section>

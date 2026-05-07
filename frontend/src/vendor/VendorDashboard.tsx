@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz } from "../utils/format.js";
+import { useSiteContent } from "../site/SiteContentContext.js";
 
 const DASH_PRODUCT_SAMPLE = 300;
 const DASH_ORD_SAMPLE = 24;
@@ -65,6 +66,9 @@ type ShopMeBrief = {
 
 export default function VendorDashboard() {
   const { token } = useAuth();
+  const { content } = useSiteContent();
+  const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
+  const helpChannelSafe = /^https?:\/\//i.test(helpChannel) ? helpChannel : "";
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [productTotal, setProductTotal] = useState(0);
   const [orders, setOrders] = useState<OrderMini[]>([]);
@@ -284,6 +288,17 @@ export default function VendorDashboard() {
           Abrir catálogo
         </Link>
       </header>
+      {helpChannelSafe ? (
+        <section className="ae-admin-next" style={{ marginBottom: 14 }}>
+          <div>
+            <h2>Como usar a app (vídeos)</h2>
+            <p>Aceda ao canal de formação para aprender a operar o painel, produtos, encomendas e expedições.</p>
+          </div>
+          <a className="btn btn-primary" href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
+            Abrir canal de apoio
+          </a>
+        </section>
+      ) : null}
       <section className="ae-panel" style={{ marginBottom: 14 }}>
         <div className="ae-admin-toolbar">
           <strong style={{ marginRight: 8 }}>Filtro do painel:</strong>

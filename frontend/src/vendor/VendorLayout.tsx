@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { useSiteContent } from "../site/SiteContentContext.js";
 
 export default function VendorLayout() {
   const { user, loading } = useAuth();
+  const { content } = useSiteContent();
   const [sideCollapsed, setSideCollapsed] = useState(false);
+  const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
+  const helpChannelSafe = /^https?:\/\//i.test(helpChannel) ? helpChannel : "";
 
   if (loading) {
     return (
@@ -49,6 +53,11 @@ export default function VendorLayout() {
           <NavLink to="/notifications" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Notificações
           </NavLink>
+          {helpChannelSafe ? (
+            <a href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
+              Aprender a usar a app
+            </a>
+          ) : null}
           <Link to="/">Loja pública</Link>
         </nav>
       </aside>

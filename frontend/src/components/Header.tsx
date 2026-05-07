@@ -130,6 +130,7 @@ export function Header() {
   const promoDelayRaw = (content["public.header_promo_delay_seconds"] ?? "2").trim();
   const promoCtaText = (content["public.header_promo_cta_text"] ?? "Comprar agora").trim() || "Comprar agora";
   const promoPriceText = (content["public.header_promo_price"] ?? "").trim();
+  const promoLinkRaw = (content["public.header_promo_link_url"] ?? "").trim();
   const promoImage = resolveMediaUrl((content["public.header_promo_image_url"] ?? "").trim()) ?? "";
   const categoryBarEnabledRaw = (content["public.header_category_bar_enabled"] ?? "true").trim().toLowerCase();
   const categoryBarEnabled =
@@ -191,6 +192,12 @@ export function Header() {
       : promoPosition === "bottom-right"
         ? "ae-promo-card-wrap--bottom-right"
         : "ae-promo-card-wrap--center";
+  const promoLink = useMemo(() => {
+    if (!promoLinkRaw) return "";
+    if (promoLinkRaw.startsWith("/")) return promoLinkRaw;
+    if (/^https?:\/\//i.test(promoLinkRaw)) return promoLinkRaw;
+    return "";
+  }, [promoLinkRaw]);
   const promoScheduleActive = useMemo(() => {
     const now = Date.now();
     if (promoStartRaw) {
@@ -557,9 +564,21 @@ export function Header() {
                     ))}
                   </div>
                 ) : null}
-                <button type="button" className="ae-promo-card__cta" onClick={closePromoPopup}>
-                  {promoCtaText}
-                </button>
+                {promoLink ? (
+                  <a
+                    className="ae-promo-card__cta"
+                    href={promoLink}
+                    target={promoLink.startsWith("/") ? undefined : "_blank"}
+                    rel={promoLink.startsWith("/") ? undefined : "noreferrer noopener"}
+                    onClick={closePromoPopup}
+                  >
+                    {promoCtaText}
+                  </a>
+                ) : (
+                  <button type="button" className="ae-promo-card__cta" onClick={closePromoPopup}>
+                    {promoCtaText}
+                  </button>
+                )}
               </div>
             </div>
           </div>
