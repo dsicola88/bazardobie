@@ -8,7 +8,11 @@ export default function VendorLayout() {
   const { content } = useSiteContent();
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
-  const helpChannelSafe = /^https?:\/\//i.test(helpChannel) ? helpChannel : "";
+  const helpChannelSafe = !helpChannel
+    ? ""
+    : /^https?:\/\//i.test(helpChannel)
+      ? helpChannel
+      : `https://${helpChannel}`;
 
   if (loading) {
     return (

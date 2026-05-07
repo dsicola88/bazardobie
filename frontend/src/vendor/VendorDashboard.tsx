@@ -68,7 +68,11 @@ export default function VendorDashboard() {
   const { token } = useAuth();
   const { content } = useSiteContent();
   const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
-  const helpChannelSafe = /^https?:\/\//i.test(helpChannel) ? helpChannel : "";
+  const helpChannelSafe = !helpChannel
+    ? ""
+    : /^https?:\/\//i.test(helpChannel)
+      ? helpChannel
+      : `https://${helpChannel}`;
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [productTotal, setProductTotal] = useState(0);
   const [orders, setOrders] = useState<OrderMini[]>([]);

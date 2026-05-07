@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { useSiteContent } from "../site/SiteContentContext.js";
 
 function NavSep({ children }: { children: ReactNode }) {
   return <div className="ae-v-nav__label">{children}</div>;
@@ -8,7 +9,14 @@ function NavSep({ children }: { children: ReactNode }) {
 
 export default function AdminLayout() {
   const { user, loading } = useAuth();
+  const { content } = useSiteContent();
   const [sideCollapsed, setSideCollapsed] = useState(false);
+  const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
+  const helpChannelSafe = !helpChannel
+    ? ""
+    : /^https?:\/\//i.test(helpChannel)
+      ? helpChannel
+      : `https://${helpChannel}`;
   if (loading) {
     return (
       <div className="ae-vendor-shell ae-admin-shell">
@@ -86,6 +94,11 @@ export default function AdminLayout() {
           <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Carrossel inicial
           </NavLink>
+          {helpChannelSafe ? (
+            <a href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
+              Canal de ajuda (vídeos)
+            </a>
+          ) : null}
 
           <div className="ae-v-nav__foot">
             <Link to="/">← Voltar ao site público</Link>
