@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
-import { apiFetch, cartSessionHeaders, ensureCartSession } from "../api.js";
+import { apiFetch, apiUrl, cartSessionHeaders, ensureCartSession } from "../api.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { NotificationsBell } from "./NotificationsBell.js";
+import type { ProductCardData } from "./ProductCard.js";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
 type SearchSuggestProduct = { id: string; name: string };
@@ -25,6 +26,10 @@ export function Header() {
   const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
   const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
   const [searchCatId, setSearchCatId] = useState<string>("");
+  const [catOpen, setCatOpen] = useState(false);
+  const [imgSearchBusy, setImgSearchBusy] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const catMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     ensureCartSession();
@@ -148,6 +153,10 @@ export function Header() {
 
   const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
   const searchRoots = roots.slice(0, 20);
+  const selectedSearchCatLabel = useMemo(() => {
+    if (!searchCatId) return "Todas as categorias";
+    return searchRoots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias";
+  }, [searchCatId, searchRoots]);
 
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
 
@@ -170,6 +179,48 @@ export function Header() {
     const safeKey = rawKey.replace(/[^a-z0-9]+/gi, "_").slice(0, 120);
     localStorage.setItem(safeKey, "1");
     setPromoPopupOpen(false);
+  }
+
+  useEffect(() => {
+    function onDocClick(ev: MouseEvent) {
+      if (!catMenuRef.current) return;
+      if (ev.target instanceof Node && !catMenuRef.current.contains(ev.target)) setCatOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  async function onPickSearchImage(file?: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    setImgSearchBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(apiUrl("/products/visual-search"), {
+        method: "POST",
+        body: fd,
+      });
+      const raw = await res.text();
+      const data = raw ? (JSON.parse(raw) as { items?: ProductCardData[]; total?: number; error?: string }) : {};
+      if (!res.ok) throw new Error(data.error || "Falha na pesquisa por imagem");
+      sessionStorage.setItem(
+        "ae_visual_search_v1",
+        JSON.stringify({
+          at: Date.now(),
+          total: Number(data.total || 0),
+          items: Array.isArray(data.items) ? data.items : [],
+          fileName: file.name,
+        })
+      );
+      nav("/search?visual=1");
+    } catch {
+      sessionStorage.removeItem("ae_visual_search_v1");
+      nav("/search?visual=1");
+    } finally {
+      setImgSearchBusy(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
   }
 
   return (
@@ -233,19 +284,45 @@ export function Header() {
 
           <div className="ae-search-wrap">
             <form className="ae-search" onSubmit={onSearch}>
-              <select
-                className="ae-search__cat"
-                aria-label="Filtrar por categoria"
-                value={searchCatId}
-                onChange={(e) => setSearchCatId(e.target.value)}
-              >
-                <option value="">Todas as categorias</option>
-                {searchRoots.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="ae-search__catwrap" ref={catMenuRef}>
+                <button
+                  type="button"
+                  className="ae-search__cat"
+                  aria-label="Filtrar por categoria"
+                  aria-expanded={catOpen}
+                  onClick={() => setCatOpen((v) => !v)}
+                >
+                  <span>{selectedSearchCatLabel}</span>
+                  <span aria-hidden>▾</span>
+                </button>
+                {catOpen ? (
+                  <div className="ae-search__catmenu">
+                    <button
+                      type="button"
+                      className={`ae-search__catitem ${searchCatId === "" ? "ae-search__catitem--on" : ""}`}
+                      onClick={() => {
+                        setSearchCatId("");
+                        setCatOpen(false);
+                      }}
+                    >
+                      Todas as categorias
+                    </button>
+                    {searchRoots.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`ae-search__catitem ${searchCatId === c.id ? "ae-search__catitem--on" : ""}`}
+                        onClick={() => {
+                          setSearchCatId(c.id);
+                          setCatOpen(false);
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               <input
                 type="search"
                 className="ae-search__input"
@@ -281,6 +358,23 @@ export function Header() {
                 }}
                 autoComplete="off"
               />
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => void onPickSearchImage(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                className="ae-search__imgbtn"
+                aria-label="Pesquisar por imagem"
+                title="Pesquisar por imagem"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={imgSearchBusy}
+              >
+                {imgSearchBusy ? "…" : "📷"}
+              </button>
               <button type="submit" className="ae-search__btn" aria-label="Pesquisar no catálogo">
                 🔎
               </button>

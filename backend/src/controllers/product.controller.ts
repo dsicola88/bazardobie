@@ -64,6 +64,14 @@ export const productController = {
     res.json({ items: out });
   }),
 
+  visualSearch: asyncHandler(async (req, res) => {
+    const file = req.file;
+    if (!file?.buffer) throw new HttpError(400, "Imagem em falta (campo image)");
+    const take = Math.min(Math.max(Number(req.query.take) || 24, 1), 36);
+    const out = await productService.visualSearch(file.buffer, take);
+    res.json(out);
+  }),
+
   setFeatured: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");

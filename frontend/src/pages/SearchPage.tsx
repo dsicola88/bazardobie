@@ -17,6 +17,7 @@ const sorts: { k: string; label: string }[] = [
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
+  const visualMode = params.get("visual") === "1";
   const q = params.get("q") ?? "";
   const categoryId = params.get("categoryId") ?? "";
   const sort = params.get("sort") ?? "recentes";
@@ -37,8 +38,10 @@ export default function SearchPage() {
     ? `Resultados para "${q.trim()}" no marketplace BAZAR DO BIÉ. Compare preços, avaliações e prazos de envio em Angola.`
     : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
   useSeo({
-    title: seoTitle,
-    description: seoDescription,
+    title: visualMode ? "Pesquisa por imagem — BAZAR DO BIÉ" : seoTitle,
+    description: visualMode
+      ? "Resultados visuais com base na imagem enviada. Refine por filtros para encontrar o produto ideal."
+      : seoDescription,
     canonicalPath: `/search${window.location.search}`,
   });
 
@@ -65,10 +68,27 @@ export default function SearchPage() {
   }, [q, categoryId, sort, minRating, minPrice, maxPrice]);
 
   useEffect(() => {
+    if (visualMode) {
+      try {
+        const raw = sessionStorage.getItem("ae_visual_search_v1");
+        if (!raw) {
+          setData({ items: [], total: 0 });
+          return;
+        }
+        const parsed = JSON.parse(raw) as { items?: ProductCardData[]; total?: number };
+        setData({
+          items: Array.isArray(parsed.items) ? parsed.items : [],
+          total: Number(parsed.total || (Array.isArray(parsed.items) ? parsed.items.length : 0)),
+        });
+      } catch {
+        setData({ items: [], total: 0 });
+      }
+      return;
+    }
     void apiFetch<{ items: ProductCardData[]; total: number }>(`/products?${qs}`)
       .then(setData)
       .catch(() => setData({ items: [], total: 0 }));
-  }, [qs]);
+  }, [qs, visualMode]);
 
   function applyPrice() {
     const n = new URLSearchParams(params);
@@ -203,6 +223,9 @@ export default function SearchPage() {
           </div>
           <span className="ae-toolbar__count">{data?.total ?? "—"} resultado(s)</span>
         </div>
+        {visualMode ? (
+          <p className="ae-catalog-note">Pesquisa por imagem activa. Para nova imagem, use o ícone de câmara na barra de pesquisa.</p>
+        ) : null}
         <p className="ae-catalog-note">
           Apresentamos apenas artigos homologados e lojas com registo comercial válido na plataforma. Referências pendentes
           de validação não são exibidas.

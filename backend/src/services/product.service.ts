@@ -1,6 +1,9 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import type { Prisma, TipoEntrega } from "@prisma/client";
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { z } from "zod";
+import sharp from "sharp";
 import { productRepo } from "../repositories/product.repository.js";
 import type { ProductSortKey } from "../repositories/product.repository.js";
 import { shopRepo } from "../repositories/shop.repository.js";
@@ -14,6 +17,7 @@ import {
 import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { notificationService } from "./notification.service.js";
+import { env } from "../config/env.js";
 
 const deliveryOptionsPublicInclude = {
   include: { logisticsPartner: { select: { id: true, name: true } } },
@@ -106,6 +110,60 @@ function optionPartnerForWrite(d: {
   if (d.tipoEntrega !== "PLATAFORMA") return null;
   const t = d.logisticsPartnerId?.trim();
   return t || null;
+}
+
+function rgbDistance(a: [number, number, number], b: [number, number, number]): number {
+  const dr = a[0] - b[0];
+  const dg = a[1] - b[1];
+  const db = a[2] - b[2];
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+async function toRgbVector(buffer: Buffer): Promise<[number, number, number]> {
+  const stats = await sharp(buffer, { failOn: "none" }).resize(160, 160, { fit: "cover" }).removeAlpha().stats();
+  const r = stats.channels[0]?.mean;
+  const g = stats.channels[1]?.mean;
+  const b = stats.channels[2]?.mean;
+  if (r == null || g == null || b == null) throw new Error("invalid image stats");
+  return [r, g, b];
+}
+
+async function fetchProductImageBuffer(rawUrl: string): Promise<Buffer | null> {
+  const t = (rawUrl || "").trim();
+  if (!t) return null;
+  if (t.startsWith("http://") || t.startsWith("https://")) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 4500);
+    try {
+      const r = await fetch(t, { signal: ac.signal });
+      if (!r.ok) return null;
+      const arr = await r.arrayBuffer();
+      return Buffer.from(arr);
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  let u = t;
+  if (u.startsWith(env.PUBLIC_BASE_URL)) {
+    try {
+      u = new URL(u).pathname;
+    } catch {
+      return null;
+    }
+  }
+  u = u.replace(/^\/api\/v1/, "");
+  if (!u.startsWith("/uploads/")) return null;
+  const baseUploadDir = path.resolve(env.UPLOAD_DIR);
+  const local = path.resolve(baseUploadDir, u.replace(/^\/uploads\//, ""));
+  if (!local.startsWith(baseUploadDir)) return null;
+  try {
+    return await fs.readFile(local);
+  } catch {
+    return null;
+  }
 }
 
 export const productService = {
@@ -501,6 +559,71 @@ export const productService = {
       .sort((a, b) => b.score - a.score)
       .slice(0, Math.min(Math.max(take, 1), 12));
     return ranked.map((r) => ({ id: r.id, name: r.name }));
+  },
+
+  async visualSearch(imageBuffer: Buffer, take = 24) {
+    const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
+    const inputVec = await toRgbVector(imageBuffer);
+    const candidates = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        moderationStatus: "APPROVED",
+        shop: { isApproved: true, tier1CompletedAt: { not: null } },
+      },
+      orderBy: [{ soldCount: "desc" }, { createdAt: "desc" }],
+      take: 220,
+      include: {
+        shop: true,
+        category: true,
+        images: { orderBy: { sortOrder: "asc" }, take: 1 },
+        deliveryOptions: deliveryOptionsPublicInclude,
+      },
+    });
+
+    const scored: Array<{ d: number; p: (typeof candidates)[number] }> = [];
+    for (const p of candidates) {
+      const first = p.images[0]?.url;
+      if (!first) continue;
+      const buf = await fetchProductImageBuffer(first);
+      if (!buf) continue;
+      try {
+        const vec = await toRgbVector(buf);
+        scored.push({ d: rgbDistance(inputVec, vec), p });
+      } catch {
+        continue;
+      }
+    }
+
+    const ordered = scored
+      .sort((a, b) => {
+        if (a.d !== b.d) return a.d - b.d;
+        return Number(b.p.soldCount || 0) - Number(a.p.soldCount || 0);
+      })
+      .slice(0, Math.min(Math.max(take, 1), 36))
+      .map((x) => x.p)
+      .map((p) => {
+        const deliveryOptions = allowSeller
+          ? p.deliveryOptions
+          : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
+        return {
+          ...p,
+          deliveryOptions,
+          shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
+        };
+      });
+
+    const items = ordered.map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      promoPrice: p.promoPrice,
+      displayPrice: p.displayPrice,
+      soldCount: Number(p.soldCount || 0),
+      averageRating: p.averageRating,
+      reviewCount: Number(p.reviewCount || 0),
+      images: p.images.map((img) => ({ url: img.url })),
+    }));
+    return { items, total: items.length };
   },
 
   async setFeatured(_adminUserId: string, productId: string, isFeatured: boolean) {

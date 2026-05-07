@@ -30,6 +30,8 @@ const allowedMime = new Set([
   "application/pdf",
 ]);
 
+const allowedImageMime = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
 export const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -63,5 +65,32 @@ export function runUpload(req: Request, res: Response, next: NextFunction): void
       return;
     }
     next(new HttpError(400, "Upload inválido — verifique o formato e o tamanho.", { cause: err }));
+  });
+}
+
+const imageSearchUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const m = String(file.mimetype || "").toLowerCase();
+    if (allowedImageMime.has(m)) {
+      cb(null, true);
+      return;
+    }
+    cb(new HttpError(400, "Imagem inválida — use JPG, PNG, WebP ou GIF (máx. 8 MB)."));
+  },
+}).single("image");
+
+export function runImageSearchUpload(req: Request, res: Response, next: NextFunction): void {
+  imageSearchUpload(req, res, (err: unknown) => {
+    if (!err) {
+      next();
+      return;
+    }
+    if (err instanceof HttpError) {
+      next(err);
+      return;
+    }
+    next(new HttpError(400, "Upload de imagem inválido para pesquisa visual.", { cause: err }));
   });
 }

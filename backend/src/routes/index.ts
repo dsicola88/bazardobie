@@ -22,7 +22,7 @@ import { freightController } from "../controllers/freight.controller.js";
 import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
 import { chatController } from "../controllers/chat.controller.js";
 import { adminAuditLog } from "../middlewares/adminAuditLog.js";
-import { runUpload } from "../middlewares/upload.js";
+import { runImageSearchUpload, runUpload } from "../middlewares/upload.js";
 import { notificationService } from "../services/notification.service.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 
@@ -77,6 +77,7 @@ r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);
 r.get("/products/suggest", productController.suggest);
+r.post("/products/visual-search", runImageSearchUpload, productController.visualSearch);
 r.get("/products/:productId/reviews", reviewController.list);
 r.get("/products/:id", productController.get);
 
