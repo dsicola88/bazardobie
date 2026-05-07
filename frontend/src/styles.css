@@ -219,6 +219,74 @@ a:hover {
   cursor: pointer;
   border-radius: 0;
 }
+.ae-search-cat {
+  position: relative;
+  flex: 0 0 190px;
+  min-width: 170px;
+  max-width: 240px;
+}
+.ae-search__catbtn {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-right: 1px solid #e6e6e6;
+  background: #f7f7f7;
+  color: #222;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ae-search__catbtn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ae-search__catbtn-caret {
+  font-size: 11px;
+  opacity: 0.72;
+}
+.ae-search-cat__menu {
+  position: absolute;
+  z-index: 140;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, 92vw);
+  max-height: min(56vh, 420px);
+  overflow: auto;
+  background: #efefef;
+  border: 1px solid #cfd4de;
+  border-radius: 8px;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+}
+.ae-search-cat__item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  color: #222;
+}
+.ae-search-cat__item:hover,
+.ae-search-cat__item--on {
+  background: #fff;
+}
+.ae-search-cat__icon {
+  width: 14px;
+  text-align: center;
+  opacity: 0.75;
+}
 .ae-search__imgbtn {
   border: none;
   background: #fff;
@@ -478,12 +546,29 @@ a:hover {
     max-width: 100%;
   }
   .ae-search__cat {
-    width: auto;
-    max-width: 160px;
-    flex: 0 0 120px;
-    min-width: 120px;
+    width: 0;
+    max-width: 0;
+    min-width: 0;
+    flex: 0 0 0;
+    padding: 0;
+    border: none;
+  }
+  .ae-search-cat {
+    flex: 0 0 124px;
+    min-width: 124px;
+    max-width: 124px;
+  }
+  .ae-search__catbtn {
     font-size: 11px;
     padding: 0 8px;
+  }
+  .ae-search-cat__menu {
+    position: fixed;
+    left: 10px;
+    right: auto;
+    top: 88px;
+    width: min(300px, calc(100vw - 20px));
+    max-height: calc(100vh - 120px);
   }
   .ae-search__imgbtn {
     min-width: 40px;

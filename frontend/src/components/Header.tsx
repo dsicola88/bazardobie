@@ -27,8 +27,10 @@ export function Header() {
   const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
   const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
   const [searchCatId, setSearchCatId] = useState<string>("");
+  const [catOpen, setCatOpen] = useState(false);
   const [imgSearchBusy, setImgSearchBusy] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const catMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     ensureCartSession();
@@ -42,12 +44,25 @@ export function Header() {
 
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
-    if (loc.pathname === "/search") setQ(params.get("q") ?? "");
+    if (loc.pathname === "/search") {
+      setQ(params.get("q") ?? "");
+      setSearchCatId(params.get("categoryId") ?? "");
+    }
   }, [loc.pathname, loc.search]);
 
   useEffect(() => {
     setMobileCatsOpen(false);
+    setCatOpen(false);
   }, [loc.pathname, loc.search]);
+  useEffect(() => {
+    function onDocClick(ev: MouseEvent) {
+      if (!catMenuRef.current) return;
+      if (ev.target instanceof Node && !catMenuRef.current.contains(ev.target)) setCatOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
 
   async function refreshCart() {
     try {
@@ -248,6 +263,7 @@ export function Header() {
 
   function applyCategoryFromSearchBar(id: string) {
     setSearchCatId(id);
+    setCatOpen(false);
     const term = q.trim();
     const params = new URLSearchParams();
     if (term) params.set("q", term);
@@ -316,19 +332,39 @@ export function Header() {
 
           <div className="ae-search-wrap">
             <form className="ae-search" onSubmit={onSearch}>
-              <select
-                className="ae-search__cat"
-                aria-label="Filtrar por categoria"
-                value={searchCatId}
-                onChange={(e) => applyCategoryFromSearchBar(e.target.value)}
-              >
-                <option value="">Todas as categorias</option>
-                {searchRoots.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="ae-search-cat" ref={catMenuRef}>
+                <button
+                  type="button"
+                  className="ae-search__catbtn"
+                  aria-label="Filtrar por categoria"
+                  aria-expanded={catOpen}
+                  onClick={() => setCatOpen((v) => !v)}
+                >
+                  <span className="ae-search__catbtn-label">
+                    {searchRoots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias"}
+                  </span>
+                  <span aria-hidden className="ae-search__catbtn-caret">▾</span>
+                </button>
+                {catOpen ? (
+                  <div className="ae-search-cat__menu" role="listbox" aria-label="Lista de categorias">
+                    <button type="button" className="ae-search-cat__item" onClick={() => applyCategoryFromSearchBar("")}>
+                      <span className="ae-search-cat__icon">☰</span>
+                      <span>Todas as categorias</span>
+                    </button>
+                    {searchRoots.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`ae-search-cat__item ${searchCatId === c.id ? "ae-search-cat__item--on" : ""}`}
+                        onClick={() => applyCategoryFromSearchBar(c.id)}
+                      >
+                        <span className="ae-search-cat__icon">•</span>
+                        <span>{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               <input
                 type="search"
                 className="ae-search__input"
