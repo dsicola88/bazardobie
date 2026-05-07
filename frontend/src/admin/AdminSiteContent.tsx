@@ -155,6 +155,23 @@ export default function AdminSiteContent() {
           <code>título|descrição</code>.
         </p>
 
+        <div className="ae-panel" style={{ marginBottom: 16, background: "#f5f9ff", borderColor: "#b8d4ec" }}>
+          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Ajuda para vendedores (canal de vídeos)</h3>
+          <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>
+            O link configurado aqui aparece na área do vendedor em <strong>Aprender a usar a app</strong> e abre
+            diretamente o canal de vídeos.
+          </p>
+          <label htmlFor="public.vendor_help_channel_url" style={{ fontWeight: 700, display: "block", marginBottom: 6 }}>
+            URL do canal
+          </label>
+          <input
+            id="public.vendor_help_channel_url"
+            value={values["public.vendor_help_channel_url"] ?? ""}
+            onChange={(e) => setValues((prev) => ({ ...prev, "public.vendor_help_channel_url": e.target.value }))}
+            placeholder="https://www.youtube.com/@seu-canal"
+          />
+        </div>
+
         <div className="ae-panel" style={{ marginBottom: 16, background: "#fff7f2", borderColor: "#f3c2b1" }}>
           <h3 style={{ marginTop: 0, marginBottom: 8 }}>Promoções (barra vermelha / popup)</h3>
           <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>

@@ -13,6 +13,7 @@ export default function VendorLayout() {
     : /^https?:\/\//i.test(helpChannel)
       ? helpChannel
       : `https://${helpChannel}`;
+  const helpChannelHref = helpChannelSafe || "https://www.youtube.com/";
 
   if (loading) {
     return (
@@ -57,11 +58,9 @@ export default function VendorLayout() {
           <NavLink to="/notifications" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Notificações
           </NavLink>
-          {helpChannelSafe ? (
-            <a href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
-              Aprender a usar a app
-            </a>
-          ) : null}
+          <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
+            Aprender a usar a app
+          </a>
           <Link to="/">Loja pública</Link>
         </nav>
       </aside>

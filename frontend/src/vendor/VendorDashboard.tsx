@@ -73,6 +73,7 @@ export default function VendorDashboard() {
     : /^https?:\/\//i.test(helpChannel)
       ? helpChannel
       : `https://${helpChannel}`;
+  const helpChannelHref = helpChannelSafe || "https://www.youtube.com/";
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [productTotal, setProductTotal] = useState(0);
   const [orders, setOrders] = useState<OrderMini[]>([]);
@@ -292,17 +293,15 @@ export default function VendorDashboard() {
           Abrir catálogo
         </Link>
       </header>
-      {helpChannelSafe ? (
-        <section className="ae-admin-next" style={{ marginBottom: 14 }}>
-          <div>
-            <h2>Como usar a app (vídeos)</h2>
-            <p>Aceda ao canal de formação para aprender a operar o painel, produtos, encomendas e expedições.</p>
-          </div>
-          <a className="btn btn-primary" href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
-            Abrir canal de apoio
-          </a>
-        </section>
-      ) : null}
+      <section className="ae-admin-next" style={{ marginBottom: 14 }}>
+        <div>
+          <h2>Como usar a app (vídeos)</h2>
+          <p>Aceda ao canal de formação para aprender a operar o painel, produtos, encomendas e expedições.</p>
+        </div>
+        <a className="btn btn-primary" href={helpChannelHref} target="_blank" rel="noreferrer noopener">
+          Abrir canal de apoio
+        </a>
+      </section>
       <section className="ae-panel" style={{ marginBottom: 14 }}>
         <div className="ae-admin-toolbar">
           <strong style={{ marginRight: 8 }}>Filtro do painel:</strong>

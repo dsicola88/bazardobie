@@ -17,6 +17,7 @@ export default function AdminLayout() {
     : /^https?:\/\//i.test(helpChannel)
       ? helpChannel
       : `https://${helpChannel}`;
+  const helpChannelHref = helpChannelSafe || "https://www.youtube.com/";
   if (loading) {
     return (
       <div className="ae-vendor-shell ae-admin-shell">
@@ -94,11 +95,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Carrossel inicial
           </NavLink>
-          {helpChannelSafe ? (
-            <a href={helpChannelSafe} target="_blank" rel="noreferrer noopener">
-              Canal de ajuda (vídeos)
-            </a>
-          ) : null}
+          <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
+            Canal de ajuda (vídeos)
+          </a>
 
           <div className="ae-v-nav__foot">
             <Link to="/">← Voltar ao site público</Link>
