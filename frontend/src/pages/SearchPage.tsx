@@ -22,6 +22,7 @@ export default function SearchPage() {
   const q = params.get("q") ?? "";
   const categoryId = params.get("categoryId") ?? "";
   const sort = params.get("sort") ?? "recentes";
+  const condition = params.get("condition") ?? "";
   const minRating = params.get("minRating") ?? "";
   const minPriceParam = params.get("minPrice");
   const maxPriceParam = params.get("maxPrice");
@@ -61,13 +62,14 @@ export default function SearchPage() {
     if (q.trim()) p.set("q", q.trim());
     if (categoryId) p.set("categoryId", categoryId);
     if (sort) p.set("sort", sort);
+    if (condition) p.set("condition", condition);
     const mn = Number(minRating);
     if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
     if (minPrice) p.set("minPrice", minPrice);
     if (maxPrice) p.set("maxPrice", maxPrice);
     p.set("take", "36");
     return p.toString();
-  }, [q, categoryId, sort, minRating, minPrice, maxPrice]);
+  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice]);
 
   useEffect(() => {
     if (visualMode) {
@@ -103,6 +105,7 @@ export default function SearchPage() {
         if (Number.isFinite(minN) && minPrice !== "" && priceN < minN) return false;
         if (Number.isFinite(maxN) && maxPrice !== "" && priceN > maxN) return false;
         if (Number.isFinite(ratingN) && ratingN >= 1 && Number(p.averageRating ?? 0) < ratingN) return false;
+        if (condition && (p.condition ?? "") !== condition) return false;
         return true;
       })
       .sort((a, b) => {
@@ -115,7 +118,7 @@ export default function SearchPage() {
         return Number(b.soldCount || 0) - Number(a.soldCount || 0);
       });
     return { items, total: items.length };
-  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, sort]);
+  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, condition, sort]);
 
   const effectiveData = visualMode ? visualFiltered ?? { items: [], total: 0 } : data;
 
@@ -207,6 +210,25 @@ export default function SearchPage() {
           <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
             Aplicar
           </button>
+          </div>
+          <div className="ae-filters__group">
+          <strong>Condição</strong>
+          <select
+            className="ae-filters__select"
+            value={condition}
+            onChange={(e) => {
+              const v = e.target.value;
+              const n = new URLSearchParams(params);
+              if (v) n.set("condition", v);
+              else n.delete("condition");
+              setParams(n);
+            }}
+          >
+            <option value="">Qualquer</option>
+            <option value="NEW">Novo</option>
+            <option value="USED">Usado</option>
+            <option value="REFURBISHED">Recondicionado</option>
+          </select>
           </div>
           <div className="ae-filters__group">
           <strong>Avaliação mín.</strong>

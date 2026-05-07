@@ -13,6 +13,7 @@ type FavoriteRow = {
   product: {
     id: string;
     name: string;
+    condition?: string | null;
     price: string;
     promoPrice?: string | null;
     displayPrice: string;
@@ -30,6 +31,7 @@ function toCardData(row: FavoriteRow): ProductCardData {
   return {
     id: p.id,
     name: p.name,
+    condition: p.condition,
     price: p.price,
     promoPrice: p.promoPrice,
     displayPrice: p.displayPrice,

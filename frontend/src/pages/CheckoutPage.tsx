@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -13,6 +14,7 @@ type CheckoutCartItem = {
   product: {
     id: string;
     name: string;
+    condition?: string | null;
     price: string;
     promoPrice?: string | null;
     images?: { url: string }[];
@@ -1023,6 +1025,7 @@ export default function CheckoutPage() {
                       <div className="ae-checkout-sum-line__meta">
                         <div className="ae-checkout-sum-line__name">{it.product.name}</div>
                         <div className="ae-muted" style={{ fontSize: 12 }}>
+                          {productConditionLabel(it.product.condition)} ·{" "}
                           Qtd. {it.quantity} · envio{" "}
                           {it.productDeliveryOption.tipoEntrega === "PLATAFORMA"
                             ? it.productDeliveryOption.logisticsPartner

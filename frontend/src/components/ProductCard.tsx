@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { formatKz, formatRating } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 
 export type ProductCardData = {
   id: string;
@@ -9,6 +10,7 @@ export type ProductCardData = {
   price: string | number;
   promoPrice?: string | number | null;
   displayPrice: string | number;
+  condition?: string | null;
   soldCount: number;
   averageRating?: string | number | null;
   reviewCount: number;
@@ -40,6 +42,9 @@ function ProductCardInner({ p, className }: { p: ProductCardData; className?: st
           ) : (
             <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações publicadas</span>
           )}
+        </div>
+        <div className="ae-muted" style={{ fontSize: 12 }}>
+          {productConditionLabel(p.condition)}
         </div>
         <div className="ae-pcard__price-row">
           <span className="ae-pcard__price">{formatKz(p.displayPrice)}</span>

@@ -191,6 +191,8 @@ export const productService = {
       description: input.description,
       demoVideoUrl: input.demoVideoUrl?.trim() || undefined,
       sku: input.sku,
+      condition: input.condition,
+      conditionDetail: input.conditionDetail?.trim() || undefined,
       price: String(input.price),
       promoPrice:
         input.promoPrice != null && input.promoPrice > 0 ? String(input.promoPrice) : undefined,
@@ -363,6 +365,8 @@ export const productService = {
         ...(input.description !== undefined && { description: input.description }),
         ...(input.demoVideoUrl !== undefined && { demoVideoUrl: input.demoVideoUrl?.trim() || null }),
         ...(input.sku !== undefined && { sku: input.sku }),
+        ...(input.condition !== undefined && { condition: input.condition }),
+        ...(input.conditionDetail !== undefined && { conditionDetail: input.conditionDetail?.trim() || null }),
         ...(input.price !== undefined && { price: String(input.price) }),
         ...(input.promoPrice !== undefined && {
           promoPrice:
@@ -463,6 +467,7 @@ export const productService = {
     const filters = {
       q: query.q,
       categoryId: query.categoryId,
+      condition: query.condition,
       minPrice: query.minPrice ?? undefined,
       maxPrice: query.maxPrice ?? undefined,
       minRating: query.minRating ?? undefined,
@@ -615,6 +620,8 @@ export const productService = {
     const items = ordered.map((p) => ({
       id: p.id,
       name: p.name,
+      condition: p.condition,
+      conditionDetail: p.conditionDetail,
       price: p.price,
       promoPrice: p.promoPrice,
       displayPrice: p.displayPrice,

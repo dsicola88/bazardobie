@@ -7,6 +7,7 @@ import { ProductReportModal } from "../components/ProductReportModal.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
 
 type Img = { url: string };
@@ -24,6 +25,8 @@ type Delivery = {
 type ProductDetail = {
   id: string;
   name: string;
+  condition?: string | null;
+  conditionDetail?: string | null;
   description: string;
   demoVideoUrl?: string | null;
   price: string;
@@ -264,6 +267,14 @@ export default function ProductPage() {
 
           <div className="ae-buybox">
             <h1 className="ae-buybox__title">{product.name}</h1>
+            <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
+              Condição: <strong>{productConditionLabel(product.condition)}</strong>
+            </p>
+            {product.condition === "USED" && product.conditionDetail?.trim() ? (
+              <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
+                Estado informado pelo vendedor: {product.conditionDetail.trim()}
+              </p>
+            ) : null}
             <div className="ae-buybox__reviews">
               {product.reviewCount > 0 && product.averageRating != null ? (
                 <>

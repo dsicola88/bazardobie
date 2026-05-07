@@ -4,11 +4,13 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 
 type Row = {
   id: string;
   name: string;
   sku: string;
+  condition?: string | null;
   stock: number;
   soldCount: number;
   isActive: boolean;
@@ -187,6 +189,7 @@ export default function VendorProducts() {
             <tr>
               <th>Designação</th>
               <th>SKU</th>
+              <th>Condição</th>
               <th>Preço corrente</th>
               <th>Existências</th>
               <th>Vendas</th>
@@ -209,6 +212,7 @@ export default function VendorProducts() {
                   <span>{p.name}</span>
                 </td>
                 <td style={{ fontFamily: "monospace", fontSize: 11 }}>{p.sku}</td>
+                <td>{productConditionLabel(p.condition)}</td>
                 <td>{formatKz(p.displayPrice)}</td>
                 <td>{p.stock}</td>
                 <td>{p.soldCount}</td>

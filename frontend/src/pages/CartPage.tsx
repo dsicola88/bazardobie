@@ -4,11 +4,12 @@ import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 
 type CartItem = {
   id: string;
   quantity: number;
-  product: { id: string; name: string; stock: number; images?: { url: string }[] };
+  product: { id: string; name: string; condition?: string | null; stock: number; images?: { url: string }[] };
   variant?: { id: string; name?: string | null; stock: number; imageUrl?: string | null } | null;
   productDeliveryOption: {
     tipoEntrega: string;
@@ -22,7 +23,8 @@ export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [thumbLoadFailedIds, setThumbLoadFailedIds] = useState<Set<string>>(new Set());
+  const [thumbLoadFailedByItemAndUrl, setThumbLoadFailedByItemAndUrl] = useState<Set<string>>(new Set());
+  const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<Record<string, string>>({});
 
   async function reload() {
     const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
@@ -61,9 +63,41 @@ export default function CartPage() {
   }
 
   function cartThumbUrl(item: CartItem): string {
-    const raw = item.product.images?.[0]?.url || item.variant?.imageUrl || "";
+    const raw =
+      item.product.images?.[0]?.url || item.variant?.imageUrl || fallbackThumbByProductId[item.product.id] || "";
     return resolveMediaUrl(raw);
   }
+
+  useEffect(() => {
+    if (!cart?.items.length) return;
+    const missingProductIds = Array.from(
+      new Set(
+        cart.items
+          .filter((item) => !resolveMediaUrl(item.product.images?.[0]?.url || item.variant?.imageUrl))
+          .map((item) => item.product.id)
+      )
+    ).filter((pid) => !fallbackThumbByProductId[pid]);
+    if (missingProductIds.length === 0) return;
+    void Promise.allSettled(
+      missingProductIds.map((pid) =>
+        apiFetch<{ images?: { url: string }[]; variants?: { imageUrl?: string | null }[] }>(`/products/${pid}`)
+          .then((p) => {
+            const fromProduct = resolveMediaUrl(p.images?.[0]?.url);
+            const fromVariant = resolveMediaUrl(p.variants?.find((v) => v.imageUrl?.trim())?.imageUrl);
+            return { pid, thumb: fromProduct || fromVariant || "" };
+          })
+          .catch(() => ({ pid, thumb: "" }))
+      )
+    ).then((rows) => {
+      const next: Record<string, string> = {};
+      for (const r of rows) {
+        if (r.status === "fulfilled" && r.value.thumb) next[r.value.pid] = r.value.thumb;
+      }
+      if (Object.keys(next).length) {
+        setFallbackThumbByProductId((prev) => ({ ...prev, ...next }));
+      }
+    });
+  }, [cart, fallbackThumbByProductId]);
 
   if (!cart) return <p className="ae-muted">A carregar o seu carrinho…</p>;
 
@@ -103,16 +137,16 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          {cartThumbUrl(item) && !thumbLoadFailedIds.has(item.id) ? (
+                          {cartThumbUrl(item) && !thumbLoadFailedByItemAndUrl.has(`${item.id}::${cartThumbUrl(item)}`) ? (
                             <img
                               src={cartThumbUrl(item)}
                               alt=""
                               loading="lazy"
                               decoding="async"
                               onError={() =>
-                                setThumbLoadFailedIds((prev) => {
+                                setThumbLoadFailedByItemAndUrl((prev) => {
                                   const next = new Set(prev);
-                                  next.add(item.id);
+                                  next.add(`${item.id}::${cartThumbUrl(item)}`);
                                   return next;
                                 })
                               }
@@ -125,6 +159,9 @@ export default function CartPage() {
                           <Link to={`/product/${item.product.id}`} style={{ fontWeight: 600 }}>
                             {item.product.name}
                           </Link>
+                          <div className="ae-muted" style={{ fontSize: 12 }}>
+                            {productConditionLabel(item.product.condition)}
+                          </div>
                           {item.variant?.name ? <div className="ae-muted">{item.variant.name}</div> : null}
                         </div>
                       </div>

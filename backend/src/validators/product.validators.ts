@@ -8,6 +8,11 @@ const uploadRelativeUrl = z.string().regex(/^\/uploads\/[^\s]+$/i, {
   message: "Use caminho relativo de upload válido (/uploads/...).",
 });
 const mediaUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl]);
+const productConditionSchema = z.enum([
+  "NEW",
+  "USED",
+  "REFURBISHED",
+]);
 
 const demoVideoUrlSchema = z
   .union([absoluteHttpUrl, uploadRelativeUrl])
@@ -60,16 +65,28 @@ const createProductShape = z.object({
   sku: z.string().min(1).max(80),
   price: z.coerce.number().positive(),
   promoPrice: z.union([z.coerce.number().positive(), z.null()]).optional(),
+  condition: productConditionSchema.default("NEW"),
+  conditionDetail: z.union([z.string().max(600), z.null()]).optional(),
   stock: z.coerce.number().int().nonnegative(),
   images: z.array(mediaUrlSchema).min(1).max(15),
   variants: z.array(productVariantSchema).max(50).optional(),
   deliveryOptions: z.array(deliveryOptionSchema).min(1).max(12),
 });
 
-export const createProductSchema = createProductShape.refine((d) => d.promoPrice == null || d.promoPrice < d.price, {
-  message: "O preço promocional tem de ser inferior ao preço normal.",
-  path: ["promoPrice"],
-});
+export const createProductSchema = createProductShape
+  .refine((d) => d.promoPrice == null || d.promoPrice < d.price, {
+    message: "O preço promocional tem de ser inferior ao preço normal.",
+    path: ["promoPrice"],
+  })
+  .superRefine((d, ctx) => {
+    if (d.condition === "USED" && (!d.conditionDetail || d.conditionDetail.trim().length < 6)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para produto usado, descreva o estado em pelo menos 6 caracteres.",
+        path: ["conditionDetail"],
+      });
+    }
+  });
 
 export const updateProductSchema = createProductShape
   .partial()
@@ -77,6 +94,17 @@ export const updateProductSchema = createProductShape
     isActive: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
+    if (
+      data.condition === "USED" &&
+      data.conditionDetail !== undefined &&
+      (!data.conditionDetail || data.conditionDetail.trim().length < 6)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Para produto usado, descreva o estado em pelo menos 6 caracteres.",
+        path: ["conditionDetail"],
+      });
+    }
     if (data.images !== undefined && data.images.length < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -120,6 +148,7 @@ export const productListQuerySchema = z.object({
   maxPrice: z.coerce.number().optional(),
   minRating: z.coerce.number().min(1).max(5).optional(),
   featured: z.enum(["true", "false"]).optional(),
+  condition: productConditionSchema.optional(),
   shopId: z.string().optional(),
   sort: z
     .enum(["mais_vendidos", "preco_asc", "preco_desc", "melhor_avaliados", "recentes"])

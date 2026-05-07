@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 export interface ProductListFilters {
   q?: string;
   categoryId?: string;
+  condition?: "NEW" | "USED" | "REFURBISHED";
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -72,6 +73,7 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   };
   if (filters.shopId) where.shopId = filters.shopId;
   if (filters.categoryId) where.categoryId = filters.categoryId;
+  if (filters.condition) where.condition = filters.condition;
   if (filters.featuredOnly) where.isFeatured = true;
   if (filters.q) {
     const terms = expandedTerms(filters.q);

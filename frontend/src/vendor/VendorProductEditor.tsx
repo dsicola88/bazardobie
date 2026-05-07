@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
+import type { ProductCondition } from "../utils/productCondition.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -38,6 +39,8 @@ type ProductLoaded = {
   description: string;
   demoVideoUrl?: string | null;
   sku: string;
+  condition: ProductCondition;
+  conditionDetail?: string | null;
   price: string;
   promoPrice?: string | null;
   stock: number;
@@ -114,6 +117,8 @@ export default function VendorProductEditor() {
   const [description, setDescription] = useState("");
   const [demoVideoUrl, setDemoVideoUrl] = useState("");
   const [sku, setSku] = useState("");
+  const [condition, setCondition] = useState<ProductCondition>("NEW");
+  const [conditionDetail, setConditionDetail] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [price, setPrice] = useState("");
   const [promoPrice, setPromoPrice] = useState("");
@@ -163,6 +168,8 @@ export default function VendorProductEditor() {
         setDescription(p.description);
         setDemoVideoUrl(p.demoVideoUrl ?? "");
         setSku(p.sku);
+        setCondition(p.condition ?? "NEW");
+        setConditionDetail(p.conditionDetail ?? "");
         setCategoryId(p.categoryId ?? "");
         setPrice(String(p.price));
         setPromoPrice(p.promoPrice != null && Number(p.promoPrice) > 0 ? String(p.promoPrice) : "");
@@ -220,6 +227,8 @@ export default function VendorProductEditor() {
       setDescription("");
       setDemoVideoUrl("");
       setSku("");
+      setCondition("NEW");
+      setConditionDetail("");
       setCategoryId("");
       setPrice("");
       setPromoPrice("");
@@ -269,6 +278,8 @@ export default function VendorProductEditor() {
       description: description.trim(),
       demoVideoUrl: demoVideoUrl.trim() || null,
       sku: sku.trim(),
+      condition,
+      conditionDetail: condition === "USED" ? conditionDetail.trim() || null : null,
       categoryId: categoryId.trim() === "" ? null : categoryId.trim(),
       price: priceN,
       promoPrice: promoN,
@@ -438,7 +449,34 @@ export default function VendorProductEditor() {
                 placeholder="Ex.: USB-128-MET-01"
               />
             </div>
+            <div>
+              <label htmlFor="pcondition">Condição do artigo</label>
+              <select
+                id="pcondition"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as ProductCondition)}
+              >
+                <option value="NEW">Novo</option>
+                <option value="USED">Usado</option>
+                <option value="REFURBISHED">Recondicionado</option>
+              </select>
+            </div>
           </div>
+          {condition === "USED" ? (
+            <div>
+              <label htmlFor="pcondition-detail">Estado do usado (preenchido pelo vendedor)</label>
+              <textarea
+                id="pcondition-detail"
+                rows={3}
+                value={conditionDetail}
+                onChange={(e) => setConditionDetail(e.target.value)}
+                minLength={6}
+                maxLength={600}
+                required
+                placeholder="Ex.: 8 meses de uso, sem riscos no ecrã, bateria original."
+              />
+            </div>
+          ) : null}
           <div>
             <label htmlFor="pcat">Categoria comercial</label>
             <select id="pcat" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>

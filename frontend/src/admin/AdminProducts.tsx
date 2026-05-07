@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { productConditionLabel } from "../utils/productCondition.js";
 
 type ModItem = {
   id: string;
   name: string;
+  condition?: string | null;
   moderationStatus: string;
   isActive: boolean;
   isFeatured: boolean;
@@ -137,6 +139,7 @@ export default function AdminProducts() {
           <thead>
             <tr>
               <th>Produto</th>
+              <th>Condição</th>
               <th>Loja</th>
               <th>Estado</th>
               <th>Acções</th>
@@ -146,6 +149,7 @@ export default function AdminProducts() {
             {data?.items.map((p) => (
               <tr key={p.id}>
                 <td className="ae-admin-cell-title">{p.name}</td>
+                <td>{productConditionLabel(p.condition)}</td>
                 <td>{p.shop.name}</td>
                 <td>
                   {p.moderationStatus} · {p.isActive ? "activo" : "inactivo"}
