@@ -10,7 +10,15 @@ import { productConditionLabel } from "../utils/productCondition.js";
 type CheckoutCartItem = {
   id: string;
   quantity: number;
-  variant?: { id?: string; name?: string | null; priceAdjust?: string | null; imageUrl?: string | null } | null;
+  variant?: {
+    id?: string;
+    sku?: string | null;
+    name?: string | null;
+    color?: string | null;
+    size?: string | null;
+    priceAdjust?: string | null;
+    imageUrl?: string | null;
+  } | null;
   product: {
     id: string;
     name: string;
@@ -74,6 +82,12 @@ function unitPriceKz(it: CheckoutCartItem): number {
       ? Number(it.variant.priceAdjust)
       : 0;
   return base + adj;
+}
+
+function checkoutVariantSubtitle(v: NonNullable<CheckoutCartItem["variant"]>): string {
+  const parts = [v.color, v.size, v.name].map((x) => (x ?? "").trim()).filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return (v.sku ?? "").trim() || "";
 }
 
 function totals(items: CheckoutCartItem[]) {
@@ -1005,7 +1019,7 @@ export default function CheckoutPage() {
             <h3 className="ae-checkout-summary__h">Resumo da encomenda</h3>
             <ul className="ae-checkout-summary__lines">
               {cart.items.map((it) => {
-                const thumb = it.product.images?.[0]?.url || it.variant?.imageUrl || "";
+                const thumb = it.variant?.imageUrl || it.product.images?.[0]?.url || "";
                 const ship = Number(it.productDeliveryOption.custoEntrega);
                 const line = unitPriceKz(it) * it.quantity;
                 return (
@@ -1033,7 +1047,7 @@ export default function CheckoutPage() {
                               : "plataforma (BAZAR DO BIÉ)"
                             : "loja parceira"}{" "}
                           · {it.productDeliveryOption.prazoEstimado}d
-                          {it.variant?.name ? ` · ${it.variant.name}` : ""}
+                          {it.variant ? ` · ${checkoutVariantSubtitle(it.variant)}` : ""}
                         </div>
                         <div className="ae-checkout-sum-line__pr">
                           <span>{formatKz(line)}</span>

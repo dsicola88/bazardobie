@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { FavoriteToggle } from "../components/FavoriteToggle.js";
@@ -11,7 +11,16 @@ import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
 
 type Img = { url: string };
-type Variant = { id: string; sku: string; name?: string | null; stock: number; imageUrl?: string | null };
+type Variant = {
+  id: string;
+  sku: string;
+  name?: string | null;
+  color?: string | null;
+  size?: string | null;
+  stock: number;
+  imageUrl?: string | null;
+  priceAdjust?: string | null;
+};
 type Delivery = {
   id: string;
   tipoEntrega: string;
@@ -63,8 +72,62 @@ type ProductDetail = {
 
 type Tab = "overview" | "reviews" | "ship";
 
+function variantLabel(v: Variant): string {
+  const parts = [v.name, v.color, v.size].map((x) => (x ?? "").trim()).filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return v.sku;
+}
+
+function normSelKey(s: string | null | undefined): string {
+  return (s ?? "").trim().toLowerCase();
+}
+
+type ColorUiGroup = {
+  colorKey: string;
+  label: string;
+  variants: Variant[];
+  thumbnailVariant: Variant;
+};
+
+/** Duas ou mais cores distintas, todas as variantes com `color`. */
+function buildColorUiGroups(variants: Variant[]): ColorUiGroup[] | null {
+  if (variants.length === 0) return null;
+  if (!variants.every((v) => normSelKey(v.color).length > 0)) return null;
+  const byKey = new Map<string, Variant[]>();
+  for (const v of variants) {
+    const k = normSelKey(v.color);
+    const arr = byKey.get(k) ?? [];
+    arr.push(v);
+    byKey.set(k, arr);
+  }
+  if (byKey.size < 2) return null;
+  const groups: ColorUiGroup[] = [];
+  for (const [, list] of byKey) {
+    list.sort((a, b) => normSelKey(a.size).localeCompare(normSelKey(b.size), "pt"));
+    const thumbnailVariant = list.find((x) => x.imageUrl?.trim()) ?? list[0];
+    groups.push({
+      colorKey: normSelKey(list[0].color),
+      label: (list[0].color ?? "").trim(),
+      variants: list,
+      thumbnailVariant,
+    });
+  }
+  groups.sort((a, b) => a.label.localeCompare(b.label, "pt"));
+  return groups;
+}
+
+/** Várias variantes só por tamanho (sem matriz por cor). */
+function buildSizeOnlyOrder(variants: Variant[]): Variant[] | null {
+  if (variants.length < 2) return null;
+  if (!variants.every((v) => normSelKey(v.size).length > 0)) return null;
+  const keys = new Set(variants.map((v) => normSelKey(v.size)));
+  if (keys.size < 2) return null;
+  return [...variants].sort((a, b) => normSelKey(a.size).localeCompare(normSelKey(b.size), "pt"));
+}
+
 export default function ProductPage() {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
   const { content } = useSiteContent();
   const codNote = content["public.product_cod_note"] ?? "";
@@ -84,7 +147,54 @@ export default function ProductPage() {
     ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ.`
     : "Detalhes do produto no marketplace BAZAR DO BIÉ.";
   const seoImage = product?.images[0]?.url ? resolveMediaUrl(product.images[0].url) : undefined;
-  const seoVariant = product?.variants.find((v) => v.id === variantId);
+
+  useEffect(() => {
+    if (!id) return;
+    void apiFetch<ProductDetail>(`/products/${id}`)
+      .then((p) => {
+        setProduct(p);
+        setMainImg(p.images[0]?.url ?? "");
+        if (p.deliveryOptions.length) setDeliveryId(p.deliveryOptions[0].id);
+      })
+      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Referência indisponível."));
+  }, [id]);
+
+  /** Selecção inicial de variante + `?variant=` válido (matriz Cor×Tamanho ou lista plana). */
+  useEffect(() => {
+    if (!product?.variants?.length) {
+      setVariantId(null);
+      return;
+    }
+    const vars = product.variants;
+    if (vars.length === 1) {
+      setVariantId(vars[0].stock > 0 ? vars[0].id : null);
+      return;
+    }
+    const vq = searchParams.get("variant");
+    if (vq && vars.some((v) => v.id === vq)) {
+      setVariantId(vq);
+      return;
+    }
+    const pick = vars.find((v) => v.stock > 0) ?? vars[0];
+    setVariantId(pick.id);
+  }, [product, searchParams]);
+
+  const needVariant = (product?.variants.length ?? 0) > 0;
+  const selectedVariant = useMemo(
+    () => (needVariant ? product?.variants.find((v) => v.id === variantId) ?? null : null),
+    [needVariant, product, variantId]
+  );
+  const seoVariant = selectedVariant ?? undefined;
+  const unitPriceNum = useMemo(() => {
+    if (!product) return null;
+    const promoRaw = product.promoPrice != null ? String(product.promoPrice).trim() : "";
+    const promo = promoRaw !== "" && Number(product.promoPrice) > 0 ? Number(product.promoPrice) : null;
+    const base = promo ?? Number(product.price);
+    if (needVariant && selectedVariant?.priceAdjust != null && String(selectedVariant.priceAdjust).trim() !== "") {
+      return base + Number(selectedVariant.priceAdjust);
+    }
+    return Number(product.displayPrice);
+  }, [needVariant, product, selectedVariant]);
   const seoJsonLd = product
     ? {
         "@context": "https://schema.org",
@@ -100,12 +210,12 @@ export default function ProductPage() {
         offers: {
           "@type": "Offer",
           priceCurrency: "AOA",
-          price: Number(product.displayPrice),
+          price: unitPriceNum ?? Number(product.displayPrice),
           availability:
             (seoVariant?.stock ?? product.stock) > 0
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
-          url: window.location.href,
+          url: typeof window !== "undefined" ? window.location.href : "",
         },
         aggregateRating:
           product.reviewCount > 0 && product.averageRating
@@ -126,22 +236,26 @@ export default function ProductPage() {
   });
 
   useEffect(() => {
-    if (!id) return;
-    void apiFetch<ProductDetail>(`/products/${id}`)
-      .then((p) => {
-        setProduct(p);
-        setMainImg(p.images[0]?.url ?? "");
-        if (p.variants.length === 1) setVariantId(p.variants[0].id);
-        if (p.deliveryOptions.length) setDeliveryId(p.deliveryOptions[0].id);
-      })
-      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Referência indisponível."));
-  }, [id]);
+    if (!product || !needVariant || !variantId) return;
+    const v = product.variants.find((x) => x.id === variantId);
+    if (!v) return;
+    const raw = v.imageUrl?.trim() || product.images[0]?.url || "";
+    if (raw) setMainImg(raw);
+  }, [needVariant, product, variantId]);
 
-  const needVariant = (product?.variants.length ?? 0) > 0;
-  const selectedVariant = useMemo(
-    () => (needVariant ? product?.variants.find((v) => v.id === variantId) ?? null : null),
-    [needVariant, product, variantId]
-  );
+  useEffect(() => {
+    if (!product?.id || !needVariant) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (!variantId) next.delete("variant");
+        else next.set("variant", variantId);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [needVariant, product?.id, setSearchParams, variantId]);
+
   const stockAvailable = needVariant ? selectedVariant?.stock ?? 0 : product?.stock ?? 0;
   const outOfStock = stockAvailable <= 0;
   const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
@@ -149,8 +263,41 @@ export default function ProductPage() {
   const selectedVariantImage = selectedVariant?.imageUrl ? resolveMediaUrl(selectedVariant.imageUrl) : "";
   const firstVariantImage = product?.variants.find((v) => v.imageUrl?.trim())?.imageUrl ?? "";
   const mainResolved = resolveMediaUrl(mainImg || product?.images[0]?.url || selectedVariantImage || firstVariantImage);
+  const variantGallery = useMemo(() => {
+    if (!product) return [];
+    return product.variants
+      .map((v) => ({
+        ...v,
+        label: variantLabel(v),
+      }))
+      .filter((v, ix, arr) => arr.findIndex((x) => x.id === v.id) === ix);
+  }, [product]);
 
-  function onMainImageMove(ev: React.MouseEvent<HTMLDivElement>) {
+  const colorUiGroups = useMemo(() => buildColorUiGroups(product?.variants ?? []), [product]);
+  const colorSizeMatrix = Boolean(colorUiGroups && colorUiGroups.length >= 2);
+  const sizesForSelectedColor = useMemo(() => {
+    if (!colorSizeMatrix || !colorUiGroups || !selectedVariant) return [];
+    const g = colorUiGroups.find((c) => c.colorKey === normSelKey(selectedVariant.color));
+    return g?.variants ?? [];
+  }, [colorSizeMatrix, colorUiGroups, selectedVariant]);
+  const sizeOnlyOrder = useMemo(() => {
+    if (colorSizeMatrix) return null;
+    return buildSizeOnlyOrder(product?.variants ?? []);
+  }, [product, colorSizeMatrix]);
+
+  function pickColorGroup(colorKey: string) {
+    const g = colorUiGroups?.find((c) => c.colorKey === colorKey);
+    if (!g) return;
+    const curInGroup = variantId && g.variants.some((v) => v.id === variantId);
+    if (curInGroup) {
+      const cur = g.variants.find((v) => v.id === variantId);
+      if (cur && cur.stock > 0) return;
+    }
+    const next = g.variants.find((v) => v.stock > 0) ?? g.variants[0];
+    setVariantId(next.id);
+  }
+
+  function onMainImageMove(ev: ReactMouseEvent<HTMLDivElement>) {
     const rect = ev.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = ((ev.clientX - rect.left) / rect.width) * 100;
@@ -287,7 +434,17 @@ export default function ProductPage() {
               )}
             </div>
             <div className="ae-buybox__price">
-              <span className="ae-buybox__now">{formatKz(product.displayPrice)}</span>
+              <span className="ae-buybox__now">
+                {formatKz(unitPriceNum ?? product.displayPrice)}
+              </span>
+              {needVariant &&
+              selectedVariant?.priceAdjust != null &&
+              String(selectedVariant.priceAdjust).trim() !== "" &&
+              Number(selectedVariant.priceAdjust) !== 0 ? (
+                <span className="ae-muted" style={{ fontSize: 13, marginLeft: 8, fontWeight: 600 }}>
+                  (preço base {formatKz(product.displayPrice)})
+                </span>
+              ) : null}
               {product.promoPrice ? (
                 <span className="ae-buybox__was">{formatKz(product.price)}</span>
               ) : null}
@@ -320,16 +477,103 @@ export default function ProductPage() {
             ) : null}
 
             {needVariant ? (
-              <div className="ae-field">
-                <label>Variante do artigo</label>
-                <select value={variantId ?? ""} onChange={(e) => setVariantId(e.target.value || null)}>
-                  <option value="">Seleccionar variante…</option>
-                  {product.variants.map((v) => (
-                    <option key={v.id} value={v.id} disabled={v.stock <= 0}>
-                      {(v.name || v.sku) + ` — stock ${v.stock}`}
-                    </option>
-                  ))}
-                </select>
+              <div className="ae-field ae-pdp-variant-field">
+                <div className="ae-pdp-variant-head">
+                  Variante seleccionada:{" "}
+                  <strong>{selectedVariant ? variantLabel(selectedVariant) : "— escolha abaixo —"}</strong>
+                </div>
+                {colorSizeMatrix && colorUiGroups ? (
+                  <>
+                    <div className="ae-pdp-variant-head">Cor · {selectedVariant?.color?.trim() ?? "—"}</div>
+                    <div className="ae-variant-swatches" role="radiogroup" aria-label="Escolha a cor">
+                      {colorUiGroups.map((g) => (
+                        <button
+                          key={g.colorKey}
+                          type="button"
+                          role="radio"
+                          aria-checked={normSelKey(selectedVariant?.color) === g.colorKey}
+                          title={`${g.label} · ${g.variants.reduce((acc, x) => acc + Math.max(0, x.stock), 0)} u. em stock (todas variantes)`}
+                          className={`ae-variant-swatch ${normSelKey(selectedVariant?.color) === g.colorKey ? "ae-on" : ""}`}
+                          disabled={g.variants.every((v) => v.stock <= 0)}
+                          onClick={() => pickColorGroup(g.colorKey)}
+                        >
+                          {g.thumbnailVariant.imageUrl?.trim() ? (
+                            <img
+                              src={resolveMediaUrl(g.thumbnailVariant.imageUrl)}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <span className="ae-variant-swatch__txt">{g.label.slice(0, 3).toUpperCase()}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {sizesForSelectedColor.length > 1 ? (
+                      <>
+                        <div className="ae-pdp-variant-head">Tamanho · {selectedVariant?.size?.trim() ?? "—"}</div>
+                        <div className="ae-variant-sizes" role="radiogroup" aria-label="Escolha o tamanho">
+                          {sizesForSelectedColor.map((v) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={variantId === v.id}
+                              title={`${variantLabel(v)} · stock ${v.stock}`}
+                              className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
+                              disabled={v.stock <= 0}
+                              onClick={() => setVariantId(v.id)}
+                            >
+                              {(v.size ?? "").trim()}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
+                  </>
+                ) : sizeOnlyOrder ? (
+                  <>
+                    <div className="ae-pdp-variant-head">Tamanho · {selectedVariant?.size?.trim() ?? "—"}</div>
+                    <div className="ae-variant-sizes" role="radiogroup" aria-label="Escolha o tamanho">
+                      {sizeOnlyOrder.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={variantId === v.id}
+                          title={`${variantLabel(v)} · stock ${v.stock}`}
+                          className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
+                          disabled={v.stock <= 0}
+                          onClick={() => setVariantId(v.id)}
+                        >
+                          {(v.size ?? "").trim()}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="ae-variant-swatches" role="radiogroup" aria-label="Escolha a variante por imagem">
+                    {variantGallery.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={variantId === v.id}
+                        title={`${v.label} · stock ${v.stock}`}
+                        className={`ae-variant-swatch ${variantId === v.id ? "ae-on" : ""}`}
+                        disabled={v.stock <= 0}
+                        onClick={() => setVariantId(v.id)}
+                      >
+                        {v.imageUrl?.trim() ? (
+                          <img src={resolveMediaUrl(v.imageUrl)} alt="" loading="lazy" decoding="async" />
+                        ) : (
+                          <span className="ae-variant-swatch__txt">{v.label.slice(0, 3).toUpperCase()}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : null}
             <p className="ae-muted" style={{ fontSize: 12, marginTop: 0 }}>

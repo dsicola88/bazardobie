@@ -4,13 +4,22 @@ import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { CartThumbWithZoom } from "../components/CartThumbWithZoom.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 
 type CartItem = {
   id: string;
   quantity: number;
   product: { id: string; name: string; condition?: string | null; stock: number; images?: { url: string }[] };
-  variant?: { id: string; name?: string | null; stock: number; imageUrl?: string | null } | null;
+  variant?: {
+    id: string;
+    name?: string | null;
+    sku?: string | null;
+    color?: string | null;
+    size?: string | null;
+    stock: number;
+    imageUrl?: string | null;
+  } | null;
   productDeliveryOption: {
     tipoEntrega: string;
     custoEntrega: string;
@@ -19,13 +28,19 @@ type CartItem = {
   };
 };
 
+function cartVariantLine(variant: NonNullable<CartItem["variant"]>): string {
+  const parts = [variant.color, variant.size, variant.name].map((x) => (x ?? "").trim()).filter(Boolean);
+  if (parts.length) return parts.join(" · ");
+  return (variant.sku ?? "").trim() || "Variante seleccionada";
+}
+
 export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
   const [thumbTryIndexByItemId, setThumbTryIndexByItemId] = useState<Record<string, number>>({});
   const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<
-    Record<string, { productUrl?: string; variantUrl?: string }>
+    Record<string, { productUrl?: string; variantThumbById?: Record<string, string> }>
   >({});
 
   async function reload() {
@@ -66,11 +81,12 @@ export default function CartPage() {
 
   function cartThumbCandidates(item: CartItem): string[] {
     const extra = fallbackThumbByProductId[item.product.id];
+    const byId = item.variant?.id ? extra?.variantThumbById?.[item.variant.id] : undefined;
     const rawCandidates = [
-      item.product.images?.[0]?.url,
       item.variant?.imageUrl,
+      byId,
+      item.product.images?.[0]?.url,
       extra?.productUrl,
-      extra?.variantUrl,
     ];
     return Array.from(new Set(rawCandidates.map((u) => resolveMediaUrl(u)).filter(Boolean)));
   }
@@ -94,19 +110,25 @@ export default function CartPage() {
     if (missingProductIds.length === 0) return;
     void Promise.allSettled(
       missingProductIds.map((pid) =>
-        apiFetch<{ images?: { url: string }[]; variants?: { imageUrl?: string | null }[] }>(`/products/${pid}`)
+        apiFetch<{ images?: { url: string }[]; variants?: { id: string; imageUrl?: string | null }[] }>(
+          `/products/${pid}`
+        )
           .then((p) => {
+            const variantThumbById: Record<string, string> = {};
+            for (const v of p.variants ?? []) {
+              const raw = v.imageUrl?.trim();
+              if (raw) variantThumbById[v.id] = raw;
+            }
             const fromProduct = resolveMediaUrl(p.images?.[0]?.url);
-            const fromVariant = resolveMediaUrl(p.variants?.find((v) => v.imageUrl?.trim())?.imageUrl);
-            return { pid, productUrl: fromProduct || "", variantUrl: fromVariant || "" };
+            return { pid, productUrl: fromProduct || "", variantThumbById };
           })
-          .catch(() => ({ pid, productUrl: "", variantUrl: "" }))
+          .catch(() => ({ pid, productUrl: "", variantThumbById: {} as Record<string, string> }))
       )
     ).then((rows) => {
-      const next: Record<string, { productUrl?: string; variantUrl?: string }> = {};
+      const next: Record<string, { productUrl?: string; variantThumbById?: Record<string, string> }> = {};
       for (const r of rows) {
-        if (r.status === "fulfilled" && (r.value.productUrl || r.value.variantUrl)) {
-          next[r.value.pid] = { productUrl: r.value.productUrl, variantUrl: r.value.variantUrl };
+        if (r.status === "fulfilled" && (r.value.productUrl || Object.keys(r.value.variantThumbById).length > 0)) {
+          next[r.value.pid] = { productUrl: r.value.productUrl, variantThumbById: r.value.variantThumbById };
         }
       }
       if (Object.keys(next).length) {
@@ -152,35 +174,37 @@ export default function CartPage() {
                   <tr key={item.id}>
                     <td>
                       <div className="ae-table-cart__product">
-                        <Link to={`/product/${item.product.id}`}>
-                          {cartThumbUrl(item) ? (
-                            <img
-                              src={cartThumbUrl(item)}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={() =>
-                                setThumbTryIndexByItemId((prev) => {
-                                  const options = cartThumbCandidates(item);
-                                  const current = prev[item.id] ?? 0;
-                                  const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
-                                  if (nextIdx === current) return prev;
-                                  return { ...prev, [item.id]: nextIdx };
-                                })
-                              }
-                            />
-                          ) : (
+                        {cartThumbUrl(item) ? (
+                          <CartThumbWithZoom
+                            thumbUrl={cartThumbUrl(item)!}
+                            to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}
+                            onImgError={() =>
+                              setThumbTryIndexByItemId((prev) => {
+                                const options = cartThumbCandidates(item);
+                                const current = prev[item.id] ?? 0;
+                                const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
+                                if (nextIdx === current) return prev;
+                                return { ...prev, [item.id]: nextIdx };
+                              })
+                            }
+                          />
+                        ) : (
+                          <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}>
                             <div className="ae-table-cart__product-ph" aria-hidden />
-                          )}
-                        </Link>
+                          </Link>
+                        )}
                         <div>
-                          <Link to={`/product/${item.product.id}`} style={{ fontWeight: 600 }}>
+                          <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`} style={{ fontWeight: 600 }}>
                             {item.product.name}
                           </Link>
                           <div className="ae-muted" style={{ fontSize: 12 }}>
                             {productConditionLabel(item.product.condition)}
                           </div>
-                          {item.variant?.name ? <div className="ae-muted">{item.variant.name}</div> : null}
+                          {item.variant ? (
+                            <div className="ae-table-cart__variant">
+                              <span className="ae-table-cart__variant-label">{cartVariantLine(item.variant)}</span>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </td>

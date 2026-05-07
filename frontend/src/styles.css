@@ -1282,6 +1282,174 @@ a:hover {
 .ae-field input {
   height: auto;
 }
+.ae-variant-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+.ae-variant-picker__item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid var(--ae-line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.ae-variant-picker__item:hover:not(:disabled) {
+  border-color: #c9d3e6;
+}
+.ae-variant-picker__item.ae-on {
+  border-color: var(--ae-deep);
+  box-shadow: 0 0 0 2px rgba(230, 46, 4, 0.1);
+}
+.ae-variant-picker__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ae-variant-picker__item img,
+.ae-variant-picker__ph {
+  width: 46px;
+  height: 46px;
+  border-radius: 6px;
+  border: 1px solid var(--ae-line);
+  object-fit: cover;
+  background: #f7f7f7;
+}
+.ae-variant-picker__ph {
+  display: inline-block;
+  background: repeating-linear-gradient(-45deg, #efefef, #efefef 6px, #fafafa 6px, #fafafa 12px);
+}
+.ae-variant-picker__meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.ae-variant-picker__meta strong,
+.ae-variant-picker__meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ae-variant-picker__meta strong {
+  font-size: 12px;
+  color: var(--ae-text);
+}
+.ae-variant-picker__meta small {
+  color: var(--ae-hint);
+  font-size: 11px;
+}
+
+/* PDP — variantes estilo marketplace (miniaturas horizontais) */
+.ae-pdp-variant-field {
+  margin-top: 4px;
+}
+.ae-pdp-variant-head {
+  font-size: 13px;
+  color: var(--ae-dim);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.ae-pdp-variant-head strong {
+  color: var(--ae-text);
+  font-weight: 700;
+}
+.ae-variant-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.ae-variant-swatch {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  padding: 3px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #fff;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.ae-variant-swatch:hover:not(:disabled) {
+  border-color: #c7ced9;
+}
+.ae-variant-swatch.ae-on {
+  border-color: #111;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+.ae-variant-swatch:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.ae-variant-swatch img {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: block;
+}
+.ae-variant-swatch__txt {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ae-dim);
+  background: #f5f6f8;
+  border-radius: 5px;
+  border: 1px solid var(--ae-line);
+  letter-spacing: 0.02em;
+}
+
+.ae-variant-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.ae-variant-size-chip {
+  min-width: 44px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--ae-line);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ae-text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.ae-variant-size-chip:hover:not(:disabled) {
+  border-color: #c7ced9;
+}
+.ae-variant-size-chip.ae-on {
+  border-color: #111;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+.ae-variant-size-chip:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .ae-variant-swatches {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 7px;
+  }
+}
+
 @media (max-width: 760px) {
   .ae-breadcrumb {
     font-size: 11px;
@@ -2452,14 +2620,76 @@ a:hover {
 .ae-table-cart__product > a {
   flex-shrink: 0;
 }
-.ae-table-cart__product img {
+
+/* Miniatura do carrinho — zoom tipo PDP (painel lateral + máscara circular) */
+.ae-cart-thumb-zoom {
+  position: relative;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+.ae-cart-thumb-zoom--on {
+  z-index: 70;
+}
+.ae-cart-thumb-zoom__link {
   display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.ae-cart-thumb-zoom__wrap {
+  position: relative;
   width: 64px;
   height: 64px;
-  object-fit: cover;
   border-radius: 4px;
+  overflow: hidden;
   border: 1px solid var(--ae-line);
   background: #fafafa;
+  cursor: zoom-in;
+}
+.ae-cart-thumb-zoom img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ae-cart-thumb-zoom__loupe {
+  display: none;
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 71, 71, 0.85);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.05);
+}
+.ae-cart-thumb-zoom--on .ae-cart-thumb-zoom__loupe {
+  display: block;
+}
+.ae-cart-thumb-zoom__pane {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0;
+  width: 152px;
+  height: 152px;
+  border-radius: 8px;
+  border: 1px solid var(--ae-line);
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-size: 240%;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 2;
+}
+@media (max-width: 900px) {
+  .ae-cart-thumb-zoom__pane,
+  .ae-cart-thumb-zoom__loupe {
+    display: none !important;
+  }
+  .ae-cart-thumb-zoom__wrap {
+    cursor: pointer;
+  }
 }
 .ae-table-cart__product-ph {
   width: 64px;
@@ -2471,6 +2701,19 @@ a:hover {
 .ae-table-cart__product > div {
   min-width: 0;
   line-height: 1.35;
+}
+.ae-table-cart__variant {
+  margin-top: 4px;
+}
+.ae-table-cart__variant-label {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ae-deep);
+  background: rgba(230, 46, 4, 0.08);
+  border: 1px solid rgba(230, 46, 4, 0.2);
 }
 .ae-table-cart__product > div a {
   display: inline;

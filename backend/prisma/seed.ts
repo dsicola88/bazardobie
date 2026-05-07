@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, TipoEntrega, UserRole } from "@prisma/client";
 import {
   ANGOLA_MUNICIPALITY_SEEDS,
   ANGOLA_PROVINCE_SEEDS,
@@ -257,6 +257,136 @@ async function seedAngolaGeoCatalog() {
   }
 }
 
+async function seedDemoAeGalleryProduct() {
+  /** Produto apenas para QA local: várias fotos na ficha, matriz Cor×Tamanho, imagens por variante. */
+  const demoSku = "DEMO-AE-GALLERY-ZOOM";
+  const vendorEmail =
+    process.env.SEED_GALLERY_VENDOR_EMAIL ?? "vendor-gallery-demo@bazarrdobie.ao";
+  const vendorPass = process.env.SEED_GALLERY_VENDOR_PASSWORD ?? "DemoVendedorGal123!";
+  try {
+    const tier1CompletedAt = new Date();
+    const passwordHash = await bcrypt.hash(vendorPass, 12);
+    const vendor = await prisma.user.upsert({
+      where: { email: vendorEmail },
+      update: { role: UserRole.VENDEDOR, blocked: false },
+      create: {
+        email: vendorEmail,
+        name: "Vendedor fictício · galeria (QA)",
+        passwordHash,
+        role: UserRole.VENDEDOR,
+      },
+    });
+
+    const shop = await prisma.shop.upsert({
+      where: { userId: vendor.id },
+      update: {
+        isApproved: true,
+        municipalityId: "geo-mun-bie-cuito",
+        province: "Bié",
+        city: "Cuito",
+        tier1CompletedAt,
+      },
+      create: {
+        userId: vendor.id,
+        name: "[DEMO QA] Boutique imagens AE",
+        ownerResponsibleName: "Operador de testes",
+        description: "Loja apenas para cenários de desenvolvimento e QA visual.",
+        municipalityId: "geo-mun-bie-cuito",
+        province: "Bié",
+        city: "Cuito",
+        phone: "+244 999 901 902",
+        whatsapp: "+244 999 901 903",
+        isApproved: true,
+        tier1CompletedAt,
+      },
+    });
+
+    const existing = await prisma.product.findUnique({
+      where: { shopId_sku: { shopId: shop.id, sku: demoSku } },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    const logisticsPartnerId = (
+      await prisma.logisticsPartner.findFirst({
+        where: { name: "Expresso BAZAR — Bié (demo)" },
+        select: { id: true },
+      })
+    )?.id;
+
+    const cat = await prisma.category.findUnique({ where: { slug: "geral-angola" } });
+
+    const galleryUrls = [
+      "https://images.unsplash.com/photo-1546435770-a3e426bf472b?q=80&w=960&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1484704849700-f032a568e944?q=80&w=960&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1529175283574-c764e36d7baa?q=80&w=960&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=960&auto=format&fit=crop",
+    ] as const;
+
+    const rosadoM = galleryUrls[0];
+    const rosadoL =
+      "https://images.unsplash.com/photo-1618366712010-f4abe9ebcdc3?q=80&w=960&auto=format&fit=crop";
+    const verdeM = galleryUrls[1];
+    const verdeL =
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=960&auto=format&fit=crop";
+    const azulM = galleryUrls[2];
+    const azulL = galleryUrls[3];
+
+    await prisma.product.create({
+      data: {
+        shopId: shop.id,
+        categoryId: cat?.id ?? undefined,
+        name: "[DEMO QA] Auricular × cor × tamanho · galeria + zoom carrinho",
+        description:
+          "Artigo de demonstração criado pelo seed Prisma.\nEscolha cor (Rosado, Verde ou Azul) e tamanho (M ou L). Cada variante tem imagem distinta para validar PDP, lista e carrinho.\nSKU base: " +
+          demoSku +
+          ".",
+        sku: demoSku,
+        price: "24999",
+        promoPrice: null,
+        displayPrice: "24999",
+        stock: 32,
+        isFeatured: true,
+        isActive: true,
+        moderationStatus: "APPROVED",
+        images: {
+          createMany: {
+            data: galleryUrls.map((url, ix) => ({ url, sortOrder: ix })),
+          },
+        },
+        variants: {
+          create: [
+            { sku: "DEMO-AEZ-R-M", color: "Rosado", size: "M", stock: 6, priceAdjust: "0", imageUrl: rosadoM },
+            { sku: "DEMO-AEZ-R-L", color: "Rosado", size: "L", stock: 6, priceAdjust: "900", imageUrl: rosadoL },
+            { sku: "DEMO-AEZ-V-M", color: "Verde", size: "M", stock: 6, priceAdjust: "0", imageUrl: verdeM },
+            { sku: "DEMO-AEZ-V-L", color: "Verde", size: "L", stock: 6, priceAdjust: "900", imageUrl: verdeL },
+            { sku: "DEMO-AEZ-A-M", color: "Azul", size: "M", stock: 6, priceAdjust: "0", imageUrl: azulM },
+            { sku: "DEMO-AEZ-A-L", color: "Azul", size: "L", stock: 6, priceAdjust: "900", imageUrl: azulL },
+          ],
+        },
+        deliveryOptions: {
+          create: [
+            {
+              tipoEntrega: TipoEntrega.PLATAFORMA,
+              custoEntrega: "850",
+              prazoEstimado: 4,
+              areaProvincia: "Bié",
+              areaCidade: "Cuito",
+              logisticsPartnerId: logisticsPartnerId ?? undefined,
+            },
+          ],
+        },
+      },
+    });
+
+    console.log(
+      `[seed] Produto demo Cor×Tamanho criado: SKU ${demoSku}. Vendedor: ${vendorEmail} / ${vendorPass}`
+    );
+  } catch (e) {
+    console.warn("Seed: produto demo galeria omitido.", e);
+  }
+}
+
 async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@bazarrdobie.ao";
   const adminPass = process.env.SEED_ADMIN_PASSWORD ?? "AdminSeguro123!";
@@ -352,6 +482,8 @@ async function main() {
   await siteSettingsService.seedDefaultsIfEmpty().catch((e) => {
     console.warn("Aviso: textos do site não foram inicializados (corra as migrações).", e);
   });
+
+  await seedDemoAeGalleryProduct();
 
   /** Catalogo geográfico (províncias + municípios) deve existir
    *  mesmo que falhe a parte de frete por distância. */
