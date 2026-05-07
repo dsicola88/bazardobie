@@ -9,7 +9,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 type CheckoutCartItem = {
   id: string;
   quantity: number;
-  variant?: { id?: string; name?: string | null; priceAdjust?: string | null } | null;
+  variant?: { id?: string; name?: string | null; priceAdjust?: string | null; imageUrl?: string | null } | null;
   product: {
     id: string;
     name: string;
@@ -1003,7 +1003,7 @@ export default function CheckoutPage() {
             <h3 className="ae-checkout-summary__h">Resumo da encomenda</h3>
             <ul className="ae-checkout-summary__lines">
               {cart.items.map((it) => {
-                const thumb = it.product.images?.[0]?.url;
+                const thumb = it.product.images?.[0]?.url || it.variant?.imageUrl || "";
                 const ship = Number(it.productDeliveryOption.custoEntrega);
                 const line = unitPriceKz(it) * it.quantity;
                 return (

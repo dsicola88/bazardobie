@@ -9,7 +9,7 @@ type CartItem = {
   id: string;
   quantity: number;
   product: { id: string; name: string; stock: number; images?: { url: string }[] };
-  variant?: { id: string; name?: string | null; stock: number } | null;
+  variant?: { id: string; name?: string | null; stock: number; imageUrl?: string | null } | null;
   productDeliveryOption: {
     tipoEntrega: string;
     custoEntrega: string;
@@ -60,6 +60,11 @@ export default function CartPage() {
     }
   }
 
+  function cartThumbUrl(item: CartItem): string {
+    const raw = item.product.images?.[0]?.url || item.variant?.imageUrl || "";
+    return resolveMediaUrl(raw);
+  }
+
   if (!cart) return <p className="ae-muted">A carregar o seu carrinho…</p>;
 
   return (
@@ -98,9 +103,9 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          {resolveMediaUrl(item.product.images?.[0]?.url) && !thumbLoadFailedIds.has(item.id) ? (
+                          {cartThumbUrl(item) && !thumbLoadFailedIds.has(item.id) ? (
                             <img
-                              src={resolveMediaUrl(item.product.images?.[0]?.url)}
+                              src={cartThumbUrl(item)}
                               alt=""
                               loading="lazy"
                               decoding="async"

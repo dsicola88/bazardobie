@@ -10,7 +10,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { useSeo } from "../seo/useSeo.js";
 
 type Img = { url: string };
-type Variant = { id: string; sku: string; name?: string | null; stock: number };
+type Variant = { id: string; sku: string; name?: string | null; stock: number; imageUrl?: string | null };
 type Delivery = {
   id: string;
   tipoEntrega: string;
@@ -143,7 +143,9 @@ export default function ProductPage() {
   const outOfStock = stockAvailable <= 0;
   const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
   const meta = useMemo(() => product?.deliveryOptions.find((d) => d.id === deliveryId), [deliveryId, product]);
-  const mainResolved = resolveMediaUrl(mainImg || product?.images[0]?.url);
+  const selectedVariantImage = selectedVariant?.imageUrl ? resolveMediaUrl(selectedVariant.imageUrl) : "";
+  const firstVariantImage = product?.variants.find((v) => v.imageUrl?.trim())?.imageUrl ?? "";
+  const mainResolved = resolveMediaUrl(mainImg || product?.images[0]?.url || selectedVariantImage || firstVariantImage);
 
   function onMainImageMove(ev: React.MouseEvent<HTMLDivElement>) {
     const rect = ev.currentTarget.getBoundingClientRect();
