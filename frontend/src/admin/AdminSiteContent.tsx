@@ -79,10 +79,10 @@ export default function AdminSiteContent() {
     <div className="ae-admin-pro">
       <header className="ae-admin-pro__head">
         <div>
-          <h1 className="ae-admin-pro__title">Conteúdo do site</h1>
+          <h1 className="ae-admin-pro__title">Configurações do site</h1>
           <p className="ae-admin-pro__sub">
-            Mensagens institucionais, telefone de suporte, barra promocional e textos da página inicial. Alterações
-            aplicam-se em tempo real para novos visitantes.
+            Textos públicos, barra/popup promocional e opções de funcionamento (ex.: frete por distância, envio pela loja).
+            Alterações aplicam-se em tempo real para novos visitantes.
           </p>
         </div>
       </header>
@@ -112,7 +112,7 @@ export default function AdminSiteContent() {
       ) : null}
 
       <div className="ae-panel" style={{ borderRadius: 10 }}>
-        <h2 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800 }}>Campos de texto</h2>
+        <h2 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800 }}>Textos e parâmetros</h2>
         <p className="ae-muted" style={{ margin: "0 0 18px", fontSize: 13 }}>
           Os valores por defeito aparecem em cinza sob cada campo. A faixa de confiança usa o formato{" "}
           <code>título|descrição</code>.
@@ -142,29 +142,65 @@ export default function AdminSiteContent() {
           ) : null}
         </div>
         <div className="ae-form" style={{ gap: 16 }}>
-          {items.map((it) => (
-            <div key={it.key} className="ae-admin-field-block">
-              <label htmlFor={it.key}>{it.label}</label>
-              {it.hint ? <p className="ae-field-hint">{it.hint}</p> : null}
-              {it.value.length > 80 || it.key.includes("note") || it.key.includes("checkout_transfer_instructions") || it.key.includes("promo_keywords") ? (
-                <textarea
-                  id={it.key}
-                  rows={it.key.includes("note") ? 4 : 2}
-                  value={values[it.key] ?? ""}
-                  onChange={(e) => setValues((prev) => ({ ...prev, [it.key]: e.target.value }))}
-                />
-              ) : (
-                <input
-                  id={it.key}
-                  value={values[it.key] ?? ""}
-                  onChange={(e) => setValues((prev) => ({ ...prev, [it.key]: e.target.value }))}
-                />
-              )}
-              <p className="ae-muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
-                Por defeito: {it.defaultValue.length > 70 ? `${it.defaultValue.slice(0, 70)}…` : it.defaultValue}
-              </p>
-            </div>
-          ))}
+          {items.map((it) => {
+            const isBool =
+              (it.defaultValue === "true" || it.defaultValue === "false") &&
+              (it.key.startsWith("public.") || it.key.startsWith("logistics.") || it.key.includes("enabled"));
+            const current = values[it.key] ?? it.value ?? it.defaultValue;
+            if (isBool) {
+              const checked = (current ?? "").trim().toLowerCase() === "true";
+              return (
+                <div key={it.key} className="ae-admin-field-block">
+                  <label className="ae-check" htmlFor={it.key}>
+                    <input
+                      id={it.key}
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) =>
+                        setValues((prev) => ({
+                          ...prev,
+                          [it.key]: e.target.checked ? "true" : "false",
+                        }))
+                      }
+                    />
+                    <span>{it.label}</span>
+                  </label>
+                  {it.hint ? <p className="ae-field-hint">{it.hint}</p> : null}
+                  <p className="ae-muted" style={{ fontSize: 11, margin: "4px 0 0" }}>
+                    Valor actual: {checked ? "true" : "false"} · por defeito: {it.defaultValue}
+                  </p>
+                </div>
+              );
+            }
+            const isLong =
+              it.value.length > 80 ||
+              it.key.includes("note") ||
+              it.key.includes("checkout_transfer_instructions") ||
+              it.key.includes("promo_keywords");
+            return (
+              <div key={it.key} className="ae-admin-field-block">
+                <label htmlFor={it.key}>{it.label}</label>
+                {it.hint ? <p className="ae-field-hint">{it.hint}</p> : null}
+                {isLong ? (
+                  <textarea
+                    id={it.key}
+                    rows={it.key.includes("note") ? 4 : 2}
+                    value={values[it.key] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, [it.key]: e.target.value }))}
+                  />
+                ) : (
+                  <input
+                    id={it.key}
+                    value={values[it.key] ?? ""}
+                    onChange={(e) => setValues((prev) => ({ ...prev, [it.key]: e.target.value }))}
+                  />
+                )}
+                <p className="ae-muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                  Por defeito: {it.defaultValue.length > 70 ? `${it.defaultValue.slice(0, 70)}…` : it.defaultValue}
+                </p>
+              </div>
+            );
+          })}
         </div>
         <button type="button" className="btn btn-primary" style={{ marginTop: 20 }} disabled={saving} onClick={() => void save()}>
           {saving ? "A guardar…" : "Guardar textos"}
