@@ -27,10 +27,8 @@ export function Header() {
   const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
   const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
   const [searchCatId, setSearchCatId] = useState<string>("");
-  const [catOpen, setCatOpen] = useState(false);
   const [imgSearchBusy, setImgSearchBusy] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const catMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     ensureCartSession();
@@ -98,7 +96,6 @@ export function Header() {
     e.preventDefault();
     const term = q.trim();
     setSuggestOpen(false);
-    setCatOpen(false);
     const params = new URLSearchParams();
     if (term) params.set("q", term);
     if (searchCatId) params.set("categoryId", searchCatId);
@@ -169,10 +166,6 @@ export function Header() {
 
   const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
   const searchRoots = roots.slice(0, 20);
-  const selectedSearchCatLabel = useMemo(() => {
-    if (!searchCatId) return "Todas as categorias";
-    return searchRoots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias";
-  }, [searchCatId, searchRoots]);
   const promoPriority = Number.isFinite(Number(promoPriorityRaw)) ? Math.round(Number(promoPriorityRaw)) : 50;
   const promoDelaySeconds = Number.isFinite(Number(promoDelayRaw))
     ? Math.min(Math.max(Number(promoDelayRaw), 0), 180)
@@ -220,15 +213,6 @@ export function Header() {
     setPromoPopupOpen(false);
   }
 
-  useEffect(() => {
-    function onDocClick(ev: MouseEvent) {
-      if (!catMenuRef.current) return;
-      if (ev.target instanceof Node && !catMenuRef.current.contains(ev.target)) setCatOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
   async function onPickSearchImage(file?: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
@@ -264,7 +248,6 @@ export function Header() {
 
   function applyCategoryFromSearchBar(id: string) {
     setSearchCatId(id);
-    setCatOpen(false);
     const term = q.trim();
     const params = new URLSearchParams();
     if (term) params.set("q", term);
@@ -333,39 +316,19 @@ export function Header() {
 
           <div className="ae-search-wrap">
             <form className="ae-search" onSubmit={onSearch}>
-              <div className="ae-search__catwrap" ref={catMenuRef}>
-                <button
-                  type="button"
-                  className="ae-search__cat"
-                  aria-label="Filtrar por categoria"
-                  aria-expanded={catOpen}
-                  onClick={() => setCatOpen((v) => !v)}
-                >
-                  <span>{selectedSearchCatLabel}</span>
-                  <span aria-hidden>▾</span>
-                </button>
-                {catOpen ? (
-                  <div className="ae-search__catmenu">
-                    <button
-                      type="button"
-                      className={`ae-search__catitem ${searchCatId === "" ? "ae-search__catitem--on" : ""}`}
-                      onClick={() => applyCategoryFromSearchBar("")}
-                    >
-                      Todas as categorias
-                    </button>
-                    {searchRoots.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={`ae-search__catitem ${searchCatId === c.id ? "ae-search__catitem--on" : ""}`}
-                        onClick={() => applyCategoryFromSearchBar(c.id)}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              <select
+                className="ae-search__cat"
+                aria-label="Filtrar por categoria"
+                value={searchCatId}
+                onChange={(e) => applyCategoryFromSearchBar(e.target.value)}
+              >
+                <option value="">Todas as categorias</option>
+                {searchRoots.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
               <input
                 type="search"
                 className="ae-search__input"
