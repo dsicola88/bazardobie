@@ -23,8 +23,10 @@ export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
-  const [thumbLoadFailedByItemAndUrl, setThumbLoadFailedByItemAndUrl] = useState<Set<string>>(new Set());
-  const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<Record<string, string>>({});
+  const [thumbTryIndexByItemId, setThumbTryIndexByItemId] = useState<Record<string, number>>({});
+  const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<
+    Record<string, { productUrl?: string; variantUrl?: string }>
+  >({});
 
   async function reload() {
     const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
@@ -62,10 +64,22 @@ export default function CartPage() {
     }
   }
 
+  function cartThumbCandidates(item: CartItem): string[] {
+    const extra = fallbackThumbByProductId[item.product.id];
+    const rawCandidates = [
+      item.product.images?.[0]?.url,
+      item.variant?.imageUrl,
+      extra?.productUrl,
+      extra?.variantUrl,
+    ];
+    return Array.from(new Set(rawCandidates.map((u) => resolveMediaUrl(u)).filter(Boolean)));
+  }
+
   function cartThumbUrl(item: CartItem): string {
-    const raw =
-      item.product.images?.[0]?.url || item.variant?.imageUrl || fallbackThumbByProductId[item.product.id] || "";
-    return resolveMediaUrl(raw);
+    const options = cartThumbCandidates(item);
+    if (options.length === 0) return "";
+    const idx = Math.max(0, Math.min(thumbTryIndexByItemId[item.id] ?? 0, options.length - 1));
+    return options[idx] ?? "";
   }
 
   useEffect(() => {
@@ -84,14 +98,16 @@ export default function CartPage() {
           .then((p) => {
             const fromProduct = resolveMediaUrl(p.images?.[0]?.url);
             const fromVariant = resolveMediaUrl(p.variants?.find((v) => v.imageUrl?.trim())?.imageUrl);
-            return { pid, thumb: fromProduct || fromVariant || "" };
+            return { pid, productUrl: fromProduct || "", variantUrl: fromVariant || "" };
           })
-          .catch(() => ({ pid, thumb: "" }))
+          .catch(() => ({ pid, productUrl: "", variantUrl: "" }))
       )
     ).then((rows) => {
-      const next: Record<string, string> = {};
+      const next: Record<string, { productUrl?: string; variantUrl?: string }> = {};
       for (const r of rows) {
-        if (r.status === "fulfilled" && r.value.thumb) next[r.value.pid] = r.value.thumb;
+        if (r.status === "fulfilled" && (r.value.productUrl || r.value.variantUrl)) {
+          next[r.value.pid] = { productUrl: r.value.productUrl, variantUrl: r.value.variantUrl };
+        }
       }
       if (Object.keys(next).length) {
         setFallbackThumbByProductId((prev) => ({ ...prev, ...next }));
@@ -137,17 +153,19 @@ export default function CartPage() {
                     <td>
                       <div className="ae-table-cart__product">
                         <Link to={`/product/${item.product.id}`}>
-                          {cartThumbUrl(item) && !thumbLoadFailedByItemAndUrl.has(`${item.id}::${cartThumbUrl(item)}`) ? (
+                          {cartThumbUrl(item) ? (
                             <img
                               src={cartThumbUrl(item)}
                               alt=""
                               loading="lazy"
                               decoding="async"
                               onError={() =>
-                                setThumbLoadFailedByItemAndUrl((prev) => {
-                                  const next = new Set(prev);
-                                  next.add(`${item.id}::${cartThumbUrl(item)}`);
-                                  return next;
+                                setThumbTryIndexByItemId((prev) => {
+                                  const options = cartThumbCandidates(item);
+                                  const current = prev[item.id] ?? 0;
+                                  const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
+                                  if (nextIdx === current) return prev;
+                                  return { ...prev, [item.id]: nextIdx };
                                 })
                               }
                             />

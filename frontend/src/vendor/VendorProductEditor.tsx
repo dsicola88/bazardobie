@@ -111,6 +111,7 @@ export default function VendorProductEditor() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [uploadingIx, setUploadingIx] = useState<number | null>(null);
+  const [uploadingVariantIx, setUploadingVariantIx] = useState<number | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [name, setName] = useState("");
@@ -359,6 +360,20 @@ export default function VendorProductEditor() {
       setErr(ex instanceof Error ? ex.message : "Falha no carregamento do video.");
     } finally {
       setUploadingVideo(false);
+    }
+  }
+
+  async function onUploadVariantFile(ix: number, file: File) {
+    if (!token) return;
+    setUploadingVariantIx(ix);
+    setErr(null);
+    try {
+      const url = await uploadAdminFile(token, file);
+      setVariants((prev) => prev.map((v, i) => (i === ix ? { ...v, imageUrl: url } : v)));
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Falha no carregamento da imagem da variante.");
+    } finally {
+      setUploadingVariantIx(null);
     }
   }
 
@@ -702,11 +717,27 @@ export default function VendorProductEditor() {
               </div>
               <div>
                 <label>Imagem específica (URL, opcional)</label>
-                <input
-                  value={v.imageUrl}
-                  onChange={(e) => setVariants((p) => p.map((x, i) => (i === ix ? { ...x, imageUrl: e.target.value } : x)))}
-                  placeholder="https://…"
-                />
+                <div className="ae-v-prod-img-row">
+                  <input
+                    value={v.imageUrl}
+                    onChange={(e) => setVariants((p) => p.map((x, i) => (i === ix ? { ...x, imageUrl: e.target.value } : x)))}
+                    placeholder="https://… ou carregue ficheiro"
+                  />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    id={`pvarimg-${ix}`}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (f) void onUploadVariantFile(ix, f);
+                    }}
+                  />
+                  <label htmlFor={`pvarimg-${ix}`} className="btn" style={{ cursor: "pointer", margin: 0 }}>
+                    {uploadingVariantIx === ix ? "A importar…" : "Carregar ficheiro"}
+                  </label>
+                </div>
               </div>
               <button type="button" className="ae-mini-btn" onClick={() => setVariants((p) => p.filter((_, i) => i !== ix))}>
                 Eliminar variante
