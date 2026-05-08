@@ -145,7 +145,7 @@ export default function ProductPage() {
   const [heroImgBroken, setHeroImgBroken] = useState(false);
   const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
   const seoDescription = product
-    ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ.`
+    ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ`
     : "Detalhes do produto no marketplace BAZAR DO BIÉ.";
   const seoImage = product?.images[0]?.url ? resolveMediaUrl(product.images[0].url) : undefined;
 

@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = createApp();
   const server = createServer(app);
 
-  server.listen(env.PORT, () => {
+  server.listen(env.PORT, "0.0.0.0", () => {
     console.log(`BAZAR DO BIÉ API em http://localhost:${env.PORT}/api/v1/health`);
   });
 }
