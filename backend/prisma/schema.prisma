@@ -328,6 +328,7 @@ model Category {
   id        String     @id @default(cuid())
   name      String
   slug      String     @unique
+  imageUrl  String?
   parentId  String?
   sortOrder Int        @default(0)
   createdAt DateTime   @default(now())

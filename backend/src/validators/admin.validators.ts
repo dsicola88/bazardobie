@@ -10,6 +10,7 @@ const imageUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl]);
 
 export const createCategorySchema = z.object({
   name: z.string().min(2),
+  imageUrl: imageUrlSchema.optional().or(z.literal("")),
   parentId: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
@@ -17,6 +18,7 @@ export const createCategorySchema = z.object({
 export const updateCategorySchema = z
   .object({
     name: z.string().min(2).optional(),
+    imageUrl: z.union([imageUrlSchema, z.literal(""), z.null()]).optional(),
     parentId: z.string().nullable().optional(),
     sortOrder: z.number().int().optional(),
   })

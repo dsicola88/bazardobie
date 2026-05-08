@@ -7,6 +7,7 @@ type Row = {
   id: string;
   name: string;
   slug: string;
+  imageUrl?: string | null;
   parentId: string | null;
   sortOrder: number;
   createdAt: string;
@@ -38,10 +39,12 @@ export default function AdminCategories() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("");
   const [newParentId, setNewParentId] = useState<string>("");
   const [newOrder, setNewOrder] = useState<number>(0);
   const [editing, setEditing] = useState<Row | null>(null);
   const [editName, setEditName] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
   const [editParentId, setEditParentId] = useState<string>("");
   const [editOrder, setEditOrder] = useState(0);
 
@@ -78,12 +81,14 @@ export default function AdminCategories() {
         token,
         body: JSON.stringify({
           name: newName.trim(),
+          imageUrl: newImageUrl.trim(),
           parentId: newParentId.trim() === "" ? null : newParentId.trim(),
           sortOrder: newOrder || 0,
         }),
       });
       setMsg("Categoria criada.");
       setNewName("");
+      setNewImageUrl("");
       setNewParentId("");
       setNewOrder(0);
       void load();
@@ -95,6 +100,7 @@ export default function AdminCategories() {
   function openEdit(r: Row) {
     setEditing(r);
     setEditName(r.name);
+    setEditImageUrl((r.imageUrl ?? "").trim());
     setEditParentId(r.parentId ?? "");
     setEditOrder(r.sortOrder);
     setErr(null);
@@ -109,6 +115,7 @@ export default function AdminCategories() {
         token,
         body: JSON.stringify({
           name: editName.trim(),
+          imageUrl: editImageUrl.trim(),
           parentId: editParentId.trim() === "" ? null : editParentId.trim(),
           sortOrder: editOrder,
         }),
@@ -184,6 +191,15 @@ export default function AdminCategories() {
             />
           </label>
           <label className="ae-admin-field">
+            Imagem da categoria (URL ou /uploads/...)
+            <input
+              className="ae-input"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              placeholder="https://... ou /uploads/categorias/electronicos.webp"
+            />
+          </label>
+          <label className="ae-admin-field">
             Dentro da categoria pai (opcional)
             <select
               className="ae-input"
@@ -207,6 +223,11 @@ export default function AdminCategories() {
               onChange={(e) => setNewOrder(Number(e.target.value) || 0)}
             />
           </label>
+          {newImageUrl.trim() ? (
+            <div className="ae-admin-cat-preview">
+              <img src={newImageUrl.trim()} alt="Pré-visualização da nova categoria" loading="lazy" decoding="async" />
+            </div>
+          ) : null}
           <button type="button" className="btn btn-primary" onClick={() => void createCat()}>
             Adicionar categoria
           </button>
@@ -217,6 +238,7 @@ export default function AdminCategories() {
         <table className="ae-admin-table">
           <thead>
             <tr>
+              <th>Imagem</th>
               <th>Nome</th>
               <th>Slug</th>
               <th>Pai</th>
@@ -229,6 +251,13 @@ export default function AdminCategories() {
           <tbody>
             {(rows ?? []).map((r) => (
               <tr key={r.id}>
+                <td>
+                  {r.imageUrl ? (
+                    <img className="ae-admin-cat-thumb" src={r.imageUrl} alt={r.name} loading="lazy" decoding="async" />
+                  ) : (
+                    <div className="ae-admin-cat-thumb ae-admin-cat-thumb--ph" aria-hidden />
+                  )}
+                </td>
                 <td className="ae-admin-cell-title">{r.parentId ? "↳ " : ""}{r.name}</td>
                 <td>
                   <code className="ae-admin-mono" style={{ fontSize: 12 }}>
@@ -271,6 +300,14 @@ export default function AdminCategories() {
               />
             </label>
             <label className="ae-admin-field">
+              Imagem da categoria (URL ou /uploads/...)
+              <input
+                className="ae-input"
+                value={editImageUrl}
+                onChange={(e) => setEditImageUrl(e.target.value)}
+              />
+            </label>
+            <label className="ae-admin-field">
               Pai (reorganizar hierarquia)
               <select
                 className="ae-input"
@@ -294,6 +331,11 @@ export default function AdminCategories() {
                 onChange={(e) => setEditOrder(Number(e.target.value) || 0)}
               />
             </label>
+            {editImageUrl.trim() ? (
+              <div className="ae-admin-cat-preview">
+                <img src={editImageUrl.trim()} alt={`Pré-visualização ${editName || editing.name}`} loading="lazy" decoding="async" />
+              </div>
+            ) : null}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="btn btn-primary" onClick={() => void saveEdit()}>
                 Guardar alterações

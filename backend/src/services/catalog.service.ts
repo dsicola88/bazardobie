@@ -58,6 +58,7 @@ export const categoryService = {
       id: r.id,
       name: r.name,
       slug: r.slug,
+      imageUrl: r.imageUrl,
       parentId: r.parentId,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
@@ -76,6 +77,7 @@ export const categoryService = {
       data: {
         name: input.name.trim(),
         slug,
+        imageUrl: input.imageUrl?.trim() ? input.imageUrl.trim() : null,
         parentId: input.parentId ?? undefined,
         sortOrder: input.sortOrder ?? 0,
       },
@@ -105,6 +107,9 @@ export const categoryService = {
       where: { id },
       data: {
         ...(input.name !== undefined ? { name: input.name.trim(), slug } : {}),
+        ...(input.imageUrl !== undefined
+          ? { imageUrl: input.imageUrl?.trim() ? input.imageUrl.trim() : null }
+          : {}),
         ...(input.parentId !== undefined
           ? { parentId: input.parentId === null ? null : input.parentId }
           : {}),

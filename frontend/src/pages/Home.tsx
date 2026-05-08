@@ -8,7 +8,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { useSeo } from "../seo/useSeo.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
-type Category = { id: string; name: string; parentId: string | null };
+type Category = { id: string; name: string; imageUrl?: string | null; parentId: string | null };
 type MegaProduct = { id: string; name: string; images?: { url: string }[] };
 
 export default function Home() {
@@ -125,13 +125,32 @@ export default function Home() {
                 setMegaOpen(true);
               }}
             >
-              {c.name}
+              <span className="ae-home-cats__item-in">
+                {c.imageUrl ? (
+                  <img
+                    className="ae-home-cats__item-img"
+                    src={resolveMediaUrl(c.imageUrl)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="ae-home-cats__item-dot" aria-hidden />
+                )}
+                <span>{c.name}</span>
+              </span>
             </button>
           ))}
         </div>
         <div className={`ae-home-mega ${megaOpen ? "ae-home-mega--open" : ""}`}>
           <div className="ae-home-mega__left">
             <h3>{activeRoot?.name ?? "Categorias"}</h3>
+            {activeRoot?.imageUrl ? (
+              <div className="ae-home-mega__hero">
+                <img src={resolveMediaUrl(activeRoot.imageUrl)} alt={activeRoot.name} loading="lazy" decoding="async" />
+              </div>
+            ) : null}
             <div className="ae-home-mega__children">
               {activeChildren.slice(0, 12).map((child) => (
                 <Link key={child.id} to={`/search?categoryId=${child.id}`}>
