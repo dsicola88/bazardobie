@@ -1,4 +1,7 @@
 import { env } from "../config/env.js";
+import { resolvePublicMediaUrl } from "./mediaUrlCore.js";
+
+export { resolvePublicMediaUrl };
 
 /**
  * Expõe caminhos `/uploads/…` armazenados na BD como URL absoluta da API (`PUBLIC_BASE_URL`).
@@ -6,13 +9,7 @@ import { env } from "../config/env.js";
  * URLs `https://` (R2, CDN) e caminhos `/demo/…` permanecem inalterados.
  */
 export function publicMediaUrl(stored: string | null | undefined): string {
-  const u = String(stored ?? "").trim();
-  if (!u) return u;
-  if (/^https?:\/\//i.test(u)) return u;
-  if (u.startsWith("/uploads/")) {
-    return `${env.PUBLIC_BASE_URL.replace(/\/$/, "")}${u}`;
-  }
-  return u;
+  return resolvePublicMediaUrl(stored, env.PUBLIC_BASE_URL);
 }
 
 type ProductLike = {

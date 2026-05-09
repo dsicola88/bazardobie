@@ -48,6 +48,8 @@ export const uploadController = {
         return;
       } catch (e) {
         await fs.unlink(finalPath).catch(() => {});
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[upload] R2 PutObject falhou:", msg);
         throw new HttpError(
           500,
           e instanceof Error ? e.message : "Falha ao enviar ficheiro para o armazenamento."

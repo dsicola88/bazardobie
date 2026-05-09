@@ -1,8 +1,10 @@
-const API_BASE = (import.meta.env.VITE_API_BASE ?? "/api/v1").replace(/\/$/, "");
-/** Origem onde estão os ficheiros `/uploads/...` (API Railway). Obrigatório em produção se `VITE_API_BASE` for relativo. */
-const MEDIA_ORIGIN = String(import.meta.env.VITE_MEDIA_ORIGIN ?? "").trim().replace(/\/$/, "");
-/** Sinónimo opcional de VITE_MEDIA_ORIGIN (só a origem, ex. https://api.up.railway.app) */
-const API_ORIGIN_FALLBACK = String(import.meta.env.VITE_API_ORIGIN ?? "").trim().replace(/\/$/, "");
+export type MediaUrlConfig = {
+  apiBase: string;
+  mediaOrigin: string;
+  apiOriginFallback: string;
+  /** Origem da página (ex.: `https://loja.vercel.app`); omitir em SSR sem window */
+  pageOrigin?: string;
+};
 
 function normalizeUploadsPath(p: string): string {
   if (p.startsWith("uploads/")) return `/${p}`;
@@ -13,22 +15,26 @@ function normalizeUploadsPath(p: string): string {
   return p;
 }
 
-/** Origem pública da API para prefixar `/uploads/…` quando o SPA está noutro domínio (ex.: Vercel + API na Railway). */
-function apiOriginFromBase(): string {
-  if (MEDIA_ORIGIN) return MEDIA_ORIGIN;
-  if (API_ORIGIN_FALLBACK) return API_ORIGIN_FALLBACK;
-  if (API_BASE.startsWith("http://") || API_BASE.startsWith("https://")) {
+function apiOriginFromConfig(cfg: MediaUrlConfig): string {
+  const { apiBase, mediaOrigin, apiOriginFallback, pageOrigin } = cfg;
+  if (mediaOrigin) return mediaOrigin;
+  if (apiOriginFallback) return apiOriginFallback;
+  if (apiBase.startsWith("http://") || apiBase.startsWith("https://")) {
     try {
-      return new URL(API_BASE).origin;
+      return new URL(apiBase).origin;
     } catch {
       return "";
     }
   }
+  if (pageOrigin) return pageOrigin;
   if (typeof window !== "undefined") return window.location.origin;
   return "";
 }
 
-export function resolveMediaUrl(raw: string | null | undefined): string {
+/**
+ * Resolve URL de media com configuração injectável (útil em testes e Storybook).
+ */
+export function resolveMediaUrlConfigured(raw: string | null | undefined, cfg: MediaUrlConfig): string {
   const url = String(raw ?? "").trim();
   if (!url) return "";
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
@@ -41,12 +47,21 @@ export function resolveMediaUrl(raw: string | null | undefined): string {
       }
       if (
         (u.hostname === "localhost" || u.hostname === "127.0.0.1") &&
-        typeof window !== "undefined" &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1" &&
         path.startsWith("/uploads/")
       ) {
-        return `${apiOriginFromBase()}${path}`;
+        let pageHost = "";
+        if (cfg.pageOrigin) {
+          try {
+            pageHost = new URL(cfg.pageOrigin).hostname;
+          } catch {
+            pageHost = "";
+          }
+        } else if (typeof window !== "undefined") {
+          pageHost = window.location.hostname;
+        }
+        if (pageHost && pageHost !== "localhost" && pageHost !== "127.0.0.1") {
+          return `${apiOriginFromConfig(cfg)}${path}`;
+        }
       }
     } catch {
       return url;
@@ -55,7 +70,26 @@ export function resolveMediaUrl(raw: string | null | undefined): string {
   }
   const norm = normalizeUploadsPath(url);
   if (norm.startsWith("/uploads/")) {
-    return `${apiOriginFromBase()}${norm}`;
+    return `${apiOriginFromConfig(cfg)}${norm}`;
   }
   return url;
+}
+
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "/api/v1").replace(/\/$/, "");
+/** Origem onde estão os ficheiros `/uploads/...` (API Railway). Obrigatório em produção se `VITE_API_BASE` for relativo. */
+const MEDIA_ORIGIN = String(import.meta.env.VITE_MEDIA_ORIGIN ?? "").trim().replace(/\/$/, "");
+/** Sinónimo opcional de VITE_MEDIA_ORIGIN (só a origem, ex. https://api.up.railway.app) */
+const API_ORIGIN_FALLBACK = String(import.meta.env.VITE_API_ORIGIN ?? "").trim().replace(/\/$/, "");
+
+function liveConfig(): MediaUrlConfig {
+  return {
+    apiBase: API_BASE,
+    mediaOrigin: MEDIA_ORIGIN,
+    apiOriginFallback: API_ORIGIN_FALLBACK,
+    pageOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
+  };
+}
+
+export function resolveMediaUrl(raw: string | null | undefined): string {
+  return resolveMediaUrlConfigured(raw, liveConfig());
 }
