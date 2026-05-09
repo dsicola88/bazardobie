@@ -12,6 +12,10 @@ RUN npm ci
 
 COPY . .
 
+# prisma generate exige que DATABASE_URL esteja definida (validação do schema); não liga à BD.
+# Migrações correm no CMD com o DATABASE_URL real injectado pelo Railway.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/prisma_generate_only"
+
 RUN npm run build
 
 ENV NODE_ENV=production
