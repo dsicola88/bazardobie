@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
@@ -6,11 +6,21 @@ import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { CartThumbWithZoom } from "../components/CartThumbWithZoom.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
 
 type CartItem = {
   id: string;
   quantity: number;
-  product: { id: string; name: string; condition?: string | null; stock: number; images?: { url: string }[] };
+  product: {
+    id: string;
+    name: string;
+    condition?: string | null;
+    stock: number;
+    price: string;
+    promoPrice?: string | null;
+    displayPrice?: string;
+    images?: { url: string }[];
+  };
   variant?: {
     id: string;
     name?: string | null;
@@ -19,6 +29,8 @@ type CartItem = {
     size?: string | null;
     stock: number;
     imageUrl?: string | null;
+    salePrice?: string | null;
+    priceAdjust?: string | null;
   } | null;
   productDeliveryOption: {
     tipoEntrega: string;
@@ -27,6 +39,16 @@ type CartItem = {
     logisticsPartner?: { id: string; name: string } | null;
   };
 };
+
+function cartLineUnitPrice(item: CartItem): number {
+  const p = item.product;
+  const productForPrice = {
+    ...p,
+    displayPrice: p.displayPrice ?? p.price ?? "0",
+    price: p.price ?? p.displayPrice ?? "0",
+  };
+  return variantEffectiveUnitKz(productForPrice, item.variant ?? null);
+}
 
 function cartVariantLine(variant: NonNullable<CartItem["variant"]>): string {
   const parts = [variant.color, variant.size, variant.name].map((x) => (x ?? "").trim()).filter(Boolean);
@@ -37,6 +59,7 @@ function cartVariantLine(variant: NonNullable<CartItem["variant"]>): string {
 export default function CartPage() {
   const { token, user } = useAuth();
   const [cart, setCart] = useState<{ items: CartItem[] } | null>(null);
+  const [cartErr, setCartErr] = useState<string | null>(null);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
   const [thumbTryIndexByItemId, setThumbTryIndexByItemId] = useState<Record<string, number>>({});
   const [fallbackThumbByProductId, setFallbackThumbByProductId] = useState<
@@ -45,14 +68,20 @@ export default function CartPage() {
   /** Clique nas miniaturas laterais — qual URL mostrar ao centro com zoom (estilo vitrine AE). */
   const [cartHeroRawByLineId, setCartHeroRawByLineId] = useState<Record<string, string>>({});
 
-  async function reload() {
-    const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
-    setCart(c);
-  }
+  const reload = useCallback(async () => {
+    setCartErr(null);
+    try {
+      const c = await apiFetch<{ items: CartItem[] }>("/cart", { headers: cartSessionHeaders(), token });
+      setCart(c);
+    } catch {
+      setCartErr("Não foi possível carregar o carrinho. Actualize a página ou confirme a ligação à API.");
+      setCart({ items: [] });
+    }
+  }, [token]);
 
   useEffect(() => {
-    void reload().catch(() => setCart(null));
-  }, [token]);
+    void reload();
+  }, [reload]);
 
   async function remove(id: string) {
     await apiFetch(`/cart/items/${id}`, { method: "DELETE", headers: cartSessionHeaders(), token });
@@ -75,7 +104,7 @@ export default function CartPage() {
       window.dispatchEvent(new Event("cart-updated"));
       await reload();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Não foi possível actualizar a quantidade.");
+      setCartErr(e instanceof Error ? e.message : "Não foi possível actualizar a quantidade.");
     } finally {
       setBusyItemId(null);
     }
@@ -167,40 +196,93 @@ export default function CartPage() {
     });
   }, [cart, fallbackThumbByProductId]);
 
-  if (!cart) return <p className="ae-muted">A carregar o seu carrinho…</p>;
+  const totals = useMemo(() => {
+    const items = cart?.items ?? [];
+    let sub = 0;
+    let ship = 0;
+    let units = 0;
+    for (const it of items) {
+      sub += cartLineUnitPrice(it) * it.quantity;
+      ship += Number(it.productDeliveryOption.custoEntrega);
+      units += it.quantity;
+    }
+    return {
+      subtotalProducts: sub,
+      shippingTotal: ship,
+      grandTotal: sub + ship,
+      nLines: items.length,
+      nUnits: units,
+    };
+  }, [cart?.items]);
+
+  if (!cart) {
+    return (
+      <div className="ae-cart-page">
+        <div className="ae-checkout__breadcrumb">
+          <Link to="/">Início</Link>
+          <span className="ae-checkout__sep">›</span>
+          <span className="ae-on">Carrinho</span>
+        </div>
+        <h1 className="ae-checkout__title">Carrinho de compras</h1>
+        <p className="ae-muted ae-cart-loading">A carregar o seu carrinho…</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="ae-checkout__title" style={{ marginBottom: 8 }}>
-        Carrinho
-      </h1>
+    <div className="ae-cart-page">
+      <div className="ae-checkout__breadcrumb">
+        <Link to="/">Início</Link>
+        <span className="ae-checkout__sep">›</span>
+        <span className="ae-on">Carrinho</span>
+      </div>
+      <h1 className="ae-checkout__title">Carrinho de compras</h1>
+      <p className="ae-cart-intro ae-muted">
+        Rever artigos, preços em kwanzas e portes por linha. O total exacto é confirmado no fecho da compra com a sua morada.
+      </p>
+
       {token && user?.role === "CLIENTE" ? (
-        <p className="ae-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+        <p className="ae-muted" style={{ fontSize: 13, marginBottom: 14 }}>
           <Link to="/orders">As minhas encomendas</Link>
           {" · "}
           <Link to="/favorites">Favoritos</Link>
         </p>
       ) : null}
-      {cart.items.length === 0 ? (
-        <div className="page-panel ae-empty-center">
-          O carrinho não contém artigos.
-          <br />
-          <Link to="/search">Ir ao catálogo</Link>
+
+      {cartErr ? (
+        <div className="ae-admin-alert ae-admin-alert--err ae-cart-banner" role="alert">
+          {cartErr}
         </div>
-      ) : (
-        <>
-          <div className="ae-table-cart-wrap">
-            <table className="ae-table-cart">
-              <thead>
-                <tr>
-                  <th>Artigo</th>
-                  <th>Expedição</th>
-                  <th>Qtd.</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {cart.items.map((item) => (
+      ) : null}
+
+      {cart.items.length === 0 && !cartErr ? (
+        <div className="page-panel ae-empty-center ae-cart-empty">
+          <p className="ae-cart-empty__title">O seu carrinho está vazio</p>
+          <p className="ae-muted">Explore o catálogo e adicione artigos com a opção de envio que preferir.</p>
+          <Link className="btn btn-primary" to="/search">
+            Ir ao catálogo
+          </Link>
+        </div>
+      ) : cart.items.length === 0 ? null : (
+        <div className="ae-cart-layout">
+          <div className="ae-cart-main">
+            <div className="ae-table-cart-wrap">
+              <table className="ae-table-cart">
+                <thead>
+                  <tr>
+                    <th>Artigo</th>
+                    <th>Expedição</th>
+                    <th className="ae-table-cart__num">Preço unit.</th>
+                    <th className="ae-table-cart__qty">Qtd.</th>
+                    <th className="ae-table-cart__num">Subtotal</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.items.map((item) => {
+                    const unit = cartLineUnitPrice(item);
+                    const lineSub = unit * item.quantity;
+                    return (
                   <tr key={item.id}>
                     <td>
                       <div className="ae-table-cart__product ae-table-cart__product--gallery">
@@ -272,10 +354,13 @@ export default function CartPage() {
                         · {formatFreteKz(item.productDeliveryOption.custoEntrega)}
                       </div>
                       <div className="ae-muted" style={{ fontSize: 12 }}>
-                        {item.productDeliveryOption.prazoEstimado} dias úteis
+                        Prazo: {item.productDeliveryOption.prazoEstimado} dias úteis
                       </div>
                     </td>
-                    <td>
+                    <td className="ae-table-cart__num">
+                      <span className="ae-cart-kz">{formatKz(unit)}</span>
+                    </td>
+                    <td className="ae-table-cart__qty">
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                         <button
                           type="button"
@@ -293,6 +378,7 @@ export default function CartPage() {
                           disabled={busyItemId === item.id}
                           onChange={(e) => void changeQty(item, Number(e.target.value) || 1)}
                           style={{ width: 68, textAlign: "center" }}
+                          aria-label={`Quantidade de ${item.product.name}`}
                         />
                         <button
                           type="button"
@@ -310,28 +396,61 @@ export default function CartPage() {
                         Stock: {item.variant ? item.variant.stock : item.product.stock}
                       </div>
                     </td>
+                    <td className="ae-table-cart__num">
+                      <span className="ae-cart-kz ae-cart-kz--strong">{formatKz(lineSub)}</span>
+                      <div className="ae-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                        + portes na linha
+                      </div>
+                    </td>
                     <td>
                       <button type="button" className="ae-link-remove" onClick={() => void remove(item.id)}>
                         Eliminar
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                );
+                })}
+                </tbody>
+              </table>
+            </div>
           </div>
-          {!token ? (
-            <p style={{ marginTop: 16 }}>
-              <Link className="btn btn-primary" to="/login">
-                Iniciar sessão para fechar a compra
-              </Link>
+
+          <aside className="ae-cart-summary" aria-label="Resumo do pedido">
+            <h2 className="ae-cart-summary__title">Resumo</h2>
+            <div className="ae-cart-summary__row">
+              <span>Subtotal ({totals.nUnits} {totals.nUnits === 1 ? "unidade" : "unidades"})</span>
+              <span className="ae-cart-kz">{formatKz(totals.subtotalProducts)}</span>
+            </div>
+            <div className="ae-cart-summary__row">
+              <span>Portes ({totals.nLines} {totals.nLines === 1 ? "envio" : "envios"})</span>
+              <span className="ae-cart-kz">{formatKz(totals.shippingTotal)}</span>
+            </div>
+            <div className="ae-cart-summary__row ae-cart-summary__total">
+              <span>Total estimado</span>
+              <span className="ae-cart-kz">{formatKz(totals.grandTotal)}</span>
+            </div>
+            <p className="ae-cart-summary__note ae-muted">
+              Valores em Kz. Impostos e tarifas finais podem depender da morada e método de pagamento — confirmados no passo seguinte.
             </p>
-          ) : (
-            <Link className="btn btn-primary" to="/checkout" style={{ marginTop: 16, display: "inline-block" }}>
-              Fechar compra ({cart.items.reduce((s, i) => s + i.quantity, 0)} linhas)
+            {!token ? (
+              <div className="ae-cart-summary__cta">
+                <Link className="btn btn-primary ae-cart-summary__btn" to={`/login?next=${encodeURIComponent("/checkout")}`}>
+                  Iniciar sessão para comprar
+                </Link>
+                <p className="ae-muted ae-cart-summary__hint">Conta de cliente necessária para morada e pagamento.</p>
+              </div>
+            ) : user?.role === "CLIENTE" ? (
+              <Link className="btn btn-primary ae-cart-summary__btn" to="/checkout">
+                Fechar compra — {formatKz(totals.grandTotal)}
+              </Link>
+            ) : (
+              <p className="ae-muted ae-cart-summary__hint">Inicie sessão com uma conta de comprador (cliente) para concluir o pedido.</p>
+            )}
+            <Link to="/search" className="ae-cart-summary__back">
+              Continuar a comprar
             </Link>
-          )}
-        </>
+          </aside>
+        </div>
       )}
     </div>
   );

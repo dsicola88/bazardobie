@@ -141,6 +141,7 @@ export default function ProductPage() {
   const [deliveryId, setDeliveryId] = useState("");
   const [mainImg, setMainImg] = useState("");
   const [adding, setAdding] = useState(false);
+  const [cartFeedback, setCartFeedback] = useState<null | { ok: boolean; message: string }>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [zoomOn, setZoomOn] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
@@ -327,6 +328,7 @@ export default function ProductPage() {
   async function addToCart() {
     if (!product || !deliveryId || (needVariant && !variantId)) return;
     setAdding(true);
+    setCartFeedback(null);
     try {
       await apiFetch("/cart/items", {
         method: "POST",
@@ -340,12 +342,29 @@ export default function ProductPage() {
         }),
       });
       window.dispatchEvent(new Event("cart-updated"));
+      setCartFeedback({
+        ok: true,
+        message:
+          qty > 1
+            ? `${qty} unidades foram adicionadas ao seu carrinho. Pode rever quantidades e portes antes de pagar.`
+            : "Artigo adicionado ao carrinho. O total final inclui portes por linha e será confirmado no fecho da compra.",
+      });
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Não foi possível actualizar o carrinho.");
+      setCartFeedback({
+        ok: false,
+        message: e instanceof Error ? e.message : "Não foi possível actualizar o carrinho. Verifique a ligação e tente novamente.",
+      });
     } finally {
       setAdding(false);
     }
   }
+
+  useEffect(() => {
+    if (!cartFeedback) return;
+    const ms = cartFeedback.ok ? 8000 : 12000;
+    const t = window.setTimeout(() => setCartFeedback(null), ms);
+    return () => window.clearTimeout(t);
+  }, [cartFeedback]);
 
   useEffect(() => {
     if (stockAvailable <= 0) {
@@ -639,9 +658,26 @@ export default function ProductPage() {
               </div>
             </div>
 
+            {cartFeedback ? (
+              <div
+                className={`ae-pdp-cart-feedback ${cartFeedback.ok ? "ae-pdp-cart-feedback--ok" : "ae-pdp-cart-feedback--err"}`}
+                role="status"
+              >
+                {cartFeedback.message}
+                {cartFeedback.ok ? (
+                  <>
+                    {" "}
+                    <Link to="/cart" className="ae-pdp-cart-feedback__link">
+                      Abrir carrinho
+                    </Link>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="ae-buy-actions">
               <button type="button" className="ae-btn-lg ae-btn-buy" disabled={!canAdd || adding} onClick={() => void addToCart()}>
-                {adding ? "A actualizar…" : "Adicionar ao carrinho"}
+                {adding ? "A adicionar…" : "Adicionar ao carrinho"}
               </button>
               <Link className="ae-btn-lg ae-btn-cart" to="/cart" style={{ textAlign: "center", textDecoration: "none" }}>
                 Ver carrinho

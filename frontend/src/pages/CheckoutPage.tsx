@@ -645,6 +645,8 @@ export default function CheckoutPage() {
   return (
     <div className="ae-checkout">
       <div className="ae-checkout__breadcrumb">
+        <Link to="/">Início</Link>
+        <span className="ae-checkout__sep">›</span>
         <Link to="/cart">Carrinho</Link>
         <span className="ae-checkout__sep">›</span>
         <span className="ae-on">Fecho da compra</span>
