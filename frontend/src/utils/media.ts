@@ -1,5 +1,8 @@
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "/api/v1").replace(/\/$/, "");
+/** Origem onde estão os ficheiros `/uploads/...` (API Railway). Obrigatório em produção se `VITE_API_BASE` for relativo. */
 const MEDIA_ORIGIN = String(import.meta.env.VITE_MEDIA_ORIGIN ?? "").trim().replace(/\/$/, "");
+/** Sinónimo opcional de VITE_MEDIA_ORIGIN (só a origem, ex. https://api.up.railway.app) */
+const API_ORIGIN_FALLBACK = String(import.meta.env.VITE_API_ORIGIN ?? "").trim().replace(/\/$/, "");
 
 function normalizeUploadsPath(p: string): string {
   if (p.startsWith("uploads/")) return `/${p}`;
@@ -10,8 +13,10 @@ function normalizeUploadsPath(p: string): string {
   return p;
 }
 
+/** Origem pública da API para prefixar `/uploads/…` quando o SPA está noutro domínio (ex.: Vercel + API na Railway). */
 function apiOriginFromBase(): string {
   if (MEDIA_ORIGIN) return MEDIA_ORIGIN;
+  if (API_ORIGIN_FALLBACK) return API_ORIGIN_FALLBACK;
   if (API_BASE.startsWith("http://") || API_BASE.startsWith("https://")) {
     try {
       return new URL(API_BASE).origin;

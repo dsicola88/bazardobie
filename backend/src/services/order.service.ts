@@ -25,6 +25,7 @@ import { freightDistanceService } from "./freightDistance.service.js";
 import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
 import { variantUnitPrice } from "../utils/variantPricing.js";
+import { mapOrderWithItemsMedia } from "../utils/publicMediaUrl.js";
 
 type Checkout = z.infer<typeof checkoutSchema>;
 
@@ -576,7 +577,12 @@ export const orderService = {
       }),
       prisma.order.count({ where }),
     ]);
-    return { items, total, skip, take };
+    return {
+      items: items.map((o) => mapOrderWithItemsMedia(o)),
+      total,
+      skip,
+      take,
+    };
   },
 
   async getMyOrder(orderId: string, userId: string) {
@@ -600,7 +606,7 @@ export const orderService = {
       },
     });
     if (!order) throw new HttpError(404, "Pedido não encontrado");
-    return order;
+    return mapOrderWithItemsMedia(order);
   },
 
   async sellerOrders(vendorUserId: string, skip = 0, take = 20, q?: string) {
@@ -646,7 +652,12 @@ export const orderService = {
       }),
       prisma.order.count({ where }),
     ]);
-    return { items, total, skip, take };
+    return {
+      items: items.map((o) => mapOrderWithItemsMedia(o)),
+      total,
+      skip,
+      take,
+    };
   },
 
   async updateStatus(orderId: string, status: OrderStatus, actor: { userId: string; role: UserRole }) {

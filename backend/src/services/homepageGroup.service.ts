@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import type { PatchHomeProductGroupInput } from "../validators/homepageGroup.validators.js";
 import { siteSettingsService } from "./siteSettings.service.js";
+import { publicMediaUrl } from "../utils/publicMediaUrl.js";
 
 function isListedProductPublic(
   p: {
@@ -46,7 +47,7 @@ function cardDto(p: {
     soldCount: Number(p.soldCount || 0),
     averageRating: p.averageRating,
     reviewCount: Number(p.reviewCount || 0),
-    images: p.images.map((img) => ({ url: img.url })),
+    images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
   };
 }
 

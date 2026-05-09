@@ -1,4 +1,5 @@
 import type { Shop } from "@prisma/client";
+import { publicMediaUrl } from "./publicMediaUrl.js";
 
 /** Informação de confiança visible ao comprador — nunca expor BI, selfie, NIF, IBAN nem certidões em bruto. */
 export type CredibilidadePublicaDto = {
@@ -59,7 +60,7 @@ export function lojaResumoProduto(shop: Shop) {
     name: shop.name,
     province: shop.province,
     city: shop.city,
-    logoUrl: shop.logoUrl,
+    logoUrl: shop.logoUrl ? publicMediaUrl(shop.logoUrl) : shop.logoUrl,
     credibilidade: credibilidadeComprador(shop),
   };
 }
@@ -71,7 +72,7 @@ export function lojaPaginaPublica(shop: Shop) {
     description: shop.description,
     province: shop.province,
     city: shop.city,
-    logoUrl: shop.logoUrl,
+    logoUrl: shop.logoUrl ? publicMediaUrl(shop.logoUrl) : shop.logoUrl,
     credibilidade: credibilidadeComprador(shop),
   };
 }

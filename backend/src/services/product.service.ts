@@ -18,6 +18,7 @@ import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { notificationService } from "./notification.service.js";
 import { env } from "../config/env.js";
+import { mapProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
 import { syncProductDisplayFromVariants } from "./productDisplaySync.js";
 
 const deliveryOptionsPublicInclude = {
@@ -247,16 +248,18 @@ export const productService = {
     await prisma.$transaction(async (tx) => {
       await syncProductDisplayFromVariants(tx, created.id);
     });
-    return prisma.product.findFirstOrThrow({
-      where: { id: created.id },
-      include: {
-        images: true,
-        variants: true,
-        deliveryOptions: deliveryOptionsPublicInclude,
-        category: true,
-        shop: true,
-      },
-    });
+    return mapProductMediaForApi(
+      await prisma.product.findFirstOrThrow({
+        where: { id: created.id },
+        include: {
+          images: true,
+          variants: true,
+          deliveryOptions: deliveryOptionsPublicInclude,
+          category: true,
+          shop: true,
+        },
+      })
+    );
   },
 
   async getOwn(shopUserId: string, productId: string) {
@@ -274,7 +277,7 @@ export const productService = {
       },
     });
     if (!product) throw new HttpError(404, "Produto não encontrado");
-    return product;
+    return mapProductMediaForApi(product);
   },
 
   async updateOwn(shopUserId: string, productId: string, input: UpdateProduct) {
@@ -404,10 +407,12 @@ export const productService = {
       await syncProductDisplayFromVariants(tx, productId);
     });
 
-    return prisma.product.findFirstOrThrow({
-      where: { id: productId },
-      include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
-    });
+    return mapProductMediaForApi(
+      await prisma.product.findFirstOrThrow({
+        where: { id: productId },
+        include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+      })
+    );
   },
 
   async listMine(shopUserId: string, skip = 0, take = 80, search?: string) {
@@ -438,7 +443,12 @@ export const productService = {
       }),
       prisma.product.count({ where }),
     ]);
-    return { items, total, skip, take };
+    return {
+      items: items.map((p) => mapProductMediaForApi(p)),
+      total,
+      skip,
+      take,
+    };
   },
 
   async getPublic(id: string) {
@@ -470,8 +480,9 @@ export const productService = {
       : product.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
     if (deliveryOptions.length === 0) throw new HttpError(404, "Produto não encontrado");
 
+    const mapped = mapProductMediaForApi(product);
     return {
-      ...product,
+      ...mapped,
       deliveryOptions,
       shop: lojaResumoProduto(product.shop),
     };
@@ -536,11 +547,11 @@ export const productService = {
       const deliveryOptions = allowSeller
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
-      return {
+      return mapProductMediaForApi({
         ...p,
         deliveryOptions,
         shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
-      };
+      });
     });
     return { items: safe, total, skip, take };
   },
@@ -646,7 +657,7 @@ export const productService = {
       soldCount: Number(p.soldCount || 0),
       averageRating: p.averageRating,
       reviewCount: Number(p.reviewCount || 0),
-      images: p.images.map((img) => ({ url: img.url })),
+      images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
     }));
     return { items, total: items.length };
   },
@@ -719,6 +730,14 @@ export const productService = {
       }),
       prisma.product.count({ where }),
     ]);
-    return { items, total, skip, take };
+    return {
+      items: items.map((p) => ({
+        ...p,
+        images: p.images.map((img) => ({ ...img, url: publicMediaUrl(img.url) })),
+      })),
+      total,
+      skip,
+      take,
+    };
   },
 };

@@ -2,13 +2,14 @@ import { cartService } from "../services/cart.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { addCartItemSchema, patchCartItemSchema } from "../validators/cart.validators.js";
 import { cartSession } from "../middlewares/optionalAuth.js";
+import { mapCartItemMediaForApi, mapCartMediaForApi } from "../utils/publicMediaUrl.js";
 
 export const cartController = {
   get: asyncHandler(async (req, res) => {
     const userId = req.user?.sub;
     const session = cartSession(req);
     const cart = await cartService.getCart(userId, session);
-    res.json(cart);
+    res.json(mapCartMediaForApi(cart));
   }),
 
   merge: asyncHandler(async (req, res) => {
@@ -19,7 +20,7 @@ export const cartController = {
     }
     const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId : undefined;
     const cart = await cartService.mergeGuestIntoUser(sessionId, userId);
-    res.json(cart);
+    res.json(mapCartMediaForApi(cart));
   }),
 
   add: asyncHandler(async (req, res) => {
@@ -27,7 +28,7 @@ export const cartController = {
     const userId = req.user?.sub;
     const session = cartSession(req);
     const item = await cartService.addItem(userId, session, body);
-    res.status(201).json(item);
+    res.status(201).json(mapCartItemMediaForApi(item));
   }),
 
   patchItem: asyncHandler(async (req, res) => {

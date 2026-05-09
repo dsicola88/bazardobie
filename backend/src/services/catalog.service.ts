@@ -1,6 +1,7 @@
 import { HttpError } from "../middlewares/errorHandler.js";
 import { prisma } from "../lib/prisma.js";
 import { slugify } from "../utils/slugify.js";
+import { publicMediaUrl } from "../utils/publicMediaUrl.js";
 import type { z } from "zod";
 import type { createCategorySchema, createBannerSchema } from "../validators/admin.validators.js";
 import { updateBannerSchema, updateCategorySchema } from "../validators/admin.validators.js";
@@ -42,9 +43,13 @@ async function collectDescendantIds(rootId: string): Promise<Set<string>> {
 
 export const categoryService = {
   async listTree() {
-    return prisma.category.findMany({
+    const rows = await prisma.category.findMany({
       orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
     });
+    return rows.map((r) => ({
+      ...r,
+      imageUrl: r.imageUrl ? publicMediaUrl(r.imageUrl) : r.imageUrl,
+    }));
   },
 
   async listAdmin() {
@@ -58,7 +63,7 @@ export const categoryService = {
       id: r.id,
       name: r.name,
       slug: r.slug,
-      imageUrl: r.imageUrl,
+      imageUrl: r.imageUrl ? publicMediaUrl(r.imageUrl) : r.imageUrl,
       parentId: r.parentId,
       sortOrder: r.sortOrder,
       createdAt: r.createdAt,
@@ -142,16 +147,18 @@ export const categoryService = {
 
 export const bannerService = {
   async listActive() {
-    return prisma.banner.findMany({
+    const rows = await prisma.banner.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },
     });
+    return rows.map((b) => ({ ...b, imageUrl: publicMediaUrl(b.imageUrl) }));
   },
 
   async listAllAdmin() {
-    return prisma.banner.findMany({
+    const rows = await prisma.banner.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
+    return rows.map((b) => ({ ...b, imageUrl: publicMediaUrl(b.imageUrl) }));
   },
 
   async createAdmin(input: BanIn) {

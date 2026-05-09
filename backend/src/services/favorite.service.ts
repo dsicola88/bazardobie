@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import type { z } from "zod";
 import type { createFavoriteSchema } from "../validators/favorite.validators.js";
+import { mapNestedProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
 
 type Fav = z.infer<typeof createFavoriteSchema>;
 
@@ -16,7 +17,7 @@ export const favoriteService = {
     });
     if (dup) throw new HttpError(409, "Já está nos favoritos");
 
-    return prisma.favorite.create({
+    const f = await prisma.favorite.create({
       data: {
         userId,
         productId: input.productId,
@@ -27,6 +28,14 @@ export const favoriteService = {
         variant: true,
       },
     });
+    return {
+      ...f,
+      product: mapNestedProductMediaForApi(f.product),
+      variant:
+        f.variant && f.variant.imageUrl != null && String(f.variant.imageUrl).trim() !== ""
+          ? { ...f.variant, imageUrl: publicMediaUrl(f.variant.imageUrl) }
+          : f.variant,
+    };
   },
 
   async remove(userId: string, productId: string, variantId?: string | null) {
@@ -41,7 +50,7 @@ export const favoriteService = {
   },
 
   async list(userId: string) {
-    return prisma.favorite.findMany({
+    const rows = await prisma.favorite.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       include: {
@@ -49,5 +58,13 @@ export const favoriteService = {
         variant: true,
       },
     });
+    return rows.map((f) => ({
+      ...f,
+      product: mapNestedProductMediaForApi(f.product),
+      variant:
+        f.variant && f.variant.imageUrl != null && String(f.variant.imageUrl).trim() !== ""
+          ? { ...f.variant, imageUrl: publicMediaUrl(f.variant.imageUrl) }
+          : f.variant,
+    }));
   },
 };

@@ -201,7 +201,9 @@ export default function AdminBanners() {
             Banners em destaque no topo da loja. Para ocupar toda a área com acabamento profissional, use{" "}
             <strong>proporção 4:1</strong> e tamanho recomendado <strong>1920×480 px</strong> (mínimo{" "}
             <strong>1600×400 px</strong>). Evite texto muito nas bordas. Use o upload para guardar ficheiros no
-            servidor ou cole uma URL HTTPS fidedigna.
+            servidor ou cole uma URL HTTPS fidedigna. Se o site estiver na Vercel e a API na Railway, defina{" "}
+            <code>VITE_API_BASE</code> com o URL completo da API ou <code>VITE_MEDIA_ORIGIN</code> com a origem da
+            API — caso contrário os caminhos <code>/uploads/…</code> não abrem na pré-visualização.
           </p>
         </div>
         <div className="ae-admin-pro__actions">
