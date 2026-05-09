@@ -94,6 +94,13 @@ export const homepageGroupService = {
         slug: g.slug,
         title: g.title,
         subtitle: g.subtitle,
+        layoutStyle: g.layoutStyle,
+        badgeType: g.badgeType,
+        badgeText: g.badgeText,
+        badgeEndAt: g.badgeEndAt?.toISOString() ?? null,
+        ctaLabel: g.ctaLabel,
+        ctaHref: g.ctaHref,
+        productCardEmphasis: g.productCardEmphasis,
         items,
       };
     });
@@ -114,6 +121,13 @@ export const homepageGroupService = {
       sortOrder: g.sortOrder,
       active: g.active,
       maxDisplay: g.maxDisplay,
+      layoutStyle: g.layoutStyle,
+      badgeType: g.badgeType,
+      badgeText: g.badgeText,
+      badgeEndAt: g.badgeEndAt?.toISOString() ?? null,
+      ctaLabel: g.ctaLabel,
+      ctaHref: g.ctaHref,
+      productCardEmphasis: g.productCardEmphasis,
       memberCount: g._count.members,
       updatedAt: g.updatedAt,
     }));
@@ -128,6 +142,36 @@ export const homepageGroupService = {
         : data.subtitle === undefined
           ? undefined
           : data.subtitle;
+    const badgeText =
+      data.badgeText === ""
+        ? null
+        : data.badgeText === undefined
+          ? undefined
+          : data.badgeText;
+    const badgeEndAt =
+      data.badgeEndAt === undefined
+        ? undefined
+        : data.badgeEndAt === null || data.badgeEndAt === ""
+          ? null
+          : (() => {
+              const d = new Date(data.badgeEndAt as string);
+              if (Number.isNaN(d.getTime())) {
+                throw new HttpError(400, "Data de fim da contagem inválida");
+              }
+              return d;
+            })();
+    const ctaLabel =
+      data.ctaLabel === ""
+        ? null
+        : data.ctaLabel === undefined
+          ? undefined
+          : data.ctaLabel;
+    const ctaHref =
+      data.ctaHref === ""
+        ? null
+        : data.ctaHref === undefined
+          ? undefined
+          : data.ctaHref;
     return prisma.homeProductGroup.update({
       where: { slug },
       data: {
@@ -136,6 +180,13 @@ export const homepageGroupService = {
         ...(data.active !== undefined && { active: data.active }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.maxDisplay !== undefined && { maxDisplay: data.maxDisplay }),
+        ...(data.layoutStyle !== undefined && { layoutStyle: data.layoutStyle }),
+        ...(data.badgeType !== undefined && { badgeType: data.badgeType }),
+        ...(badgeText !== undefined && { badgeText }),
+        ...(badgeEndAt !== undefined && { badgeEndAt }),
+        ...(ctaLabel !== undefined && { ctaLabel }),
+        ...(ctaHref !== undefined && { ctaHref }),
+        ...(data.productCardEmphasis !== undefined && { productCardEmphasis: data.productCardEmphasis }),
       },
     });
   },
@@ -203,6 +254,13 @@ export const homepageGroupService = {
       slug: g.slug,
       title: g.title,
       subtitle: g.subtitle,
+      layoutStyle: g.layoutStyle,
+      badgeType: g.badgeType,
+      badgeText: g.badgeText,
+      badgeEndAt: g.badgeEndAt?.toISOString() ?? null,
+      ctaLabel: g.ctaLabel,
+      ctaHref: g.ctaHref,
+      productCardEmphasis: g.productCardEmphasis,
       members: g.members.map((m) => ({
         membershipId: m.id,
         sortOrder: m.sortOrder,

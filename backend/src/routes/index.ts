@@ -263,13 +263,12 @@ admin.patch("/products/:id/moderation", productController.adminSetModeration);
 admin.patch("/products/:id/active", productController.adminSetActive);
 admin.patch("/products/:id/featured", requirePlatformAdmin, productController.setFeatured);
 
-admin.get("/homepage-groups", requirePlatformAdmin, homepageGroupController.adminListGroups);
-admin.get("/homepage-groups/:slug/members", requirePlatformAdmin, homepageGroupController.adminListMembers);
-admin.patch("/homepage-groups/:slug", requirePlatformAdmin, homepageGroupController.adminPatchGroup);
-admin.post("/homepage-groups/:slug/products", requirePlatformAdmin, homepageGroupController.adminAddProduct);
+admin.get("/homepage-groups", homepageGroupController.adminListGroups);
+admin.get("/homepage-groups/:slug/members", homepageGroupController.adminListMembers);
+admin.patch("/homepage-groups/:slug", homepageGroupController.adminPatchGroup);
+admin.post("/homepage-groups/:slug/products", homepageGroupController.adminAddProduct);
 admin.delete(
   "/homepage-groups/:slug/products/:productId",
-  requirePlatformAdmin,
   homepageGroupController.adminRemoveProduct
 );
 

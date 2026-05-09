@@ -2,8 +2,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { HttpError } from "../middlewares/errorHandler.js";
-import { env } from "../config/env.js";
+import { env, isR2Configured } from "../config/env.js";
 import { normalizeUploadedImage } from "../services/uploadImageNormalize.js";
+import { putPublicObject } from "../services/r2Storage.service.js";
 
 export const uploadController = {
   upload: asyncHandler(async (req, res) => {
@@ -25,6 +26,31 @@ export const uploadController = {
         throw new HttpError(
           400,
           "Não foi possível processar a imagem. Use JPG, PNG ou WebP."
+        );
+      }
+    }
+
+    const finalPath = path.join(uploadDir, filename);
+    const mime = String(req.file.mimetype || "application/octet-stream").toLowerCase();
+
+    // R2 completo → balde; senão → disco local / Railway (`/uploads/...` servido por express.static)
+    if (isR2Configured()) {
+      try {
+        const body = await fs.readFile(finalPath);
+        const key = `uploads/${filename}`;
+        const url = await putPublicObject({
+          key,
+          body,
+          contentType: mime,
+        });
+        await fs.unlink(finalPath).catch(() => {});
+        res.status(201).json({ url });
+        return;
+      } catch (e) {
+        await fs.unlink(finalPath).catch(() => {});
+        throw new HttpError(
+          500,
+          e instanceof Error ? e.message : "Falha ao enviar ficheiro para o armazenamento."
         );
       }
     }

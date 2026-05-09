@@ -389,6 +389,27 @@ model Product {
   @@index([moderationStatus])
 }
 
+/// Layout da secção na página inicial.
+enum HomeGroupLayoutStyle {
+  GRID
+  /// Carrossel compacto estilo marketplace (cartões com preço, desconto, avaliação).
+  SHOWCASE
+}
+
+/// Badge opcional acima do carrossel (texto fixo ou contagem regressiva).
+enum HomeGroupBadgeType {
+  NONE
+  TEXT
+  TIMER
+}
+
+/// O que destacar nos mini-cartões do modo SHOWCASE.
+enum HomeGroupCardEmphasis {
+  BALANCED
+  DISCOUNT
+  RATING
+}
+
 /// Secções curadas na página inicial (ex.: Super ofertas, Produtos em desconto).
 model HomeProductGroup {
   id          String   @id @default(cuid())
@@ -399,6 +420,19 @@ model HomeProductGroup {
   active      Boolean  @default(true)
   /// Máximo de artigos a mostrar na vitrine pública.
   maxDisplay  Int      @default(12)
+  /// Grelha clássica ou vitrine com carrossel.
+  layoutStyle HomeGroupLayoutStyle @default(GRID)
+  badgeType   HomeGroupBadgeType @default(NONE)
+  /// Texto da pastilha (ex.: «3 artigos a partir de…») quando badgeType = TEXT.
+  badgeText   String?
+  /// Data-limite ISO para contagem quando badgeType = TIMER.
+  badgeEndAt  DateTime?
+  /// Rótulo do botão «Ver mais» (opcional).
+  ctaLabel    String?
+  /// Destino: caminho interno (/search?…) ou URL absoluta.
+  ctaHref     String?
+  /// Destaque visual nos cartões (desconto vs avaliações).
+  productCardEmphasis HomeGroupCardEmphasis @default(BALANCED)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -1,4 +1,9 @@
 # Railway — definir em Project Settings → Service → Root Directory: `backend`
+#
+# Uploads: o Dockerfile usa UPLOAD_DIR=/app/uploads (disco efémero sem volume).
+# Para não perder fotos entre deploys → Railway → Serviço API → Storage → Volume
+# com mount path `/app/uploads` (ou só actualize UPLOAD_VOLUME_MOUNTED=true se usar outro disco persistente).
+#
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

@@ -57,6 +57,16 @@ export default function AdminLayout() {
             Produtos e moderação
           </NavLink>
 
+          <NavSep>Destaques públicos</NavSep>
+          {fullAdmin ? (
+            <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+              Carrossel inicial
+            </NavLink>
+          ) : null}
+          <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Grupos e vitrines
+          </NavLink>
+
           <NavSep>Parceiros e operação</NavSep>
           <NavLink to="/admin/sellers" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Lojas parceiras
@@ -103,17 +113,9 @@ export default function AdminLayout() {
 
           <NavSep>Site público</NavSep>
           {fullAdmin ? (
-            <>
-              <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-                Configurações
-              </NavLink>
-              <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-                Carrossel inicial
-              </NavLink>
-              <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-                Grupos na página inicial
-              </NavLink>
-            </>
+            <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+              Configurações
+            </NavLink>
           ) : null}
           <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
             Canal de ajuda (vídeos)

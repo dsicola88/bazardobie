@@ -40,4 +40,30 @@ export const env = {
   ),
   /** Comissão estimada (basis points; 500 = 5 %) para métricas do painel admin */
   PLATFORM_COMMISSION_BPS: Number(process.env.PLATFORM_COMMISSION_BPS) || 500,
+
+  /** Cloudflare R2 (S3-compatible) — opcional; quando preenchido, uploads vão para o balde em vez do disco local */
+  R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID ?? "",
+  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ?? "",
+  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  R2_BUCKET: process.env.R2_BUCKET ?? "",
+  /** Origem pública para ler objetos (R2.dev, domínio personalizado ou Worker) — sem barra no fim */
+  R2_PUBLIC_BASE_URL: process.env.R2_PUBLIC_BASE_URL?.replace(/\/$/, "") ?? "",
 };
+
+/**
+ * Usar Cloudflare R2 nos uploads quando todas as credenciais existem e R2 não foi desactivado.
+ * Caso contrário, ficheiros ficam em UPLOAD_DIR (Railway: volume em /app/uploads ou disco efémero).
+ */
+export function isR2Configured(): boolean {
+  const off =
+    process.env.R2_UPLOADS_ENABLED === "false" ||
+    process.env.R2_UPLOADS_ENABLED === "0";
+  if (off) return false;
+  return Boolean(
+    env.R2_ACCOUNT_ID &&
+      env.R2_ACCESS_KEY_ID &&
+      env.R2_SECRET_ACCESS_KEY &&
+      env.R2_BUCKET &&
+      env.R2_PUBLIC_BASE_URL
+  );
+}

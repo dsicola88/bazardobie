@@ -82,7 +82,14 @@ O deploy usa `GET /api/v1/health` (definido em `railway.toml`). Garante que o do
 
 ### Uploads
 
-`UPLOAD_DIR` no container é `/app/uploads` por defeito. O disco do container é **efémero**. Para persistir imagens, configura um **Railway Volume** montado nesse caminho ou armazenamento externo (S3, etc.).
+`UPLOAD_DIR` no container é `/app/uploads` por defeito. O disco do container é **efémero**. Cada **novo deploy** (por exemplo `git push` que dispara o build na Railway) cria um contentor novo: as imagens já enviadas deixam de existir **no disco**, embora as linhas na base de dados (URLs tipo `/uploads/…`) continuem — daí as fotos dos vendedores/compradores “sumirem” após atualizar código.
+
+Para persistir ficheiros:
+
+1. Railway → projecto → serviço **da API Node** → **Settings** → **Volumes** → **Create volume** → **Mount path** = **`/app/uploads`** (tem de coincidir com `UPLOAD_DIR`).
+2. (Opcional) Variável **`UPLOAD_VOLUME_MOUNTED=true`** no mesmo serviço para silênciar o aviso no arranque da API quando o volume já está configurado.
+
+**Cloudflare R2 (recomendado):** com as variáveis `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` e `R2_PUBLIC_BASE_URL` definidas na API, os novos uploads são enviados para o balde S3-compatível e a resposta do endpoint de upload devolve uma URL `https://...` (em vez de `/uploads/...`). No painel R2, active o subdomínio público **R2.dev** ou um domínio personalizado para o balde; `R2_PUBLIC_BASE_URL` deve ser exactamente a origem pública (ex. `https://pub-xxxx.r2.dev`), sem barra no fim.
 
 ### Migrações
 

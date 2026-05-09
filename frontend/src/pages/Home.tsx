@@ -7,6 +7,7 @@ import { parseTrustCell, parseSiteTruthy, splitPipeTags } from "../site/siteCont
 import { resolveMediaUrl } from "../utils/media.js";
 import { useSeo } from "../seo/useSeo.js";
 import { useFlashDealCountdown } from "../home/useFlashDealCountdown.js";
+import { HomeGroupShowcase, resolveHomeGroupCta, type HomeGroupPublicBlock } from "../home/HomeGroupShowcase.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = { id: string; name: string; imageUrl?: string | null; parentId: string | null };
@@ -15,8 +16,31 @@ type HomeGroupBlock = {
   slug: string;
   title: string;
   subtitle?: string | null;
+  layoutStyle?: string;
+  badgeType?: string;
+  badgeText?: string | null;
+  badgeEndAt?: string | null;
+  ctaLabel?: string | null;
+  ctaHref?: string | null;
+  productCardEmphasis?: string;
   items: ProductCardData[];
 };
+
+function normalizeHomeGroup(g: HomeGroupBlock): HomeGroupPublicBlock {
+  return {
+    slug: g.slug,
+    title: g.title,
+    subtitle: g.subtitle ?? null,
+    layoutStyle: g.layoutStyle ?? "GRID",
+    badgeType: g.badgeType ?? "NONE",
+    badgeText: g.badgeText ?? null,
+    badgeEndAt: g.badgeEndAt ?? null,
+    ctaLabel: g.ctaLabel ?? null,
+    ctaHref: g.ctaHref ?? null,
+    productCardEmphasis: g.productCardEmphasis ?? "BALANCED",
+    items: g.items,
+  };
+}
 
 function resolveFlashExplore(hrefRaw: string): { path: string; external: boolean } {
   const h = hrefRaw.trim();
@@ -62,7 +86,7 @@ export default function Home() {
   const [featured, setFeatured] = useState<ProductCardData[]>([]);
   const [top, setTop] = useState<ProductCardData[]>([]);
   const [recent, setRecent] = useState<ProductCardData[]>([]);
-  const [homeGroups, setHomeGroups] = useState<HomeGroupBlock[]>([]);
+  const [homeGroups, setHomeGroups] = useState<HomeGroupPublicBlock[]>([]);
   const [homeGroupsLoaded, setHomeGroupsLoaded] = useState(false);
   const [flashDeals, setFlashDeals] = useState<ProductCardData[]>([]);
   const flashCountdown = useFlashDealCountdown(flashEnabled ? flashEndAtRaw : undefined);
@@ -93,7 +117,11 @@ export default function Home() {
   }, []);
   useEffect(() => {
     void apiFetch<{ groups: HomeGroupBlock[] }>("/homepage/product-groups")
-      .then((r) => setHomeGroups(Array.isArray(r.groups) ? r.groups : []))
+      .then((r) =>
+        setHomeGroups(
+          Array.isArray(r.groups) ? r.groups.map((x) => normalizeHomeGroup(x as HomeGroupBlock)) : [],
+        ),
+      )
       .catch(() => setHomeGroups([]))
       .finally(() => setHomeGroupsLoaded(true));
   }, []);
@@ -158,23 +186,12 @@ export default function Home() {
 
   const hero = banners[bi];
 
-  function groupExploreHref(slug: string): string {
-    if (slug === "SUPER_OFERTAS") return "/search?featured=true&sort=mais_vendidos";
-    if (slug === "PRODUTOS_DESCONTO") return "/search?onSale=true&sort=preco_asc";
-    return "/search";
-  }
-
-  function groupExploreLabel(slug: string): string {
-    if (slug === "SUPER_OFERTAS") return "Explorar selecção em destaque";
-    if (slug === "PRODUTOS_DESCONTO") return "Ver todas as promoções";
-    return "Abrir catálogo";
-  }
-
   return (
     <>
-      <div className="ae-home-stage">
-        <div className="ae-hero ae-hero--home-top ae-hero--premium">
-          <div className="ae-hero-main">
+      <div className="ae-home-bleed-wrap">
+        <div className="ae-home-stage ae-home-stage--bleed">
+          <div className="ae-hero ae-hero--home-top ae-hero--premium ae-hero--fullbleed">
+            <div className="ae-hero-main">
             {hero ? (
               hero.linkUrl ? (
                 <a href={hero.linkUrl} className="ae-hero-media">
@@ -219,6 +236,7 @@ export default function Home() {
             ) : null}
           </div>
         </div>
+        </div>
       </div>
 
       <section className="ae-shell ae-home-quick" aria-label="Atalhos de navegação do catálogo">
@@ -250,10 +268,11 @@ export default function Home() {
 
       {flashEnabled ? (
         <section
-          className="ae-shell ae-home-flash"
+          className="ae-home-bleed-wrap ae-home-flash-bleed"
           aria-labelledby="ae-home-flash-title"
           aria-describedby="ae-home-flash-dek"
         >
+          <div className="ae-home-flash ae-home-flash--full">
           <div className="ae-home-flash__surface">
             <div className="ae-home-flash__hero">
               <div className="ae-home-flash__lead">
@@ -325,6 +344,7 @@ export default function Home() {
                 </p>
               )}
             </div>
+          </div>
           </div>
         </section>
       ) : null}
@@ -478,31 +498,46 @@ export default function Home() {
       {homeGroupsLoaded &&
         homeGroups
           .filter((g) => g.items?.length > 0)
-          .map((g) => (
-            <section key={g.slug} className="ae-section ae-home-group-strip">
-              <div className="ae-home-group-strip__header">
-                <div className="ae-home-group-strip__titles">
-                  <p className="ae-home-group-strip__slug" aria-hidden>
-                    Curadoria
-                  </p>
-                  <div className="ae-section__head ae-section__head--stack ae-section__head--group">
-                    <h2>{g.title}</h2>
-                    {g.subtitle ? (
-                      <p className="ae-home-group-strip__subtitle">{g.subtitle}</p>
-                    ) : null}
+          .map((g) =>
+            g.layoutStyle === "SHOWCASE" ? (
+              <div key={g.slug} className="ae-shell ae-home-showcase-shell">
+                <HomeGroupShowcase group={g} />
+              </div>
+            ) : (
+              <section key={g.slug} className="ae-section ae-home-group-strip">
+                <div className="ae-home-group-strip__header">
+                  <div className="ae-home-group-strip__titles">
+                    <p className="ae-home-group-strip__slug" aria-hidden>
+                      Curadoria
+                    </p>
+                    <div className="ae-section__head ae-section__head--stack ae-section__head--group">
+                      <h2>{g.title}</h2>
+                      {g.subtitle ? (
+                        <p className="ae-home-group-strip__subtitle">{g.subtitle}</p>
+                      ) : null}
+                    </div>
                   </div>
+                  {(() => {
+                    const c = resolveHomeGroupCta(g);
+                    return c.external ? (
+                      <a className="ae-home-group-strip__cta" href={c.path} rel="noopener noreferrer">
+                        {c.label}
+                      </a>
+                    ) : (
+                      <Link className="ae-home-group-strip__cta" to={c.path}>
+                        {c.label}
+                      </Link>
+                    );
+                  })()}
                 </div>
-                <Link className="ae-home-group-strip__cta" to={groupExploreHref(g.slug)}>
-                  {groupExploreLabel(g.slug)}
-                </Link>
-              </div>
-              <div className="ae-grid ae-home-group-strip__grid">
-                {g.items.map((p) => (
-                  <ProductCard key={`${g.slug}-${p.id}`} p={p} className="ae-pcard--spotlight" />
-                ))}
-              </div>
-            </section>
-          ))}
+                <div className="ae-grid ae-home-group-strip__grid">
+                  {g.items.map((p) => (
+                    <ProductCard key={`${g.slug}-${p.id}`} p={p} className="ae-pcard--spotlight" />
+                  ))}
+                </div>
+              </section>
+            ),
+          )}
 
       <section className="ae-section ae-section--catalog">
         <header className="ae-section__masthead">

@@ -144,14 +144,7 @@ export default function App() {
               </RequirePlatformAdmin>
             }
           />
-          <Route
-            path="homepage-groups"
-            element={
-              <RequirePlatformAdmin>
-                <AdminHomeGroups />
-              </RequirePlatformAdmin>
-            }
-          />
+          <Route path="homepage-groups" element={<AdminHomeGroups />} />
         </Route>
 
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
