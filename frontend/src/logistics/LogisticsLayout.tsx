@@ -15,7 +15,7 @@ export default function LogisticsLayout() {
   }
 
   if (!user) return <Navigate to="/login?next=/logistica" replace />;
-  if (user.role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
+  if (user.role === "ADMIN" || user.role === "SUPORTE") return <Navigate to="/admin/dashboard" replace />;
   if (user.role !== "LOGISTICA") return <Navigate to="/unauthorized" replace />;
 
   return (

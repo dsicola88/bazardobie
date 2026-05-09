@@ -86,7 +86,9 @@ O deploy usa `GET /api/v1/health` (definido em `railway.toml`). Garante que o do
 
 ### Migrações
 
-No arranque do contentor corre `npx prisma migrate deploy` antes de `node dist/server.js`. A primeira vez precisa da base vazia ou compatível com as migrações em `backend/prisma/migrations`.
+**Automático em cada deploy / arranque:** o `Dockerfile` da API executa `npx prisma migrate deploy` antes de `node dist/server.js`. O script `npm start` no `backend/package.json` faz o mesmo, para qualquer hospedagem que invoque `start` após o build.
+
+Não é necessário SSH nem comando manual à base, desde que o serviço suba com este contentor ou com `npm start` compilado. A primeira vez precisa da base vazia ou compatível com as migrações em `backend/prisma/migrations`.
 
 ---
 

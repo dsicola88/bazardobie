@@ -701,7 +701,7 @@ export const orderService = {
           code: "PAYMENT_NOT_CONFIRMED",
         });
       }
-    } else if (actor.role !== "ADMIN") {
+    } else if (actor.role !== "ADMIN" && actor.role !== "SUPORTE") {
       throw new HttpError(403, "Sem permissão");
     }
 
@@ -782,7 +782,7 @@ export const orderService = {
 
     const logistics = orderLogistics(order.items);
 
-    if (actor.role === "ADMIN") {
+    if (actor.role === "ADMIN" || actor.role === "SUPORTE") {
       /* ok */
     } else if (actor.role === "LOGISTICA") {
       if (logistics !== "PLATAFORMA") {
@@ -832,7 +832,13 @@ export const orderService = {
     return updated;
   },
 
-  async adminList(skip = 0, take = 50, q?: string) {
+  async adminList(
+    skip = 0,
+    take = 50,
+    q?: string,
+    sortBy: "createdAt" | "grandTotal" | "status" = "createdAt",
+    sortDir: "asc" | "desc" = "desc"
+  ) {
     const term = q?.trim();
     const where: Prisma.OrderWhereInput = term
       ? {
@@ -844,10 +850,11 @@ export const orderService = {
           ],
         }
       : {};
+    const orderBy: Prisma.OrderOrderByWithRelationInput = { [sortBy]: sortDir };
     const [items, total] = await Promise.all([
       prisma.order.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take,
         include: {

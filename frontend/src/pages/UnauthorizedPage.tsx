@@ -15,9 +15,10 @@ export default function UnauthorizedPage() {
         {" · "}
         <Link to="/login">Iniciar sessão noutra conta</Link>
       </p>
-      {user?.role === "ADMIN" ? (
+      {user?.role === "ADMIN" || user?.role === "SUPORTE" ? (
         <p className="ae-muted">
-          Se é administrador e vê esta mensagem, confirme que está na rota <code>/admin/…</code> com sessão válida.
+          Se tem perfil de back-office e vê esta mensagem, confirme que está na rota correcta (por exemplo{" "}
+          <code>/admin/…</code> ou <code>/vendor/…</code>) com sessão válida.
         </p>
       ) : null}
     </div>

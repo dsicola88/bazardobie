@@ -5,7 +5,7 @@ import { HttpError } from "../middlewares/errorHandler.js";
 import { z } from "zod";
 
 const patchRoleSchema = z.object({
-  role: z.enum(["ADMIN", "LOGISTICA", "VENDEDOR", "CLIENTE"]),
+  role: z.enum(["ADMIN", "SUPORTE", "LOGISTICA", "VENDEDOR", "CLIENTE"]),
 });
 const dashboardQuerySchema = z.object({
   period: z.enum(["day", "month", "year", "custom"]).optional(),
@@ -14,9 +14,33 @@ const dashboardQuerySchema = z.object({
 });
 
 export const adminController = {
-  stats: asyncHandler(async (_req, res) => {
-    const q = dashboardQuerySchema.parse(_req.query);
+  stats: asyncHandler(async (req, res) => {
+    const q = dashboardQuerySchema.parse(req.query);
     const s = await adminService.dashboardStats(q.period ?? "month", q.start, q.end);
+    if (req.user?.role === "SUPORTE") {
+      res.json({
+        period: s.period,
+        rangeStart: s.rangeStart,
+        rangeEnd: s.rangeEnd,
+        totalOrders: s.totalOrders,
+        ordersToday: s.ordersToday,
+        totalUsers: s.totalUsers,
+        approvedShops: s.approvedShops,
+        activeProducts: s.activeProducts,
+        activeVendors: s.activeVendors,
+        periodOrders: s.periodOrders,
+        previousRangeStart: s.previousRangeStart,
+        previousRangeEnd: s.previousRangeEnd,
+        previousPeriodOrders: s.previousPeriodOrders,
+        trend: s.trend.map((t) => ({ day: t.day, orders: t.orders })),
+        openDisputes: s.openDisputes,
+        openReports: s.openReports,
+        pendingProductsModeration: s.pendingProductsModeration,
+        shopsAwaitingApproval: s.shopsAwaitingApproval,
+        credibilityQueuesPending: s.credibilityQueuesPending,
+      });
+      return;
+    }
     res.json(s);
   }),
 

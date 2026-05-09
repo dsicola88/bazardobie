@@ -87,7 +87,16 @@ export const productController = {
     const skip = Number(req.query.skip) || 0;
     const take = Math.min(Number(req.query.take) || 50, 200);
     const q = typeof req.query.q === "string" ? req.query.q.trim() : undefined;
-    const out = await productService.adminListModeration(status, skip, take, q);
+    const sortParsed = z.enum(["createdAt", "name"]).safeParse(req.query.sort);
+    const dirParsed = z.enum(["asc", "desc"]).safeParse(req.query.dir);
+    const out = await productService.adminListModeration(
+      status,
+      skip,
+      take,
+      q,
+      sortParsed.success ? sortParsed.data : "createdAt",
+      dirParsed.success ? dirParsed.data : "desc"
+    );
     res.json(out);
   }),
 

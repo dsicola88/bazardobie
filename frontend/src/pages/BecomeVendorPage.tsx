@@ -29,14 +29,14 @@ export default function BecomeVendorPage() {
     }
   }
 
-  if (user?.role === "ADMIN") {
+  if (user?.role === "ADMIN" || user?.role === "SUPORTE") {
     return (
       <div style={{ maxWidth: 560 }}>
         <div className="ae-panel">
           <h1>Área comercial</h1>
-          <p className="ae-muted">Contas de administração não usam este fluxo. Aceda ao painel administrativo.</p>
+          <p className="ae-muted">Contas de back-office não usam este fluxo. Aceda ao painel de suporte ou administração.</p>
           <Link to="/admin/dashboard" className="btn btn-primary">
-            Painel admin
+            Painel back-office
           </Link>
         </div>
       </div>

@@ -58,7 +58,7 @@ export const disputeService = {
       })
       .catch(() => undefined);
     void notificationService
-      .notifyAdmins(
+      .notifyPlatformStaff(
         "PEDIDO",
         "Nova disputa aberta",
         `Disputa aberta no pedido ${orderId.slice(0, 12)}… pelo comprador.`

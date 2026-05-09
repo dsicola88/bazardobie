@@ -52,6 +52,9 @@ export const adminService = {
       prevPeriodRefundedOrders,
       prevPeriodRefundsLedger,
       periodOrdersRows,
+      pendingProductsModeration,
+      shopsAwaitingApproval,
+      credibilityQueuesPending,
     ] = await Promise.all([
       prisma.order.count(),
       prisma.order.count({ where: { createdAt: { gte: dayStart } } }),
@@ -111,6 +114,17 @@ export const adminService = {
         where: { createdAt: inRange },
         select: { createdAt: true, status: true, grandTotal: true, escrowState: true },
       }),
+      prisma.product.count({ where: { moderationStatus: "PENDING" } }),
+      prisma.shop.count({ where: { isApproved: false } }),
+      prisma.shop.count({
+        where: {
+          isApproved: true,
+          OR: [
+            { tier2SubmittedAt: { not: null }, tier2ApprovedAt: null },
+            { tier3SubmittedAt: { not: null }, tier3ApprovedAt: null },
+          ],
+        },
+      }),
     ]);
 
     const revenueTotal = revenueAgg._sum.grandTotal?.toString() ?? "0";
@@ -168,6 +182,9 @@ export const adminService = {
       trend,
       openDisputes,
       openReports,
+      pendingProductsModeration,
+      shopsAwaitingApproval,
+      credibilityQueuesPending,
     };
   },
 

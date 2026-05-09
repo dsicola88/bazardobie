@@ -73,7 +73,7 @@ export default function Login() {
         nav(next);
         return;
       }
-      if (out.user.role === "ADMIN") nav("/admin/dashboard");
+      if (out.user.role === "ADMIN" || out.user.role === "SUPORTE") nav("/admin/dashboard");
       else if (out.user.role === "VENDEDOR") nav("/vendor");
       else if (out.user.role === "LOGISTICA") nav("/logistica");
       else nav("/");

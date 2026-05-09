@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { isPlatformAdmin } from "./adminAccess.js";
 import { OrderTimeline } from "../components/OrderTimeline.js";
 import { OrderTrackingEditor } from "../components/OrderTrackingEditor.js";
 import { etiquetaEstadoPedidoCliente } from "../utils/buyerOrderFilters.js";
@@ -76,7 +77,8 @@ type PartnerOpt = { id: string; name: string; active: boolean };
 
 export default function AdminOrderDetail() {
   const { orderId } = useParams<{ orderId: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const canAssignCarrier = isPlatformAdmin(user?.role);
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [partners, setPartners] = useState<PartnerOpt[] | null>(null);
   const [orderPartnerDraft, setOrderPartnerDraft] = useState<string>("");
@@ -98,11 +100,11 @@ export default function AdminOrderDetail() {
   }, [token, orderId]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !canAssignCarrier) return;
     void apiFetch<PartnerOpt[]>("/admin/logistics-partners", { token })
       .then(setPartners)
       .catch(() => setPartners([]));
-  }, [token]);
+  }, [token, canAssignCarrier]);
 
   async function patchOrderPartner() {
     if (!token || !orderId) return;
@@ -295,41 +297,49 @@ export default function AdminOrderDetail() {
       {logistics === "PLATAFORMA" ? (
         <div className="page-panel" style={{ marginBottom: 14 }}>
           <h2 style={{ marginTop: 0, fontSize: 15 }}>Transportadora parceira da encomenda</h2>
-          <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
-            Quem trata recolha e última milha neste pedido. Utilizadores LOGISTICA ligados a um parceiro só veem e
-            actualizam encomendas atribuídas ao mesmo. Equipa interna sem parceiro mantém acesso a todas as filas.
-          </p>
-          {partnerMsg ? (
-            <p className="ae-admin-alert" style={{ background: "#e8f9ef", borderColor: "var(--ae-ok)", fontSize: 13 }}>
-              {partnerMsg}
+          {canAssignCarrier ? (
+            <>
+              <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
+                Quem trata recolha e última milha neste pedido. Utilizadores LOGISTICA ligados a um parceiro só veem e
+                actualizam encomendas atribuídas ao mesmo. Equipa interna sem parceiro mantém acesso a todas as filas.
+              </p>
+              {partnerMsg ? (
+                <p className="ae-admin-alert" style={{ background: "#e8f9ef", borderColor: "var(--ae-ok)", fontSize: 13 }}>
+                  {partnerMsg}
+                </p>
+              ) : null}
+              <label style={{ display: "block", marginTop: 8 }}>
+                Parceiro{" "}
+                <select
+                  className="ae-status-select"
+                  value={orderPartnerDraft}
+                  onChange={(e) => setOrderPartnerDraft(e.target.value)}
+                  style={{ marginLeft: 8, maxWidth: 280 }}
+                >
+                  <option value="">Equipa interna / ainda não atribuído</option>
+                  {(partners ?? [])
+                    .filter((p) => p.active)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <div style={{ marginTop: 12 }}>
+                <button type="button" className="btn btn-primary" onClick={() => void patchOrderPartner()}>
+                  Guardar atribuição
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
+              Atribuição de transportadora: apenas administrador. Pode actualizar estado e rastreio abaixo.
             </p>
-          ) : null}
-          <label style={{ display: "block", marginTop: 8 }}>
-            Parceiro{" "}
-            <select
-              className="ae-status-select"
-              value={orderPartnerDraft}
-              onChange={(e) => setOrderPartnerDraft(e.target.value)}
-              style={{ marginLeft: 8, maxWidth: 280 }}
-            >
-              <option value="">Equipa interna / ainda não atribuído</option>
-              {(partners ?? [])
-                .filter((p) => p.active)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <div style={{ marginTop: 12 }}>
-            <button type="button" className="btn btn-primary" onClick={() => void patchOrderPartner()}>
-              Guardar atribuição
-            </button>
-          </div>
+          )}
           {order.logisticsPartner ? (
             <p className="ae-muted" style={{ marginTop: 12, fontSize: 12 }}>
-              Actualmente na base de dados: <strong>{order.logisticsPartner.name}</strong>
+              Parceiro registado: <strong>{order.logisticsPartner.name}</strong>
             </p>
           ) : null}
         </div>

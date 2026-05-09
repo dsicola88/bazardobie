@@ -26,7 +26,7 @@ export default function OAuthDonePage() {
         setAuth(out.token, out.user);
         await tryMergeCart(out.token);
         const role = out.user.role;
-        if (role === "ADMIN") nav("/admin/dashboard", { replace: true });
+        if (role === "ADMIN" || role === "SUPORTE") nav("/admin/dashboard", { replace: true });
         else if (role === "VENDEDOR") nav("/vendor", { replace: true });
         else if (role === "LOGISTICA") nav("/logistica", { replace: true });
         else nav("/", { replace: true });

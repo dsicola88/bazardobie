@@ -19,7 +19,7 @@ export default function AdminTeam() {
   const { token } = useAuth();
   const [users, setUsers] = useState<{ items: UserRow[]; total: number } | null>(null);
   const [partners, setPartners] = useState<LPartnerOpt[] | null>(null);
-  const [filterRole, setFilterRole] = useState<"" | "LOGISTICA" | "ADMIN" | "VENDEDOR" | "CLIENTE">("");
+  const [filterRole, setFilterRole] = useState<"" | "LOGISTICA" | "ADMIN" | "SUPORTE" | "VENDEDOR" | "CLIENTE">("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export default function AdminTeam() {
     return items.filter((u) => u.role === filterRole);
   }, [users, filterRole]);
 
-  async function patchRole(uid: string, role: "CLIENTE" | "VENDEDOR" | "LOGISTICA") {
+  async function patchRole(uid: string, role: "CLIENTE" | "VENDEDOR" | "LOGISTICA" | "SUPORTE") {
     if (!token) return;
     setMsg(null);
     try {
@@ -128,6 +128,7 @@ export default function AdminTeam() {
               ["", "Todas"],
               ["LOGISTICA", "Só equipa LOGISTICA"],
               ["ADMIN", "Administradores"],
+              ["SUPORTE", "Suporte / moderação"],
               ["VENDEDOR", "Vendedores"],
               ["CLIENTE", "Clientes"],
             ] as const
@@ -168,12 +169,15 @@ export default function AdminTeam() {
                     <select
                       aria-label={`Perfil ${u.name}`}
                       value={u.role}
-                      onChange={(e) => void patchRole(u.id, e.target.value as "CLIENTE" | "VENDEDOR" | "LOGISTICA")}
-                      style={{ maxWidth: 150, font: "inherit", padding: "4px 6px" }}
+                      onChange={(e) =>
+                        void patchRole(u.id, e.target.value as "CLIENTE" | "VENDEDOR" | "LOGISTICA" | "SUPORTE")
+                      }
+                      style={{ maxWidth: 160, font: "inherit", padding: "4px 6px" }}
                     >
                       <option value="CLIENTE">CLIENTE</option>
                       <option value="VENDEDOR">VENDEDOR</option>
                       <option value="LOGISTICA">LOGISTICA</option>
+                      <option value="SUPORTE">SUPORTE</option>
                     </select>
                   )}
                 </td>

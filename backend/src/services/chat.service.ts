@@ -27,6 +27,10 @@ async function assertOrderChatAccess(orderId: string, actor: Actor) {
     return;
   }
 
+  if (actor.role === "ADMIN" || actor.role === "SUPORTE") {
+    return;
+  }
+
   throw new HttpError(403, "Chat disponível apenas para comprador e vendedor.");
 }
 

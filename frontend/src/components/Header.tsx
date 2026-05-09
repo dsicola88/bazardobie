@@ -306,7 +306,7 @@ export function Header() {
                 Logística
               </Link>
             )}
-            {user?.role === "ADMIN" && (
+            {(user?.role === "ADMIN" || user?.role === "SUPORTE") && (
               <Link to="/admin/dashboard" className="ae-topbar__link">
                 Back-office
               </Link>

@@ -31,6 +31,15 @@ async function adminIds(): Promise<string[]> {
   return admins.map((a) => a.id);
 }
 
+/** ADMIN + SUPORTE — filas operacionais (disputas, credibilidade, etc.), sem substituir notificações só para donos da plataforma. */
+async function platformStaffIds(): Promise<string[]> {
+  const rows = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "SUPORTE"] }, blocked: false },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
 async function vendorUserIdsFromOrder(orderId: string): Promise<string[]> {
   const shops = await prisma.orderItem.findMany({
     where: { orderId },
@@ -44,6 +53,10 @@ export const notificationService = {
     return createForUserIds(await adminIds(), type, title, message);
   },
 
+  async notifyPlatformStaff(type: NotificationType, title: string, message: string) {
+    return createForUserIds(await platformStaffIds(), type, title, message);
+  },
+
   async notifyVendorSubmissionToAdmins(
     kind: "CRED_TIER2" | "CRED_TIER3",
     payload: { shopId: string; shopName: string; vendorName?: string | null }
@@ -52,7 +65,7 @@ export const notificationService = {
     const who = payload.vendorName?.trim() ? ` · ${payload.vendorName.trim()}` : "";
     const title = `${k} pendente de revisão`;
     const message = `Loja ${payload.shopName}${who} submeteu documentos. Ref. loja ${payload.shopId.slice(0, 12)}…`;
-    return this.notifyAdmins(NotificationType.LOJA, title, message);
+    return this.notifyPlatformStaff(NotificationType.LOJA, title, message);
   },
 
   async notifyShopDecisionToVendor(
@@ -135,8 +148,10 @@ export const notificationService = {
     payload: { senderUserId: string; senderRole: string; buyerUserId: string; preview: string }
   ) {
     const vendorIds = await vendorUserIdsFromOrder(orderId);
-    const recipients =
-      payload.senderRole === "CLIENTE"
+    const staffRole = payload.senderRole === "ADMIN" || payload.senderRole === "SUPORTE";
+    const recipients = staffRole
+      ? [...new Set([payload.buyerUserId, ...vendorIds])]
+      : payload.senderRole === "CLIENTE"
         ? vendorIds
         : [payload.buyerUserId];
     const title = "Nova mensagem no chat da encomenda";

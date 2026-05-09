@@ -26,7 +26,7 @@ export default function VendorLayout() {
   }
 
   if (!user) return <Navigate to="/login?next=/vendor" replace />;
-  if (user.role === "ADMIN") return <Navigate to="/admin/dashboard" replace />;
+  if (user.role === "ADMIN" || user.role === "SUPORTE") return <Navigate to="/admin/dashboard" replace />;
   if (user.role !== "VENDEDOR") return <Navigate to="/unauthorized" replace />;
 
   return (

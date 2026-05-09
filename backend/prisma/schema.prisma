@@ -9,8 +9,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Perfis da plataforma (modelo tipo marketplaces: cliente compra, vendedor vende, suporte modera, logística entrega, admin controla tudo).
+/// Nomenclatura API/BD em PT; equivalentes: CLIENTE=CUSTOMER, VENDEDOR=SELLER, SUPORTE=SUPPORT, LOGISTICA=LOGISTICS.
 enum UserRole {
   ADMIN
+  /// Assistência: aprova lojas/produtos, vê encomendas e chats, disputas (sem reembolso), estados e rastreio — sem finanças, sem equipa crítica.
+  SUPORTE
   /// Equipa de recolha e entrega — só pedidos envio BAZAR DO BIÉ
   LOGISTICA
   VENDEDOR

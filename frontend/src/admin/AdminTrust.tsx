@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { AdminEmptyState } from "./ui/AdminEmptyState.js";
+import { AdminErrorBanner } from "./ui/AdminErrorBanner.js";
+import { AdminTableSkeleton } from "./ui/AdminTableSkeleton.js";
 
 type ReviewRow = {
   id: string;
@@ -40,9 +43,12 @@ export default function AdminTrust() {
   const [reports, setReports] = useState<{ items: ReportRow[]; total: number } | null>(null);
   const [trust, setTrust] = useState<TrustRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
+    setErr(null);
     try {
       const [r, rep, t] = await Promise.all([
         apiFetch<{ items: ReviewRow[]; total: number }>("/admin/reviews?take=40", { token }),
@@ -53,7 +59,12 @@ export default function AdminTrust() {
       setReports(rep);
       setTrust(t);
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Erro");
+      setErr(e instanceof Error ? e.message : "Erro ao carregar dados de confiança.");
+      setReviews(null);
+      setReports(null);
+      setTrust(null);
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
@@ -63,6 +74,7 @@ export default function AdminTrust() {
 
   async function resolveReport(id: string, status: "RESOLVED" | "DISMISSED") {
     if (!token) return;
+    setErr(null);
     try {
       await apiFetch(`/admin/reports/${id}`, {
         method: "PATCH",
@@ -71,99 +83,163 @@ export default function AdminTrust() {
       });
       void load();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Erro");
+      setErr(e instanceof Error ? e.message : "Erro ao actualizar relatório.");
     }
   }
 
-  if (err) return <p style={{ color: "crimson" }}>{err}</p>;
+  const trustRows = trust ?? [];
+  const reviewItems = reviews?.items ?? [];
+  const reportItems = reports?.items ?? [];
+
+  if (loading) {
+    return (
+      <div className="ae-admin-pro ae-admin-canvas">
+        <header className="ae-admin-pro__head">
+          <div>
+            <h1 className="ae-admin-pro__title">Confiança, avaliações e denúncias</h1>
+            <p className="ae-admin-pro__sub">A carregar indicadores…</p>
+          </div>
+        </header>
+        <h2 className="ae-admin-section-title">Indicador de parceiros</h2>
+        <AdminTableSkeleton rows={6} cols={6} />
+        <h2 className="ae-admin-section-title">Avaliações recentes</h2>
+        <AdminTableSkeleton rows={5} cols={5} />
+        <h2 className="ae-admin-section-title">Denúncias abertas</h2>
+        <AdminTableSkeleton rows={5} cols={5} />
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="ae-v-head">
-        <h1 className="ae-v-title">Confiança · avaliações · relatórios</h1>
-      </div>
+    <div className="ae-admin-pro ae-admin-canvas">
+      <header className="ae-admin-pro__head">
+        <div>
+          <h1 className="ae-admin-pro__title">Confiança, avaliações e denúncias</h1>
+          <p className="ae-admin-pro__sub">
+            Heurística interna de parceiros, últimas reviews e fila de relatórios abertos. Use as acções para fechar ou
+            arquivar denúncias.
+          </p>
+        </div>
+        <button type="button" className="btn" onClick={() => void load()}>
+          Actualizar
+        </button>
+      </header>
 
-      <h2 className="ae-v-title" style={{ fontSize: 16 }}>Indicador de parceiros (heurística interna)</h2>
-      <table className="ae-data-table" style={{ marginBottom: 28 }}>
-        <thead>
-          <tr>
-            <th>Loja</th>
-            <th>Score</th>
-            <th>Média produtos</th>
-            <th>Reviews</th>
-            <th>Vendas (unidades)</th>
-            <th>Conta parceira bloqueada</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trust?.map((row) => (
-            <tr key={row.shop.id}>
-              <td>{row.shop.name}</td>
-              <td>{row.trustScore}</td>
-              <td>{row.averageRating ?? "—"}</td>
-              <td>{row.reviewCount}</td>
-              <td>{row.soldCount}</td>
-              <td>{row.shop.user.blocked ? "sim" : "não"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {err ? <AdminErrorBanner message={err} onRetry={() => void load()} /> : null}
 
-      <h2 className="ae-v-title" style={{ fontSize: 16 }}>Avaliações recentes</h2>
-      <table className="ae-data-table" style={{ marginBottom: 28 }}>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Comprador</th>
-            <th>Produto</th>
-            <th>Estrelas</th>
-            <th>Comentário</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reviews?.items.map((x) => (
-            <tr key={x.id}>
-              <td>{new Date(x.createdAt).toLocaleDateString("pt-AO")}</td>
-              <td>{x.user.name}</td>
-              <td>{x.product.name}</td>
-              <td>{x.rating}</td>
-              <td>{x.comment?.slice(0, 80) ?? "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <h2 className="ae-admin-section-title">Indicador de parceiros</h2>
+      {!err && trustRows.length === 0 ? (
+        <AdminEmptyState title="Sem lojas no indicador" description="Não há parceiros aprovados para calcular o score." />
+      ) : null}
+      {!err && trustRows.length > 0 ? (
+        <div className="ae-admin-table-wrap" style={{ marginBottom: 28 }}>
+          <table className="ae-admin-table">
+            <thead>
+              <tr>
+                <th>Loja</th>
+                <th>Score</th>
+                <th>Média produtos</th>
+                <th>Reviews</th>
+                <th>Vendas (unid.)</th>
+                <th>Conta bloqueada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trustRows.map((row) => (
+                <tr key={row.shop.id}>
+                  <td className="ae-admin-cell-title">{row.shop.name}</td>
+                  <td>{row.trustScore}</td>
+                  <td>{row.averageRating ?? "—"}</td>
+                  <td>{row.reviewCount}</td>
+                  <td>{row.soldCount}</td>
+                  <td>{row.shop.user.blocked ? "sim" : "não"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
-      <h2 className="ae-v-title" style={{ fontSize: 16 }}>Relatórios abertos</h2>
-      <table className="ae-data-table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Quem reportou</th>
-            <th>Alvo</th>
-            <th>Mensagem</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports?.items.map((x) => (
-            <tr key={x.id}>
-              <td>{new Date(x.createdAt).toLocaleDateString("pt-AO")}</td>
-              <td>{x.reporter.email}</td>
-              <td>{x.shop?.name ?? x.product?.name ?? "—"}</td>
-              <td>{x.message.slice(0, 120)}</td>
-              <td>
-                <button type="button" className="btn" style={{ marginRight: 6 }} onClick={() => void resolveReport(x.id, "RESOLVED")}>
-                  Resolver
-                </button>
-                <button type="button" className="btn" onClick={() => void resolveReport(x.id, "DISMISSED")}>
-                  Arquivar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="ae-muted">Compradores podem enviar denúncias via <code>POST /reports</code> autenticado.</p>
+      <h2 className="ae-admin-section-title">Avaliações recentes</h2>
+      {!err && reviewItems.length === 0 ? (
+        <AdminEmptyState title="Sem avaliações listadas" description="Ainda não há reviews para mostrar neste extracto." />
+      ) : null}
+      {!err && reviewItems.length > 0 ? (
+        <div className="ae-admin-table-wrap" style={{ marginBottom: 28 }}>
+          <table className="ae-admin-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Comprador</th>
+                <th>Produto</th>
+                <th>Estrelas</th>
+                <th>Comentário</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviewItems.map((x) => (
+                <tr key={x.id}>
+                  <td>{new Date(x.createdAt).toLocaleDateString("pt-AO")}</td>
+                  <td>{x.user.name}</td>
+                  <td>{x.product.name}</td>
+                  <td>{x.rating}</td>
+                  <td>{x.comment?.slice(0, 80) ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <h2 className="ae-admin-section-title">Denúncias abertas</h2>
+      {!err && reportItems.length === 0 ? (
+        <AdminEmptyState
+          title="Nenhuma denúncia aberta"
+          description="Óptimo: não há relatórios pendentes. As novas denúncias chegam via fluxo autenticado do site."
+        />
+      ) : null}
+      {!err && reportItems.length > 0 ? (
+        <div className="ae-admin-table-wrap">
+          <table className="ae-admin-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Quem reportou</th>
+                <th>Alvo</th>
+                <th>Mensagem</th>
+                <th className="ae-admin-table__actions"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportItems.map((x) => (
+                <tr key={x.id}>
+                  <td>{new Date(x.createdAt).toLocaleDateString("pt-AO")}</td>
+                  <td>{x.reporter.email}</td>
+                  <td>{x.shop?.name ?? x.product?.name ?? "—"}</td>
+                  <td>{x.message.slice(0, 120)}</td>
+                  <td className="ae-admin-row-actions">
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ marginRight: 6 }}
+                      onClick={() => void resolveReport(x.id, "RESOLVED")}
+                    >
+                      Resolver
+                    </button>
+                    <button type="button" className="btn" onClick={() => void resolveReport(x.id, "DISMISSED")}>
+                      Arquivar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <p className="ae-muted" style={{ marginTop: 20 }}>
+        Denúncias públicas: endpoint <code className="ae-admin-mono">POST /reports</code> com utilizador autenticado.
+      </p>
     </div>
   );
 }

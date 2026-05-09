@@ -63,7 +63,15 @@ export const orderController = {
     const skip = Number(req.query.skip) || 0;
     const take = Math.min(Number(req.query.take) || 100, 500);
     const q = typeof req.query.q === "string" ? req.query.q : undefined;
-    const list = await orderService.adminList(skip, take, q);
+    const sortParsed = z.enum(["createdAt", "grandTotal", "status"]).safeParse(req.query.sort);
+    const dirParsed = z.enum(["asc", "desc"]).safeParse(req.query.dir);
+    const list = await orderService.adminList(
+      skip,
+      take,
+      q,
+      sortParsed.success ? sortParsed.data : "createdAt",
+      dirParsed.success ? dirParsed.data : "desc"
+    );
     res.json(list);
   }),
 

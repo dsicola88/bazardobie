@@ -49,9 +49,16 @@ export const disputeController = {
   adminResolve: asyncHandler(async (req, res) => {
     const adminId = req.user?.sub;
     if (!adminId) throw new HttpError(401, "Autenticação necessária");
-    if (req.user?.role !== "ADMIN") throw new HttpError(403, "Administrador necessário");
+    const role = req.user?.role;
+    if (role !== "ADMIN" && role !== "SUPORTE") throw new HttpError(403, "Perfil de back-office necessário");
 
     const body = resolveDisputeBodySchema.parse(req.body ?? {});
+    if (role === "SUPORTE" && body.outcome !== "REJECTED") {
+      throw new HttpError(
+        403,
+        "A equipa de suporte só pode recusar disputas (sem reembolso). Reembolsos são tratados por administrador."
+      );
+    }
     if (body.outcome === "PARTIAL_REFUND" && !body.refundAmount?.trim())
       throw new HttpError(400, "PARTIAL_REFUND exige refundAmount");
 

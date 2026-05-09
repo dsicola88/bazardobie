@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
-import { requireAuth, requireRoles } from "../middlewares/requireAuth.js";
+import { requireAuth, requirePlatformAdmin, requireRoles } from "../middlewares/requireAuth.js";
 import { optionalAuth } from "../middlewares/optionalAuth.js";
 import { authController } from "../controllers/auth.controller.js";
 import { oauthController } from "../controllers/oauth.controller.js";
@@ -107,8 +107,18 @@ r.get("/vendor/orders", requireAuth, requireRoles("VENDEDOR"), orderController.s
 r.get("/logistics/orders", requireAuth, requireRoles("LOGISTICA"), logisticsController.listOrders);
 
 // Estado do pedido: admin, vendedor da loja, ou equipa de logística (só envio plataforma)
-r.patch("/orders/:id/status", requireAuth, requireRoles("ADMIN", "VENDEDOR", "LOGISTICA"), orderController.patchStatus);
-r.patch("/orders/:id/tracking", requireAuth, requireRoles("ADMIN", "VENDEDOR", "LOGISTICA"), orderController.patchTracking);
+r.patch(
+  "/orders/:id/status",
+  requireAuth,
+  requireRoles("ADMIN", "SUPORTE", "VENDEDOR", "LOGISTICA"),
+  orderController.patchStatus
+);
+r.patch(
+  "/orders/:id/tracking",
+  requireAuth,
+  requireRoles("ADMIN", "SUPORTE", "VENDEDOR", "LOGISTICA"),
+  orderController.patchTracking
+);
 
 // Cliente — checkout + pagamento online (mock / futuro PayPal) + pedidos
 r.post("/checkout", requireAuth, requireRoles("CLIENTE"), orderController.checkout);
@@ -150,8 +160,18 @@ r.post(
 
 r.post("/reviews", requireAuth, requireRoles("CLIENTE"), reviewController.create);
 
-r.get("/orders/:id/chat/messages", requireAuth, requireRoles("CLIENTE", "VENDEDOR"), chatController.listOrderMessages);
-r.post("/orders/:id/chat/messages", requireAuth, requireRoles("CLIENTE", "VENDEDOR"), chatController.postOrderMessage);
+r.get(
+  "/orders/:id/chat/messages",
+  requireAuth,
+  requireRoles("CLIENTE", "VENDEDOR", "ADMIN", "SUPORTE"),
+  chatController.listOrderMessages
+);
+r.post(
+  "/orders/:id/chat/messages",
+  requireAuth,
+  requireRoles("CLIENTE", "VENDEDOR", "ADMIN", "SUPORTE"),
+  chatController.postOrderMessage
+);
 
 /// Denúncias — utilizador autenticado (cliente ou vendedor) contra loja/produto
 r.post("/reports", requireAuth, reportController.create);
@@ -187,32 +207,32 @@ r.patch(
 r.post(
   "/uploads",
   requireAuth,
-  requireRoles("ADMIN", "VENDEDOR", "CLIENTE"),
+  requireRoles("ADMIN", "SUPORTE", "VENDEDOR", "CLIENTE"),
   runUpload,
   uploadController.upload
 );
 
-// Admin plataforma — JWT + role ADMIN + registo de acesso (adminAuditLog)
+// Back-office: ADMIN (controlo total) ou SUPORTE (operação / moderação, sem finanças nem configuração crítica)
 const admin = Router();
-admin.use(requireAuth, requireRoles("ADMIN"), adminAuditLog);
+admin.use(requireAuth, requireRoles("ADMIN", "SUPORTE"), adminAuditLog);
 
 admin.get("/stats", adminController.stats);
 admin.get("/users", adminController.users);
-admin.patch("/users/:id/role", adminController.patchUserRole);
-admin.patch("/users/:id/blocked", adminController.patchUserBlocked);
+admin.patch("/users/:id/role", requirePlatformAdmin, adminController.patchUserRole);
+admin.patch("/users/:id/blocked", requirePlatformAdmin, adminController.patchUserBlocked);
 
-admin.get("/finance", adminController.finance);
-admin.get("/shops/ranking", adminController.shopRanking);
+admin.get("/finance", requirePlatformAdmin, adminController.finance);
+admin.get("/shops/ranking", requirePlatformAdmin, adminController.shopRanking);
 admin.get("/trust/sellers", adminController.trustScores);
 
 admin.get("/orders", orderController.adminList);
 admin.get("/orders/:id", orderController.adminGet);
-admin.patch("/orders/:id/logistics-partner", orderController.adminPatchOrderLogisticsPartner);
+admin.patch("/orders/:id/logistics-partner", requirePlatformAdmin, orderController.adminPatchOrderLogisticsPartner);
 
-admin.get("/logistics-partners", logisticsPartnerController.list);
-admin.post("/logistics-partners", logisticsPartnerController.create);
-admin.patch("/logistics-partners/:id", logisticsPartnerController.patch);
-admin.patch("/users/:id/logistics-partner", logisticsPartnerController.patchUserPartner);
+admin.get("/logistics-partners", requirePlatformAdmin, logisticsPartnerController.list);
+admin.post("/logistics-partners", requirePlatformAdmin, logisticsPartnerController.create);
+admin.patch("/logistics-partners/:id", requirePlatformAdmin, logisticsPartnerController.patch);
+admin.patch("/users/:id/logistics-partner", requirePlatformAdmin, logisticsPartnerController.patchUserPartner);
 
 admin.get("/disputes", disputeController.adminList);
 admin.patch("/disputes/:id", disputeController.adminResolve);
@@ -222,46 +242,50 @@ admin.patch("/shops/:id/approve", shopController.adminApprove);
 admin.get("/shops/credibility/queues", shopController.adminCredibilityQueues);
 admin.patch("/shops/:id/credibility", shopController.adminApplyCredibility);
 
-admin.get("/categories", catalogController.listCategoriesAdmin);
-admin.post("/categories", catalogController.createCategory);
-admin.patch("/categories/:id", catalogController.patchCategory);
-admin.delete("/categories/:id", catalogController.deleteCategory);
+admin.get("/categories", requirePlatformAdmin, catalogController.listCategoriesAdmin);
+admin.post("/categories", requirePlatformAdmin, catalogController.createCategory);
+admin.patch("/categories/:id", requirePlatformAdmin, catalogController.patchCategory);
+admin.delete("/categories/:id", requirePlatformAdmin, catalogController.deleteCategory);
 
-admin.post("/banners", catalogController.createBanner);
-admin.get("/banners", catalogController.bannersAdmin);
-admin.patch("/banners/:id", catalogController.patchBanner);
-admin.delete("/banners/:id", catalogController.deleteBanner);
+admin.post("/banners", requirePlatformAdmin, catalogController.createBanner);
+admin.get("/banners", requirePlatformAdmin, catalogController.bannersAdmin);
+admin.patch("/banners/:id", requirePlatformAdmin, catalogController.patchBanner);
+admin.delete("/banners/:id", requirePlatformAdmin, catalogController.deleteBanner);
 
-admin.get("/site-settings", siteSettingsController.adminList);
-admin.put("/site-settings", siteSettingsController.adminPutBulk);
+admin.get("/site-settings", requirePlatformAdmin, siteSettingsController.adminList);
+admin.put("/site-settings", requirePlatformAdmin, siteSettingsController.adminPutBulk);
 
 admin.get("/products/moderation", productController.adminListModeration);
 admin.patch("/products/:id/moderation", productController.adminSetModeration);
 admin.patch("/products/:id/active", productController.adminSetActive);
-admin.patch("/products/:id/featured", productController.setFeatured);
+admin.patch("/products/:id/featured", requirePlatformAdmin, productController.setFeatured);
 
-admin.get("/homepage-groups", homepageGroupController.adminListGroups);
-admin.get("/homepage-groups/:slug/members", homepageGroupController.adminListMembers);
-admin.patch("/homepage-groups/:slug", homepageGroupController.adminPatchGroup);
-admin.post("/homepage-groups/:slug/products", homepageGroupController.adminAddProduct);
-admin.delete("/homepage-groups/:slug/products/:productId", homepageGroupController.adminRemoveProduct);
+admin.get("/homepage-groups", requirePlatformAdmin, homepageGroupController.adminListGroups);
+admin.get("/homepage-groups/:slug/members", requirePlatformAdmin, homepageGroupController.adminListMembers);
+admin.patch("/homepage-groups/:slug", requirePlatformAdmin, homepageGroupController.adminPatchGroup);
+admin.post("/homepage-groups/:slug/products", requirePlatformAdmin, homepageGroupController.adminAddProduct);
+admin.delete(
+  "/homepage-groups/:slug/products/:productId",
+  requirePlatformAdmin,
+  homepageGroupController.adminRemoveProduct
+);
 
-admin.get("/shipping/geo/municipalities", shippingGeoController.municipalitiesAdmin);
-admin.get("/shipping/geo/communes", shippingGeoController.communesAdmin);
+admin.get("/shipping/geo/municipalities", requirePlatformAdmin, shippingGeoController.municipalitiesAdmin);
+admin.get("/shipping/geo/communes", requirePlatformAdmin, shippingGeoController.communesAdmin);
 
-admin.get("/freight/distance-bands", freightController.bandsList);
-admin.post("/freight/distance-bands", freightController.bandsCreate);
-admin.patch("/freight/distance-bands/:id", freightController.bandsPatch);
-admin.delete("/freight/distance-bands/:id", freightController.bandsDelete);
+admin.get("/freight/distance-bands", requirePlatformAdmin, freightController.bandsList);
+admin.post("/freight/distance-bands", requirePlatformAdmin, freightController.bandsCreate);
+admin.patch("/freight/distance-bands/:id", requirePlatformAdmin, freightController.bandsPatch);
+admin.delete("/freight/distance-bands/:id", requirePlatformAdmin, freightController.bandsDelete);
 
-admin.get("/freight/localities", freightController.localitiesListAdmin);
-admin.post("/freight/localities", freightController.localitiesCreate);
-admin.patch("/freight/localities/:id", freightController.localitiesPatch);
+admin.get("/freight/localities", requirePlatformAdmin, freightController.localitiesListAdmin);
+admin.post("/freight/localities", requirePlatformAdmin, freightController.localitiesCreate);
+admin.patch("/freight/localities/:id", requirePlatformAdmin, freightController.localitiesPatch);
 
-admin.get("/freight/zones", freightController.zonesListAdmin);
-admin.post("/freight/zones", freightController.zonesCreate);
-admin.patch("/freight/zones/:id", freightController.zonesPatch);
-admin.delete("/freight/zones/:id", freightController.zonesDelete);
+admin.get("/freight/zones", requirePlatformAdmin, freightController.zonesListAdmin);
+admin.post("/freight/zones", requirePlatformAdmin, freightController.zonesCreate);
+admin.patch("/freight/zones/:id", requirePlatformAdmin, freightController.zonesPatch);
+admin.delete("/freight/zones/:id", requirePlatformAdmin, freightController.zonesDelete);
 
 admin.get("/reviews", reviewController.adminList);
 admin.get("/reports", reportController.adminList);

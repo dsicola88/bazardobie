@@ -39,3 +39,16 @@ export function requireRoles(...roles: UserRole[]) {
     next();
   };
 }
+
+/** Apenas administrador de plataforma (não inclui SUPORTE). */
+export function requirePlatformAdmin(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.user) {
+    next(new HttpError(401, "Autenticação necessária"));
+    return;
+  }
+  if (req.user.role !== "ADMIN") {
+    next(new HttpError(403, "Apenas administradores da plataforma."));
+    return;
+  }
+  next();
+}

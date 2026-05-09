@@ -688,7 +688,9 @@ export const productService = {
     status: "PENDING" | "REJECTED" | "APPROVED",
     skip: number,
     take: number,
-    q?: string
+    q?: string,
+    sortBy: "createdAt" | "name" = "createdAt",
+    sortDir: "asc" | "desc" = "desc"
   ) {
     const term = q?.trim();
     const where: Prisma.ProductWhereInput = {
@@ -703,10 +705,11 @@ export const productService = {
           }
         : {}),
     };
+    const orderBy: Prisma.ProductOrderByWithRelationInput = { [sortBy]: sortDir };
     const [items, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take,
         include: {

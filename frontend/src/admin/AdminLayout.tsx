@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
+import { isBackOfficeStaff, isPlatformAdmin } from "./adminAccess.js";
 
 function NavSep({ children }: { children: ReactNode }) {
   return <div className="ae-v-nav__label">{children}</div>;
@@ -28,14 +29,18 @@ export default function AdminLayout() {
     );
   }
   if (!user) return <Navigate to="/login?next=/admin/dashboard" replace />;
-  if (user.role !== "ADMIN") return <Navigate to="/unauthorized" replace />;
+  if (!isBackOfficeStaff(user.role)) return <Navigate to="/unauthorized" replace />;
+
+  const fullAdmin = isPlatformAdmin(user.role);
 
   return (
     <div className={`ae-vendor-shell ae-admin-shell ${sideCollapsed ? "ae-vendor-shell--collapsed" : ""}`}>
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
-          Administração
-          <small>Painel corporativo · BAZAR DO BIÉ</small>
+          {fullAdmin ? "Administração" : "Suporte"}
+          <small>
+            {fullAdmin ? "Painel corporativo" : "Moderação e operação"} · BAZAR DO BIÉ
+          </small>
         </div>
         <nav className="ae-v-nav ae-v-nav--grouped">
           <NavLink end to="/admin/dashboard" className={({ isActive }) => (isActive ? "ae-on" : "")}>
@@ -43,9 +48,11 @@ export default function AdminLayout() {
           </NavLink>
 
           <NavSep>Catálogo</NavSep>
-          <NavLink to="/admin/categories" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Categorias
-          </NavLink>
+          {fullAdmin ? (
+            <NavLink to="/admin/categories" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+              Categorias
+            </NavLink>
+          ) : null}
           <NavLink to="/admin/products" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Produtos e moderação
           </NavLink>
@@ -54,15 +61,19 @@ export default function AdminLayout() {
           <NavLink to="/admin/sellers" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Lojas parceiras
           </NavLink>
-          <NavLink to="/admin/logistics-partners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Transportadoras
-          </NavLink>
-          <NavLink to="/admin/freight" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Fretes (zonas e km)
-          </NavLink>
-          <NavLink to="/admin/team" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Equipa e logística
-          </NavLink>
+          {fullAdmin ? (
+            <>
+              <NavLink to="/admin/logistics-partners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Transportadoras
+              </NavLink>
+              <NavLink to="/admin/freight" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Fretes (zonas e km)
+              </NavLink>
+              <NavLink to="/admin/team" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Equipa e logística
+              </NavLink>
+            </>
+          ) : null}
 
           <NavSep>Encomendas</NavSep>
           <NavLink to="/admin/orders" className={({ isActive }) => (isActive ? "ae-on" : "")}>
@@ -73,9 +84,11 @@ export default function AdminLayout() {
           </NavLink>
 
           <NavSep>Financeiro e escrow</NavSep>
-          <NavLink to="/admin/finance" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Financeiro
-          </NavLink>
+          {fullAdmin ? (
+            <NavLink to="/admin/finance" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+              Financeiro
+            </NavLink>
+          ) : null}
           <NavLink to="/admin/disputes" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Disputas
           </NavLink>
@@ -89,15 +102,19 @@ export default function AdminLayout() {
           </NavLink>
 
           <NavSep>Site público</NavSep>
-          <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Configurações
-          </NavLink>
-          <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Carrossel inicial
-          </NavLink>
-          <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-            Grupos na página inicial
-          </NavLink>
+          {fullAdmin ? (
+            <>
+              <NavLink to="/admin/content" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Configurações
+              </NavLink>
+              <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Carrossel inicial
+              </NavLink>
+              <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+                Grupos na página inicial
+              </NavLink>
+            </>
+          ) : null}
           <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
             Canal de ajuda (vídeos)
           </a>
@@ -109,9 +126,22 @@ export default function AdminLayout() {
       </aside>
       <main className="ae-v-main">
         <div className="ae-v-main__topbar">
-          <button type="button" className="ae-v-main__toggle" onClick={() => setSideCollapsed((v) => !v)}>
-            {sideCollapsed ? "Expandir menu" : "Encolher menu"}
-          </button>
+          <div className="ae-v-main__topbar-left">
+            <button type="button" className="ae-v-main__toggle" onClick={() => setSideCollapsed((v) => !v)}>
+              {sideCollapsed ? "Expandir menu" : "Encolher menu"}
+            </button>
+          </div>
+          <div className="ae-v-main__user">
+            <span className="ae-v-main__user-name" title={user.name}>
+              {user.name}
+            </span>
+            <span
+              className={`ae-v-main__role${user.role === "SUPORTE" ? " ae-v-main__role--support" : ""}`}
+              title="Perfil na plataforma"
+            >
+              {user.role === "SUPORTE" ? "Suporte" : user.role}
+            </span>
+          </div>
         </div>
         <Outlet />
       </main>

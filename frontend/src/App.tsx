@@ -1,7 +1,20 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext.js";
+import { isPlatformAdmin } from "./admin/adminAccess.js";
 import { SeoRouteControl } from "./seo/SeoRouteControl.js";
 import { FaviconSync } from "./seo/FaviconSync.js";
+
+function RequirePlatformAdmin({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <p className="ae-muted" style={{ padding: 24 }}>A carregar…</p>;
+  }
+  if (!isPlatformAdmin(user?.role)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
 
 const AdminBanners = lazy(() => import("./admin/AdminBanners.js"));
 const AdminHomeGroups = lazy(() => import("./admin/AdminHomeGroups.js"));
@@ -68,21 +81,77 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="categories" element={<AdminCategories />} />
+          <Route
+            path="categories"
+            element={
+              <RequirePlatformAdmin>
+                <AdminCategories />
+              </RequirePlatformAdmin>
+            }
+          />
           <Route path="sellers" element={<AdminSellers />} />
-          <Route path="logistics-partners" element={<AdminLogisticsPartners />} />
-          <Route path="freight" element={<AdminFreight />} />
-          <Route path="team" element={<AdminTeam />} />
+          <Route
+            path="logistics-partners"
+            element={
+              <RequirePlatformAdmin>
+                <AdminLogisticsPartners />
+              </RequirePlatformAdmin>
+            }
+          />
+          <Route
+            path="freight"
+            element={
+              <RequirePlatformAdmin>
+                <AdminFreight />
+              </RequirePlatformAdmin>
+            }
+          />
+          <Route
+            path="team"
+            element={
+              <RequirePlatformAdmin>
+                <AdminTeam />
+              </RequirePlatformAdmin>
+            }
+          />
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="orders/:orderId" element={<AdminOrderDetail />} />
-          <Route path="finance" element={<AdminFinance />} />
+          <Route
+            path="finance"
+            element={
+              <RequirePlatformAdmin>
+                <AdminFinance />
+              </RequirePlatformAdmin>
+            }
+          />
           <Route path="trust" element={<AdminTrust />} />
           <Route path="credibility" element={<AdminCredibility />} />
           <Route path="disputes" element={<AdminDisputes />} />
-          <Route path="content" element={<AdminSiteContent />} />
-          <Route path="banners" element={<AdminBanners />} />
-          <Route path="homepage-groups" element={<AdminHomeGroups />} />
+          <Route
+            path="content"
+            element={
+              <RequirePlatformAdmin>
+                <AdminSiteContent />
+              </RequirePlatformAdmin>
+            }
+          />
+          <Route
+            path="banners"
+            element={
+              <RequirePlatformAdmin>
+                <AdminBanners />
+              </RequirePlatformAdmin>
+            }
+          />
+          <Route
+            path="homepage-groups"
+            element={
+              <RequirePlatformAdmin>
+                <AdminHomeGroups />
+              </RequirePlatformAdmin>
+            }
+          />
         </Route>
 
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

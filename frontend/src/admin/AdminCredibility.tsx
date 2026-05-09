@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { AdminEmptyState } from "./ui/AdminEmptyState.js";
+import { AdminErrorBanner } from "./ui/AdminErrorBanner.js";
 
 type QueueShop = {
   id: string;
@@ -68,15 +70,20 @@ export default function AdminCredibility() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
     setErr(null);
     try {
       const q = await apiFetch<Queues>("/admin/shops/credibility/queues", { token });
       setData(q);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro ao carregar filas");
+      setData(null);
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
@@ -129,26 +136,40 @@ export default function AdminCredibility() {
   if (!token) return <p className="ae-muted">Autenticação necessária.</p>;
 
   return (
-    <div className="ae-admin-pro ae-cred-admin">
+    <div className="ae-admin-pro ae-cred-admin ae-admin-canvas">
       <header className="ae-admin-pro__head">
         <div>
           <h1 className="ae-admin-pro__title">Filas de credibilidade</h1>
           <p className="ae-admin-pro__sub">
-            Documentos são confidenciais face ao público. Abra cada ficheiro num separador novo, avalie nitidez e coerência, e só
-            depois aprove ou motive a reprovação.
+            Documentos confidenciais. Abra cada ficheiro num separador novo, avalie nitidez e coerência, e só depois
+            aprove ou reprove com motivo claro.
           </p>
         </div>
-        <button type="button" className="btn" onClick={() => void load()}>
-          Actualizar filas
+        <button type="button" className="btn" disabled={loading} onClick={() => void load()}>
+          {loading ? "A actualizar…" : "Actualizar filas"}
         </button>
       </header>
 
-      {err ? <p className="ae-admin-alert ae-admin-alert--err">{err}</p> : null}
+      {err ? <AdminErrorBanner message={err} onRetry={() => void load()} /> : null}
       {msg ? <p className="ae-admin-alert ae-admin-alert--ok">{msg}</p> : null}
 
-      {!data ? (
-        <p className="ae-muted">A carregar…</p>
-      ) : (
+      {loading && !data ? (
+        <div className="ae-cred-admin__grid" aria-busy="true">
+          <div className="page-panel">
+            <div className="ae-admin-skeleton" style={{ height: 22, width: "55%", marginBottom: 14 }} />
+            <div className="ae-admin-skeleton" style={{ height: 120, marginBottom: 10 }} />
+            <div className="ae-admin-skeleton" style={{ height: 120, marginBottom: 10 }} />
+            <div className="ae-admin-skeleton" style={{ height: 44, width: "40%" }} />
+          </div>
+          <div className="page-panel">
+            <div className="ae-admin-skeleton" style={{ height: 22, width: "55%", marginBottom: 14 }} />
+            <div className="ae-admin-skeleton" style={{ height: 140, marginBottom: 10 }} />
+            <div className="ae-admin-skeleton" style={{ height: 44, width: "40%" }} />
+          </div>
+        </div>
+      ) : null}
+
+      {!loading && data ? (
         <div className="ae-cred-admin__grid">
           <section className="page-panel">
             <h2 style={{ marginTop: 0 }}>Nível 2 — BI e selfie</h2>
@@ -156,7 +177,10 @@ export default function AdminCredibility() {
               {data.pendente_nivel2.length} loja(s) com pedido não aprovado (inclui reenvios após reprovação).
             </p>
             {data.pendente_nivel2.length === 0 ? (
-              <p className="ae-muted">Nenhum pedido na fila.</p>
+              <AdminEmptyState
+                title="Fila nível 2 vazia"
+                description="Não há pedidos de verificação BI / selfie por rever neste momento."
+              />
             ) : (
               <ul className="ae-cred-admin-list">
                 {data.pendente_nivel2.map((s) => (
@@ -202,7 +226,10 @@ export default function AdminCredibility() {
               Só aparecem lojas com nível 2 já aprovado e pedido nível 3 pendente.
             </p>
             {data.pendente_nivel3.length === 0 ? (
-              <p className="ae-muted">Nenhum pedido na fila.</p>
+              <AdminEmptyState
+                title="Fila nível 3 vazia"
+                description="Sem pedidos pendentes de documentação empresarial e dados bancários."
+              />
             ) : (
               <ul className="ae-cred-admin-list">
                 {data.pendente_nivel3.map((s) => (
@@ -269,7 +296,7 @@ export default function AdminCredibility() {
             )}
           </section>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
