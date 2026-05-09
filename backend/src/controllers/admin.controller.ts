@@ -1,7 +1,9 @@
 import { adminService } from "../services/admin.service.js";
+import { adminStaffService } from "../services/adminStaff.service.js";
 import { userRepo } from "../repositories/user.repository.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { HttpError } from "../middlewares/errorHandler.js";
+import { adminCreateStaffSchema, adminPatchStaffSchema } from "../validators/adminStaff.validators.js";
 import { z } from "zod";
 
 const patchRoleSchema = z.object({
@@ -68,6 +70,46 @@ export const adminController = {
     if (target.role === "ADMIN") throw new HttpError(400, "Não é possível suspender contas de administrador");
     const updated = await userRepo().updateBlocked(req.params.id, blocked);
     res.json(updated);
+  }),
+
+  createStaffUser: asyncHandler(async (req, res) => {
+    const adminId = req.user?.sub;
+    if (!adminId) throw new HttpError(401, "Autenticação necessária");
+    const parsed = adminCreateStaffSchema.parse(req.body);
+    const logisticsPartnerId =
+      parsed.logisticsPartnerId == null || String(parsed.logisticsPartnerId).trim() === ""
+        ? null
+        : String(parsed.logisticsPartnerId).trim();
+    const row = await adminStaffService.createStaff({
+      ...parsed,
+      phone: parsed.phone?.trim() ?? "",
+      logisticsPartnerId,
+    });
+    res.status(201).json(row);
+  }),
+
+  patchStaffUser: asyncHandler(async (req, res) => {
+    const adminId = req.user?.sub;
+    if (!adminId) throw new HttpError(401, "Autenticação necessária");
+    const input = adminPatchStaffSchema.parse(req.body);
+    const logisticsPartnerId =
+      input.logisticsPartnerId === undefined
+        ? undefined
+        : input.logisticsPartnerId == null || String(input.logisticsPartnerId).trim() === ""
+          ? null
+          : String(input.logisticsPartnerId).trim();
+    const row = await adminStaffService.patchStaff(adminId, req.params.id, {
+      ...input,
+      logisticsPartnerId,
+    });
+    res.json(row);
+  }),
+
+  removeStaffFromTeam: asyncHandler(async (req, res) => {
+    const adminId = req.user?.sub;
+    if (!adminId) throw new HttpError(401, "Autenticação necessária");
+    const row = await adminStaffService.removeStaffFromTeam(adminId, req.params.id);
+    res.json(row);
   }),
 
   shopRanking: asyncHandler(async (req, res) => {

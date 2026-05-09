@@ -19,7 +19,7 @@ export default function LogisticsLayout() {
   if (user.role !== "LOGISTICA") return <Navigate to="/unauthorized" replace />;
 
   return (
-    <div className="ae-vendor-shell">
+    <div className="ae-vendor-shell ae-admin-shell">
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
           Logística BAZAR DO BIÉ
@@ -40,6 +40,17 @@ export default function LogisticsLayout() {
         </nav>
       </aside>
       <main className="ae-v-main">
+        <div className="ae-v-main__topbar">
+          <div className="ae-v-main__topbar-left" aria-hidden />
+          <div className="ae-v-main__user">
+            <span className="ae-v-main__user-name" title={user.email}>
+              {user.name}
+            </span>
+            <span className="ae-v-main__role" title="Perfil na plataforma">
+              Logística
+            </span>
+          </div>
+        </div>
         <Outlet />
       </main>
     </div>

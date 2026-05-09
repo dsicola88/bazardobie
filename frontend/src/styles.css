@@ -4143,6 +4143,17 @@ a:hover {
   align-items: center;
 }
 
+.ae-admin-staff-form__grid {
+  display: grid;
+  gap: 14px 18px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .ae-admin-staff-form__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .ae-admin-canvas-wide {
   max-width: 1200px;
 }

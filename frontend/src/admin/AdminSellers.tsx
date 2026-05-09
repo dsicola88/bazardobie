@@ -141,11 +141,17 @@ export default function AdminSellers() {
           <h1 className="ae-admin-pro__title">Lojas parceiras</h1>
           <p className="ae-admin-pro__sub">
             Aprovação de cadastros e visão de desempenho. O separador activo fica no URL (ex.:{" "}
-            <code className="ae-admin-mono">?tab=pending</code>). Utilizadores LOGISTICA e transportadoras:{" "}
-            <strong>
-              <Link to="/admin/team">Equipa &amp; logística</Link>
-            </strong>
-            .
+            <code className="ae-admin-mono">?tab=pending</code>). Contas de envio pela plataforma tratam pedidos em{" "}
+            <Link to="/logistica">Área de logística</Link>
+            {fullAdmin ? (
+              <>
+                {" "}
+                ; colaboradores <strong>SUPORTE</strong>/<strong>LOGISTICA</strong> gerem-se em{" "}
+                <Link to="/admin/team">Equipa &amp; logística</Link>.
+              </>
+            ) : (
+              <> (contacte o administrador da plataforma para gestão de equipa).</>
+            )}
           </p>
         </div>
       </header>

@@ -218,6 +218,9 @@ admin.use(requireAuth, requireRoles("ADMIN", "SUPORTE"), adminAuditLog);
 
 admin.get("/stats", adminController.stats);
 admin.get("/users", adminController.users);
+admin.post("/users/staff", requirePlatformAdmin, adminController.createStaffUser);
+admin.patch("/users/:id/staff", requirePlatformAdmin, adminController.patchStaffUser);
+admin.delete("/users/:id/staff", requirePlatformAdmin, adminController.removeStaffFromTeam);
 admin.patch("/users/:id/role", requirePlatformAdmin, adminController.patchUserRole);
 admin.patch("/users/:id/blocked", requirePlatformAdmin, adminController.patchUserBlocked);
 

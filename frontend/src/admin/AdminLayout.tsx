@@ -139,7 +139,7 @@ export default function AdminLayout() {
               className={`ae-v-main__role${user.role === "SUPORTE" ? " ae-v-main__role--support" : ""}`}
               title="Perfil na plataforma"
             >
-              {user.role === "SUPORTE" ? "Suporte" : user.role}
+              {user.role === "SUPORTE" ? "Suporte" : user.role === "ADMIN" ? "Administrador" : user.role}
             </span>
           </div>
         </div>

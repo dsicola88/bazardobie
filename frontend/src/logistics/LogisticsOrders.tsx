@@ -71,7 +71,7 @@ export default function LogisticsOrders() {
           <h1 className="ae-v-title">Envio pela plataforma</h1>
           <p className="ae-muted" style={{ margin: "4px 0 0" }}>
             Recolha na loja após «Em preparação», depois «Em entrega» e «Entregue». Contas LOGISTICA sem transportadora
-            parceira vêem todos os pedidos BAZAR DO BIÉ; com parceiro, só encomendas atribuídas pelo admin.
+            parceira veem todos os pedidos BAZAR DO BIÉ; com parceiro, só encomendas atribuídas pelo administrador.
           </p>
         </div>
         <div className="ae-sort">

@@ -324,6 +324,23 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </section>
+
+        <section className="ae-panel" style={{ marginTop: 24 }}>
+          <h3 style={{ marginTop: 0 }}>Atalhos operacionais</h3>
+          <p style={{ margin: 0, lineHeight: 1.85, fontSize: 14 }}>
+            <Link to="/admin/products?status=PENDING">Moderação de produtos</Link>
+            {" · "}
+            <Link to="/admin/sellers?tab=pending">Aprovar lojas</Link>
+            {" · "}
+            <Link to="/admin/credibility">Credibilidade (BI)</Link>
+            {" · "}
+            <Link to="/admin/disputes">Disputas</Link>
+            {" · "}
+            <Link to="/admin/trust">Denúncias e reputação</Link>
+            {" · "}
+            <Link to="/admin/orders">Todas as encomendas</Link>
+          </p>
+        </section>
       </div>
     );
   }

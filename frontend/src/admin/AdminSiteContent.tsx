@@ -176,10 +176,10 @@ export default function AdminSiteContent() {
       </div>
 
       <div className="ae-admin-callout ae-admin-callout--soft" style={{ marginBottom: 18 }}>
-        <strong>Suporte e equipa interna.</strong> Não se cadastram aqui: crie a conta em{" "}
-        <Link to="/login?register=1">Registo público</Link> e depois, em{" "}
-        <Link to="/admin/team">Equipa, suporte e logística</Link>, altere o papel para <strong>SUPORTE</strong>,{" "}
-        <strong>LOGISTICA</strong>, etc. Só administradores da plataforma vêem essa página.
+        <strong>Suporte e logística.</strong> Em{" "}
+        <Link to="/admin/team">Equipa, suporte e logística</Link> pode criar directamente contas <strong>SUPORTE</strong>{" "}
+        e <strong>LOGISTICA</strong> (sem registo público nem scripts). Vendedores e clientes continuam a registar-se no
+        site.
       </div>
 
       {err ? (
