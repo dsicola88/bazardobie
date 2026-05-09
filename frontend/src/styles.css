@@ -4007,6 +4007,46 @@ a:hover {
   align-items: center;
 }
 
+.ae-admin-canvas-wide {
+  max-width: 1200px;
+}
+
+.ae-admin-promo-split {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .ae-admin-promo-split {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.ae-admin-promo-wrap .ae-panel h4 {
+  color: #3d2318;
+}
+
+.ae-admin-callout {
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--ae-line, #e5e7eb);
+}
+.ae-admin-callout--soft {
+  background: linear-gradient(135deg, #f0f7ff 0%, #f7f5ff 100%);
+  border-color: #c7d7f0;
+}
+.ae-admin-callout strong {
+  color: #111827;
+}
+
+.ae-admin-legacy-details {
+  border-top: 1px dashed #e8d5cd;
+  padding-top: 8px;
+}
+
 .ae-admin-form-card {
   border-radius: 10px;
 }

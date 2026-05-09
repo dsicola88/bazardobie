@@ -97,12 +97,14 @@ export default function AdminTeam() {
     <div className="ae-admin-pro">
       <header className="ae-admin-pro__head">
         <div>
-          <h1 className="ae-admin-pro__title">Contas da equipa e acessos</h1>
+          <h1 className="ae-admin-pro__title">Equipa, suporte e logística</h1>
           <p className="ae-admin-pro__sub">
-            Gestão central de perfis: atribua o papel <strong>LOGISTICA</strong> a motoristas ou coordenadores, ligue‑os à{" "}
-            <strong>transportadora registada</strong> e suspenda contas quando necessário. Fluxo típico: registas o colaborador
-            como cliente (ou convida com registo público), depois promove o perfil aqui. Empresas de última milha{" "}
-            <Link to="/admin/logistics-partners">cadastram‑se aqui</Link>; encomendas BAZAR DO BIÉ são atribuídas em{" "}
+            <strong>Cadastrar suporte ou logística:</strong> a pessoa deve{" "}
+            <Link to="/login?register=1">criar conta no site</Link> (normalmente como cliente). Depois, nesta página,
+            escolha o utilizador na tabela e altere o papel para <strong>SUPORTE</strong> ou <strong>LOGISTICA</strong>.
+            Administradores (<strong>ADMIN</strong>) não podem ser criados aqui por segurança — use o script do servidor. Para
+            motoristas, ligue o utilizador <strong>LOGISTICA</strong> à{" "}
+            <Link to="/admin/logistics-partners">transportadora</Link>. Encomendas BAZAR DO BIÉ em{" "}
             <Link to="/admin/orders">Encomendas</Link>.
           </p>
           <p className="ae-muted" style={{ marginTop: 10, fontSize: 12 }}>

@@ -70,7 +70,7 @@ export default function AdminLayout() {
                 Fretes (zonas e km)
               </NavLink>
               <NavLink to="/admin/team" className={({ isActive }) => (isActive ? "ae-on" : "")}>
-                Equipa e logística
+                Equipa, suporte e logística
               </NavLink>
             </>
           ) : null}

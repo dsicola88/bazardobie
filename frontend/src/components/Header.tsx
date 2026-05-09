@@ -9,6 +9,28 @@ import { NotificationsBell } from "./NotificationsBell.js";
 import type { ProductCardData } from "./ProductCard.js";
 import { resolveMediaUrl } from "../utils/media.js";
 
+function triStatePromoFlag(raw: string | undefined): boolean | null {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (v === "true" || v === "1" || v === "sim" || v === "yes") return true;
+  if (v === "false" || v === "0" || v === "nao" || v === "não" || v === "no") return false;
+  return null;
+}
+
+function promoIntervalActive(now: number, startPrimary: string, endPrimary: string, startFall: string, endFall: string): boolean {
+  const hasOwn = startPrimary.trim().length > 0 || endPrimary.trim().length > 0;
+  const startRaw = hasOwn ? startPrimary : startFall;
+  const endRaw = hasOwn ? endPrimary : endFall;
+  if (startRaw.trim()) {
+    const s = Date.parse(startRaw);
+    if (Number.isFinite(s) && now < s) return false;
+  }
+  if (endRaw.trim()) {
+    const e = Date.parse(endRaw);
+    if (Number.isFinite(e) && now > e) return false;
+  }
+  return true;
+}
+
 type Category = { id: string; name: string; slug: string; parentId: string | null };
 type SearchSuggestProduct = { id: string; name: string };
 
@@ -118,13 +140,24 @@ export function Header() {
   }
 
   const { content } = useSiteContent();
-  const promo = (content["public.header_promo_text"] ?? "").trim();
+  const promoBarText = (content["public.header_promo_text"] ?? "").trim();
   const promoKeywordsRaw = (content["public.header_promo_keywords"] ?? "").trim();
-  const promoEnabledRaw = (content["public.header_promo_enabled"] ?? "false").trim().toLowerCase();
-  const promoEnabled = promoEnabledRaw === "true" || promoEnabledRaw === "1" || promoEnabledRaw === "sim" || promoEnabledRaw === "yes";
-  const promoMode = (content["public.header_promo_mode"] ?? "bar").trim().toLowerCase(); // bar | popup
-  const promoStartRaw = (content["public.header_promo_start_at"] ?? "").trim();
-  const promoEndRaw = (content["public.header_promo_end_at"] ?? "").trim();
+  const barFlag = triStatePromoFlag(content["public.header_promo_bar_enabled"]);
+  const popupFlag = triStatePromoFlag(content["public.header_promo_popup_enabled"]);
+  const legacyPromoOn = (content["public.header_promo_enabled"] ?? "false").trim().toLowerCase();
+  const legacyEnabled =
+    legacyPromoOn === "true" || legacyPromoOn === "1" || legacyPromoOn === "sim" || legacyPromoOn === "yes";
+  const legacyMode = (content["public.header_promo_mode"] ?? "bar").trim().toLowerCase();
+  const barEnabled = barFlag !== null ? barFlag : legacyEnabled && legacyMode !== "popup";
+  const popupEnabled = popupFlag !== null ? popupFlag : legacyEnabled && legacyMode === "popup";
+
+  const legacyStartRaw = (content["public.header_promo_start_at"] ?? "").trim();
+  const legacyEndRaw = (content["public.header_promo_end_at"] ?? "").trim();
+  const barStartRaw = (content["public.header_promo_bar_start_at"] ?? "").trim();
+  const barEndRaw = (content["public.header_promo_bar_end_at"] ?? "").trim();
+  const popupStartRaw = (content["public.header_promo_popup_start_at"] ?? "").trim();
+  const popupEndRaw = (content["public.header_promo_popup_end_at"] ?? "").trim();
+
   const promoPriorityRaw = (content["public.header_promo_priority"] ?? "50").trim();
   const promoPosition = (content["public.header_promo_position"] ?? "center").trim().toLowerCase();
   const promoDelayRaw = (content["public.header_promo_delay_seconds"] ?? "2").trim();
@@ -145,7 +178,25 @@ export function Header() {
     .split("|")
     .map((x) => x.trim())
     .filter(Boolean)
-    .slice(0, 4); // mantém a barra simples (menos “textos demais”)
+    .slice(0, 4);
+  const promoPopupTextRaw = (content["public.header_promo_popup_text"] ?? "").trim();
+  const promoPopupBody = promoPopupTextRaw || promoBarText;
+  const promoPopupKeywordsRaw = (content["public.header_promo_popup_keywords"] ?? "").trim();
+  const popupKeywordsForCard = useMemo(() => {
+    const barKw = promoKeywordsRaw
+      .split("|")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    return (
+      promoPopupKeywordsRaw
+        ? promoPopupKeywordsRaw
+            .split("|")
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : barKw
+    ).slice(0, 6);
+  }, [promoPopupKeywordsRaw, promoKeywordsRaw]);
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
   const smartCategorySuggestions =
     q.trim().length >= 2
@@ -198,38 +249,44 @@ export function Header() {
     if (/^https?:\/\//i.test(promoLinkRaw)) return promoLinkRaw;
     return "";
   }, [promoLinkRaw]);
-  const promoScheduleActive = useMemo(() => {
-    const now = Date.now();
-    if (promoStartRaw) {
-      const s = Date.parse(promoStartRaw);
-      if (Number.isFinite(s) && now < s) return false;
-    }
-    if (promoEndRaw) {
-      const e = Date.parse(promoEndRaw);
-      if (Number.isFinite(e) && now > e) return false;
-    }
-    return true;
-  }, [promoStartRaw, promoEndRaw]);
+  const barScheduleActive = useMemo(
+    () => promoIntervalActive(Date.now(), barStartRaw, barEndRaw, legacyStartRaw, legacyEndRaw),
+    [barStartRaw, barEndRaw, legacyStartRaw, legacyEndRaw]
+  );
+  const popupScheduleActive = useMemo(
+    () => promoIntervalActive(Date.now(), popupStartRaw, popupEndRaw, legacyStartRaw, legacyEndRaw),
+    [popupStartRaw, popupEndRaw, legacyStartRaw, legacyEndRaw]
+  );
 
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
 
   useEffect(() => {
-    if (!promoEnabled || !promoScheduleActive) return;
-    if (promoMode !== "popup") return;
-    if (!promo) return;
+    if (!popupEnabled || !popupScheduleActive) return;
+    if (!promoPopupBody) return;
 
-    const kw = promoKeywords.join(",");
-    const rawKey = `promo_popup_seen_v2:${promo}|${kw}|${promoPriceText}|${promoStartRaw}|${promoEndRaw}`;
+    const kw = popupKeywordsForCard.join(",");
+    const rawKey = `promo_popup_seen_v3:${promoPopupBody}|${kw}|${promoPriceText}|${popupStartRaw || legacyStartRaw}|${popupEndRaw || legacyEndRaw}`;
     const safeKey = rawKey.replace(/[^a-z0-9]+/gi, "_").slice(0, 120);
     const seen = localStorage.getItem(safeKey) === "1";
     if (seen) return;
     const timer = window.setTimeout(() => setPromoPopupOpen(true), promoDelaySeconds * 1000);
     return () => window.clearTimeout(timer);
-  }, [promoEnabled, promoMode, promo, promoKeywords, promoDelaySeconds, promoScheduleActive, promoPriceText, promoStartRaw, promoEndRaw]);
+  }, [
+    popupEnabled,
+    promoPopupBody,
+    popupKeywordsForCard,
+    promoDelaySeconds,
+    popupScheduleActive,
+    promoPriceText,
+    popupStartRaw,
+    popupEndRaw,
+    legacyStartRaw,
+    legacyEndRaw,
+  ]);
 
   function closePromoPopup() {
-    const kw = promoKeywords.join(",");
-    const rawKey = `promo_popup_seen_v2:${promo}|${kw}|${promoPriceText}|${promoStartRaw}|${promoEndRaw}`;
+    const kw = popupKeywordsForCard.join(",");
+    const rawKey = `promo_popup_seen_v3:${promoPopupBody}|${kw}|${promoPriceText}|${popupStartRaw || legacyStartRaw}|${popupEndRaw || legacyEndRaw}`;
     const safeKey = rawKey.replace(/[^a-z0-9]+/gi, "_").slice(0, 120);
     localStorage.setItem(safeKey, "1");
     setPromoPopupOpen(false);
@@ -513,10 +570,10 @@ export function Header() {
         </div>
       </div>
 
-      {promoEnabled && promoScheduleActive && promoMode !== "popup" && promo ? (
+      {barEnabled && barScheduleActive && promoBarText ? (
         <div className="ae-promo-bar">
           <div className="ae-shell ae-promo-bar__inner">
-            {promo}
+            {promoBarText}
             {promoKeywords.length > 0 ? (
               <div className={`ae-promo-keywords ${promoMarqueeOn ? "ae-promo-keywords--marquee" : ""}`}>
                 <div className="ae-promo-keywords__track">
@@ -539,7 +596,7 @@ export function Header() {
         </div>
       ) : null}
 
-      {promoEnabled && promoScheduleActive && promoMode === "popup" && promo && promoPopupOpen ? (
+      {popupEnabled && popupScheduleActive && promoPopupBody && promoPopupOpen ? (
         <div className="ae-modal-backdrop" role="dialog" aria-modal="true">
           <div className={`ae-promo-card-wrap ${promoPositionClass}`} style={{ zIndex: Math.max(1000, 1000 + promoPriority) }}>
             <div className="ae-promo-card">
@@ -554,10 +611,10 @@ export function Header() {
               <div className="ae-promo-card__body">
                 <div className="ae-promo-card__eyebrow">Oferta especial</div>
                 {promoPriceText ? <div className="ae-promo-card__price">{promoPriceText}</div> : null}
-                <p className="ae-promo-card__text">{promo}</p>
-                {promoKeywords.length > 0 ? (
+                <p className="ae-promo-card__text">{promoPopupBody}</p>
+                {popupKeywordsForCard.length > 0 ? (
                   <div className="ae-promo-card__chips">
-                    {promoKeywords.map((k) => (
+                    {popupKeywordsForCard.map((k) => (
                       <span key={k} className="ae-promo-card__chip">
                         {k}
                       </span>
