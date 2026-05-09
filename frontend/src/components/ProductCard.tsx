@@ -1,6 +1,6 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { formatKz, formatRating } from "../utils/format.js";
+import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 
@@ -19,12 +19,34 @@ export type ProductCardData = {
 
 function ProductCardInner({ p, className }: { p: ProductCardData; className?: string }) {
   const img = resolveMediaUrl(p.images[0]?.url);
-  const hasPromo = p.promoPrice != null && p.promoPrice !== "";
+  const promoRaw = p.promoPrice != null ? String(p.promoPrice).trim() : "";
+  const hasPromo = promoRaw !== "" && Number(p.promoPrice) > 0;
   const condition = p.condition ?? "NEW";
   const conditionBadge = condition === "USED" ? "Usado" : condition === "REFURBISHED" ? "Recond." : "Novo";
 
+  const savePct = useMemo(
+    () => (hasPromo ? promoSavingPercent(p.price, p.promoPrice as string | number) : null),
+    [hasPromo, p.price, p.promoPrice],
+  );
+
+  const promoNote =
+    hasPromo && savePct != null && savePct > 0
+      ? ` Poupa −${savePct}% face ao preço ${formatKz(p.price)}.`
+      : hasPromo
+        ? ` Promoção; preço anterior ${formatKz(p.price)}.`
+        : "";
+  const reviewNote =
+    p.reviewCount > 0
+      ? ` Avaliações: ${formatRating(p.averageRating)} em 5 (${p.reviewCount}). `
+      : "";
+  const ariaBrief = `${p.name}. ${productConditionLabel(p.condition)}. ${formatKz(p.displayPrice)}.${promoNote}${reviewNote}Abrir ficha.`;
+
   return (
-    <Link to={`/product/${p.id}`} className={["ae-pcard", className].filter(Boolean).join(" ")}>
+    <Link
+      to={`/product/${p.id}`}
+      className={["ae-pcard", className].filter(Boolean).join(" ")}
+      aria-label={ariaBrief}
+    >
       <div className="ae-pcard__img-wrap">
         {img ? (
           <img src={img} alt="" className="ae-pcard__img" loading="lazy" decoding="async" />
@@ -32,28 +54,35 @@ function ProductCardInner({ p, className }: { p: ProductCardData; className?: st
           <div className="ae-pcard__ph" />
         )}
         <span className={`ae-pcard__cond ae-pcard__cond--${condition.toLowerCase()}`}>{conditionBadge}</span>
-        {hasPromo ? <span className="ae-pcard__badge">Em promoção</span> : null}
+        {savePct != null && savePct > 0 ? (
+          <span className="ae-pcard__pct" aria-hidden="true">
+            −{savePct}%
+          </span>
+        ) : hasPromo ? (
+          <span className="ae-pcard__badge">Promoção</span>
+        ) : null}
       </div>
       <div className="ae-pcard__body">
         <h3 className="ae-pcard__title">{p.name}</h3>
         <div className="ae-pcard__meta">
           {p.averageRating != null && p.reviewCount > 0 ? (
             <span className="ae-pcard__rate">
-              <span className="ae-pcard__star">★</span> {formatRating(p.averageRating)}
+              <span className="ae-pcard__star" aria-hidden="true">
+                ★
+              </span>
+              <span className="ae-pcard__rate-val">{formatRating(p.averageRating)}</span>
               <span className="ae-pcard__reviews">({p.reviewCount})</span>
             </span>
           ) : (
-            <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações publicadas</span>
+            <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações</span>
           )}
         </div>
-        <div className="ae-muted" style={{ fontSize: 12 }}>
-          {productConditionLabel(p.condition)}
-        </div>
+        <p className="ae-pcard__condline">{productConditionLabel(p.condition)}</p>
         <div className="ae-pcard__price-row">
           <span className="ae-pcard__price">{formatKz(p.displayPrice)}</span>
           {hasPromo ? <span className="ae-pcard__old">{formatKz(p.price)}</span> : null}
         </div>
-        <div className="ae-pcard__sold">{p.soldCount.toLocaleString("pt-AO")}+ unidades vendidas</div>
+        <div className="ae-pcard__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendas</div>
       </div>
     </Link>
   );

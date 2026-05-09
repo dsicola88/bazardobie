@@ -18,6 +18,7 @@ type VarForm = {
   name: string;
   color: string;
   size: string;
+  salePrice: string;
   priceAdjust: string;
   stock: string;
   imageUrl: string;
@@ -53,6 +54,7 @@ type ProductLoaded = {
     color?: string | null;
     size?: string | null;
     priceAdjust?: string | null;
+    salePrice?: string | null;
     stock: number;
     imageUrl?: string | null;
   }[];
@@ -83,6 +85,7 @@ const emptyVar = (): VarForm => ({
   name: "",
   color: "",
   size: "",
+  salePrice: "",
   priceAdjust: "",
   stock: "0",
   imageUrl: "",
@@ -183,7 +186,18 @@ export default function VendorProductEditor() {
                 name: v.name ?? "",
                 color: v.color ?? "",
                 size: v.size ?? "",
-                priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : "",
+                salePrice:
+                  v.salePrice != null && String(v.salePrice).trim() !== "" && Number(v.salePrice) > 0
+                    ? String(v.salePrice)
+                    : "",
+                priceAdjust:
+                  v.salePrice != null &&
+                  String(v.salePrice).trim() !== "" &&
+                  Number(v.salePrice) > 0
+                    ? ""
+                    : v.priceAdjust != null
+                      ? String(v.priceAdjust)
+                      : "",
                 stock: String(v.stock),
                 imageUrl: v.imageUrl ?? "",
               }))
@@ -256,7 +270,13 @@ export default function VendorProductEditor() {
         name: v.name.trim() || undefined,
         color: v.color.trim() || undefined,
         size: v.size.trim() || undefined,
-        priceAdjust: v.priceAdjust.trim() === "" ? undefined : Number(v.priceAdjust),
+        salePrice: v.salePrice.trim() === "" ? undefined : Number(v.salePrice),
+        priceAdjust:
+          v.salePrice.trim() !== ""
+            ? undefined
+            : v.priceAdjust.trim() === ""
+              ? undefined
+              : Number(v.priceAdjust),
         stock: Number(v.stock) || 0,
         imageUrl: v.imageUrl.trim() || undefined,
       }));
@@ -661,9 +681,8 @@ export default function VendorProductEditor() {
         <section className="ae-v-prod-sec ae-panel">
           <h2 className="ae-v-prod-sec__h">04 · Variantes (opcional)</h2>
           <p className="ae-v-prod-sec__lede">
-            Utilize variantes quando o mesmo artigo possuir combinações distintas (cor, tamanho, capacidade, modelo)
-            com stock ou preço próprios. Cada variante requer um SKU exclusivo dentro desta ficha. O ajuste de preço é
-            somado ou deduzido em Kz ao preço de referência.
+            Cada variante tem o seu SKU e stock. Defina um <strong>preço final próprio</strong> por variante (recomendado,
+            estilo marketplaces como AliExpress). A opção «ajuste ±» permanece só por compatibilidade com fichas antigas.
           </p>
           {variants.map((v, ix) => (
             <div key={ix} className="ae-v-prod-variant-block">
@@ -696,13 +715,32 @@ export default function VendorProductEditor() {
                   />
                 </div>
                 <div>
-                  <label>Ajuste ao preço de referência (Kz)</label>
+                  <label>Preço final desta variante (Kz)</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={v.salePrice}
+                    onChange={(e) =>
+                      setVariants((p) =>
+                        p.map((x, i) => (i === ix ? { ...x, salePrice: e.target.value } : x)),
+                      )
+                    }
+                    placeholder="Ex.: 13000 (deixe em branco para usar ajuste ±)"
+                  />
+                </div>
+                <div>
+                  <label>Ajuste ao preço da ficha (± Kz, legado)</label>
                   <input
                     value={v.priceAdjust}
                     onChange={(e) =>
-                      setVariants((p) => p.map((x, i) => (i === ix ? { ...x, priceAdjust: e.target.value } : x)))
+                      setVariants((p) =>
+                        p.map((x, i) =>
+                          i === ix ? { ...x, priceAdjust: e.target.value } : x,
+                        ),
+                      )
                     }
-                    placeholder="0 = sem ajuste"
+                    placeholder="Usado só se o preço final acima estiver vazio"
                   />
                 </div>
                 <div>

@@ -6,6 +6,7 @@ import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -16,6 +17,7 @@ type CheckoutCartItem = {
     name?: string | null;
     color?: string | null;
     size?: string | null;
+    salePrice?: string | null;
     priceAdjust?: string | null;
     imageUrl?: string | null;
   } | null;
@@ -25,6 +27,7 @@ type CheckoutCartItem = {
     condition?: string | null;
     price: string;
     promoPrice?: string | null;
+    displayPrice: string;
     images?: { url: string }[];
   };
   productDeliveryOption: {
@@ -73,15 +76,7 @@ function coerceFreightMode(raw: unknown): FreightMode {
 }
 
 function unitPriceKz(it: CheckoutCartItem): number {
-  const p = it.product;
-  const promo =
-    p.promoPrice != null && String(p.promoPrice).trim() !== "" ? Number(p.promoPrice) : null;
-  const base = promo ?? Number(p.price);
-  const adj =
-    it.variant?.priceAdjust != null && String(it.variant.priceAdjust).trim() !== ""
-      ? Number(it.variant.priceAdjust)
-      : 0;
-  return base + adj;
+  return variantEffectiveUnitKz(it.product, it.variant ?? null);
 }
 
 function checkoutVariantSubtitle(v: NonNullable<CheckoutCartItem["variant"]>): string {

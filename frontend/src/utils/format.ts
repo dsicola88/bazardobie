@@ -22,3 +22,11 @@ export function formatRating(r: string | number | null | undefined): string {
   if (Number.isNaN(n)) return "—";
   return n.toFixed(1);
 }
+
+/** Percentagem de desconto face ao preço listado (`price` vs `promoPrice`). */
+export function promoSavingPercent(listPrice: string | number, promoPrice: string | number): number | null {
+  const l = Number(listPrice);
+  const d = Number(promoPrice);
+  if (!(l > 0) || !(d > 0) || d >= l) return null;
+  return Math.round((1 - d / l) * 100);
+}

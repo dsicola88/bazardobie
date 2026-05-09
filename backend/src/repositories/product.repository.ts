@@ -9,6 +9,8 @@ export interface ProductListFilters {
   maxPrice?: number;
   minRating?: number;
   featuredOnly?: boolean;
+  /** `promoPrice` preenchido (produto em promoção). */
+  onSaleOnly?: boolean;
   shopId?: string;
   /** Com `public.allow_seller_delivery` desactivado: só produtos com envio pela plataforma. */
   requirePlatformDelivery?: boolean;
@@ -75,6 +77,7 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   if (filters.categoryId) where.categoryId = filters.categoryId;
   if (filters.condition) where.condition = filters.condition;
   if (filters.featuredOnly) where.isFeatured = true;
+  if (filters.onSaleOnly) where.promoPrice = { not: null };
   if (filters.q) {
     const terms = expandedTerms(filters.q);
     if (terms.length > 0) {

@@ -350,12 +350,12 @@ async function seedDemoAeGalleryProduct() {
         },
         variants: {
           create: [
-            { sku: "DEMO-AEZ-R-M", color: "Rosado", size: "M", stock: 6, priceAdjust: "0", imageUrl: rosadoM },
-            { sku: "DEMO-AEZ-R-L", color: "Rosado", size: "L", stock: 6, priceAdjust: "900", imageUrl: rosadoL },
-            { sku: "DEMO-AEZ-V-M", color: "Verde", size: "M", stock: 6, priceAdjust: "0", imageUrl: verdeM },
-            { sku: "DEMO-AEZ-V-L", color: "Verde", size: "L", stock: 6, priceAdjust: "900", imageUrl: verdeL },
-            { sku: "DEMO-AEZ-A-M", color: "Azul", size: "M", stock: 6, priceAdjust: "0", imageUrl: azulM },
-            { sku: "DEMO-AEZ-A-L", color: "Azul", size: "L", stock: 6, priceAdjust: "900", imageUrl: azulL },
+            { sku: "DEMO-AEZ-R-M", color: "Rosado", size: "M", stock: 6, salePrice: "24999", imageUrl: rosadoM },
+            { sku: "DEMO-AEZ-R-L", color: "Rosado", size: "L", stock: 6, salePrice: "25899", imageUrl: rosadoL },
+            { sku: "DEMO-AEZ-V-M", color: "Verde", size: "M", stock: 6, salePrice: "24999", imageUrl: verdeM },
+            { sku: "DEMO-AEZ-V-L", color: "Verde", size: "L", stock: 6, salePrice: "25899", imageUrl: verdeL },
+            { sku: "DEMO-AEZ-A-M", color: "Azul", size: "M", stock: 6, salePrice: "24999", imageUrl: azulM },
+            { sku: "DEMO-AEZ-A-L", color: "Azul", size: "L", stock: 6, salePrice: "25899", imageUrl: azulL },
           ],
         },
         deliveryOptions: {

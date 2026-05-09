@@ -95,6 +95,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/banners" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Carrossel inicial
           </NavLink>
+          <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Grupos na página inicial
+          </NavLink>
           <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
             Canal de ajuda (vídeos)
           </a>

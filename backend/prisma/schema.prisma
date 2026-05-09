@@ -376,12 +376,44 @@ model Product {
   reviews          Review[]
   favorites        Favorite[]
   reports          Report[]
+  homeGroupMembers HomeProductGroupMember[]
 
   @@unique([shopId, sku])
   @@index([categoryId])
   @@index([isFeatured, isActive])
   @@index([shopId])
   @@index([moderationStatus])
+}
+
+/// Secções curadas na página inicial (ex.: Super ofertas, Produtos em desconto).
+model HomeProductGroup {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  subtitle    String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  /// Máximo de artigos a mostrar na vitrine pública.
+  maxDisplay  Int      @default(12)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members HomeProductGroupMember[]
+
+  @@index([active, sortOrder])
+}
+
+model HomeProductGroupMember {
+  id        String @id @default(cuid())
+  groupId   String
+  productId String
+  sortOrder Int    @default(0)
+
+  group   HomeProductGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, productId])
+  @@index([groupId, sortOrder])
 }
 
 model ProductImage {
@@ -402,6 +434,9 @@ model ProductVariant {
   name        String?
   color       String?
   size        String?
+  /// Preço final desta variante (estilo AliExpress). Se preenchido, substitui preço base + ajuste.
+  salePrice   Decimal? @db.Decimal(12, 2)
+  /// Legado: soma ao preço efectivo da ficha (promo ou preço normal) quando `salePrice` está vazio.
   priceAdjust Decimal? @db.Decimal(12, 2)
   stock       Int      @default(0)
   imageUrl    String?

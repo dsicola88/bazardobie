@@ -18,6 +18,7 @@ import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { notificationService } from "./notification.service.js";
 import { env } from "../config/env.js";
+import { syncProductDisplayFromVariants } from "./productDisplaySync.js";
 
 const deliveryOptionsPublicInclude = {
   include: { logisticsPartner: { select: { id: true, name: true } } },
@@ -214,6 +215,7 @@ export const productService = {
               name: v.name,
               color: v.color,
               size: v.size,
+              salePrice: v.salePrice != null ? String(v.salePrice) : undefined,
               priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : undefined,
               stock: v.stock,
               imageUrl: v.imageUrl?.trim() ? v.imageUrl : undefined,
@@ -232,8 +234,21 @@ export const productService = {
       },
     };
 
-    return prisma.product.create({
+    const created = await prisma.product.create({
       data,
+      include: {
+        images: true,
+        variants: true,
+        deliveryOptions: deliveryOptionsPublicInclude,
+        category: true,
+        shop: true,
+      },
+    });
+    await prisma.$transaction(async (tx) => {
+      await syncProductDisplayFromVariants(tx, created.id);
+    });
+    return prisma.product.findFirstOrThrow({
+      where: { id: created.id },
       include: {
         images: true,
         variants: true,
@@ -336,6 +351,7 @@ export const productService = {
               name: v.name,
               color: v.color,
               size: v.size,
+              salePrice: v.salePrice != null ? String(v.salePrice) : undefined,
               priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : undefined,
               stock: v.stock,
               imageUrl: v.imageUrl?.trim() ? v.imageUrl : undefined,
@@ -385,6 +401,7 @@ export const productService = {
         where: { id: productId },
         data: scalarData,
       });
+      await syncProductDisplayFromVariants(tx, productId);
     });
 
     return prisma.product.findFirstOrThrow({
@@ -472,6 +489,7 @@ export const productService = {
       maxPrice: query.maxPrice ?? undefined,
       minRating: query.minRating ?? undefined,
       featuredOnly: query.featured === "true",
+      onSaleOnly: query.onSale === "true",
       shopId: query.shopId,
       /** Sem envio pela loja, a vitrinha só pode mostrar anúncios com envio BAZAR DO BIÉ (PLATAFORMA). */
       requirePlatformDelivery: !allowSeller,

@@ -4,6 +4,7 @@ import { SeoRouteControl } from "./seo/SeoRouteControl.js";
 import { FaviconSync } from "./seo/FaviconSync.js";
 
 const AdminBanners = lazy(() => import("./admin/AdminBanners.js"));
+const AdminHomeGroups = lazy(() => import("./admin/AdminHomeGroups.js"));
 const AdminCredibility = lazy(() => import("./admin/AdminCredibility.js"));
 const AdminCategories = lazy(() => import("./admin/AdminCategories.js"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard.js"));
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="disputes" element={<AdminDisputes />} />
           <Route path="content" element={<AdminSiteContent />} />
           <Route path="banners" element={<AdminBanners />} />
+          <Route path="homepage-groups" element={<AdminHomeGroups />} />
         </Route>
 
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

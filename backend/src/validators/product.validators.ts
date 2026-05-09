@@ -55,6 +55,10 @@ export const productVariantSchema = z.object({
   name: z.string().optional(),
   color: z.string().optional(),
   size: z.string().optional(),
+  salePrice: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().positive().optional()
+  ),
   priceAdjust: z.coerce.number().optional(),
   stock: z.coerce.number().int().nonnegative(),
   imageUrl: mediaUrlSchema.optional().or(z.literal("")),
@@ -151,6 +155,8 @@ export const productListQuerySchema = z.object({
   maxPrice: z.coerce.number().optional(),
   minRating: z.coerce.number().min(1).max(5).optional(),
   featured: z.enum(["true", "false"]).optional(),
+  /** Só artigos com `promoPrice` activo (abaixo do preço listado). */
+  onSale: z.enum(["true", "false"]).optional(),
   condition: productConditionSchema.optional(),
   shopId: z.string().optional(),
   sort: z

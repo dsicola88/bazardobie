@@ -26,6 +26,15 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.home_hero_fallback": "BAZAR DO BIÉ — Marketplace nacional",
   "public.home_featured_title": "Sugestões em destaque",
   "public.home_bestsellers_title": "Mais vendidos",
+  "public.home_category_rail_title": "Explore por categoria",
+  "public.home_flash_deals_enabled": "true",
+  "public.home_flash_deals_title": "Ofertas do dia · preços rebaixados",
+  "public.home_flash_deals_subtitle":
+    "Seleção editorial de artigos em promoção. Stock e prazos dependem da loja — primeiro a encomendar, primeiro a garantir.",
+  "public.home_flash_deals_end_at": "",
+  "public.home_flash_deals_cta": "Ver todas as promoções",
+  "public.home_flash_deals_link": "",
+  "public.home_pulse_tags": "Lojas nacionais|Envio em Kz|Pagamento COD quando disponível|Ofertas diárias",
   "public.trust_strip_1":
     "Pagamento à entrega|Kwanzas ao receber, quando a loja oferece COD.",
   "public.trust_strip_2": "Lojas verificadas|Níveis BI · NIF · dados bancários.",
@@ -47,4 +56,17 @@ export function parseTrustCell(raw: string): { title: string; body: string } {
   const i = raw.indexOf("|");
   if (i < 0) return { title: raw.trim(), body: "" };
   return { title: raw.slice(0, i).trim(), body: raw.slice(i + 1).trim() };
+}
+
+export function parseSiteTruthy(raw: string | undefined, fallback = "false"): boolean {
+  const v = String(raw ?? fallback).trim().toLowerCase();
+  return v === "true" || v === "1" || v === "sim" || v === "yes";
+}
+
+export function splitPipeTags(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }

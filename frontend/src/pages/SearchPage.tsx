@@ -19,6 +19,8 @@ const sorts: { k: string; label: string }[] = [
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const visualMode = params.get("visual") === "1";
+  const featured = params.get("featured") === "true";
+  const onSale = params.get("onSale") === "true";
   const q = params.get("q") ?? "";
   const categoryId = params.get("categoryId") ?? "";
   const sort = params.get("sort") ?? "recentes";
@@ -36,10 +38,18 @@ export default function SearchPage() {
 
   const seoTitle = q.trim()
     ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
-    : "Pesquisar produtos — BAZAR DO BIÉ";
+    : onSale
+      ? "Promoções no catálogo — BAZAR DO BIÉ"
+      : featured
+        ? "Seleção em destaque — BAZAR DO BIÉ"
+        : "Pesquisar produtos — BAZAR DO BIÉ";
   const seoDescription = q.trim()
     ? `Resultados para "${q.trim()}" no marketplace BAZAR DO BIÉ. Compare preços, avaliações e prazos de envio em Angola.`
-    : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
+    : onSale
+      ? "Filtro activo: produtos em promoção. Compare preços e condições no BAZAR DO BIÉ."
+      : featured
+        ? "Seleção oficial em destaque no BAZAR DO BIÉ."
+        : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
   useSeo({
     title: visualMode ? "Pesquisa por imagem — BAZAR DO BIÉ" : seoTitle,
     description: visualMode
@@ -67,9 +77,11 @@ export default function SearchPage() {
     if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
     if (minPrice) p.set("minPrice", minPrice);
     if (maxPrice) p.set("maxPrice", maxPrice);
+    if (featured) p.set("featured", "true");
+    if (onSale) p.set("onSale", "true");
     p.set("take", "36");
     return p.toString();
-  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice]);
+  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice, featured, onSale]);
 
   useEffect(() => {
     if (visualMode) {
@@ -171,85 +183,116 @@ export default function SearchPage() {
           className={`ae-filters__body ${mobileFiltersOpen ? "ae-filters__body--open" : ""} ${sideCollapsed ? "ae-filters__body--collapsed" : ""}`}
         >
           <div className="ae-filters__group">
-          <strong>Categoria</strong>
-          <nav className="ae-chip-list" style={{ marginTop: 8 }}>
-            <Link to={buildSearchPath("/search", params, { categoryId: null })} className={!categoryId ? "ae-on" : ""}>
-              Todas
-            </Link>
-            {roots.map((c) => (
-              <Link
-                key={c.id}
-                to={buildSearchPath("/search", params, { categoryId: c.id })}
-                className={categoryId === c.id ? "ae-on" : ""}
-              >
-                {c.name}
+            <strong>Curadoria da plataforma</strong>
+            <div className="ae-filters__checks">
+              <label className="ae-filters__check">
+                <input
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => {
+                    const n = new URLSearchParams(params);
+                    if (e.target.checked) n.set("featured", "true");
+                    else n.delete("featured");
+                    setParams(n);
+                  }}
+                />
+                Só em destaque
+              </label>
+              <label className="ae-filters__check">
+                <input
+                  type="checkbox"
+                  checked={onSale}
+                  onChange={(e) => {
+                    const n = new URLSearchParams(params);
+                    if (e.target.checked) n.set("onSale", "true");
+                    else n.delete("onSale");
+                    setParams(n);
+                  }}
+                />
+                Só em promoção
+              </label>
+            </div>
+          </div>
+          <div className="ae-filters__group">
+            <strong>Categoria</strong>
+            <nav className="ae-chip-list" style={{ marginTop: 8 }}>
+              <Link to={buildSearchPath("/search", params, { categoryId: null })} className={!categoryId ? "ae-on" : ""}>
+                Todas
               </Link>
-            ))}
-          </nav>
+              {roots.map((c) => (
+                <Link
+                  key={c.id}
+                  to={buildSearchPath("/search", params, { categoryId: c.id })}
+                  className={categoryId === c.id ? "ae-on" : ""}
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </nav>
           </div>
           <div className="ae-filters__group">
-          <strong>Preço (Kz)</strong>
-          <div className="ae-filters__price-row">
-            <input
-              className="ae-filters__input"
-              type="number"
-              inputMode="numeric"
-              placeholder="Min"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
-            <input
-              className="ae-filters__input"
-              type="number"
-              inputMode="numeric"
-              placeholder="Máx"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-            />
-          </div>
-          <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
-            Aplicar
-          </button>
-          </div>
-          <div className="ae-filters__group">
-          <strong>Condição</strong>
-          <select
-            className="ae-filters__select"
-            value={condition}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = new URLSearchParams(params);
-              if (v) n.set("condition", v);
-              else n.delete("condition");
-              setParams(n);
-            }}
-          >
-            <option value="">Qualquer</option>
-            <option value="NEW">Novo</option>
-            <option value="USED">Usado</option>
-            <option value="REFURBISHED">Recondicionado</option>
-          </select>
+            <strong>Preço (Kz)</strong>
+            <div className="ae-filters__price-row">
+              <input
+                className="ae-filters__input"
+                type="number"
+                inputMode="numeric"
+                placeholder="Min"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+              <input
+                className="ae-filters__input"
+                type="number"
+                inputMode="numeric"
+                placeholder="Máx"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
+            <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
+              Aplicar
+            </button>
           </div>
           <div className="ae-filters__group">
-          <strong>Avaliação mín.</strong>
-          <select
-            className="ae-filters__select"
-            value={minRating}
-            onChange={(e) => {
-              const v = e.target.value;
-              const n = new URLSearchParams(params);
-              if (v) n.set("minRating", v);
-              else n.delete("minRating");
-              setParams(n);
-            }}
-          >
-            <option value="">Qualquer</option>
-            {[4, 3, 2, 1].map((n) => (
-              <option key={n} value={String(n)}>
-                {n}+ estrelas
-              </option>
-            ))}
-          </select>
+            <strong>Condição</strong>
+            <select
+              className="ae-filters__select"
+              value={condition}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = new URLSearchParams(params);
+                if (v) n.set("condition", v);
+                else n.delete("condition");
+                setParams(n);
+              }}
+            >
+              <option value="">Qualquer</option>
+              <option value="NEW">Novo</option>
+              <option value="USED">Usado</option>
+              <option value="REFURBISHED">Recondicionado</option>
+            </select>
+          </div>
+          <div className="ae-filters__group">
+            <strong>Avaliação mín.</strong>
+            <select
+              className="ae-filters__select"
+              value={minRating}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = new URLSearchParams(params);
+                if (v) n.set("minRating", v);
+                else n.delete("minRating");
+                setParams(n);
+              }}
+            >
+              <option value="">Qualquer</option>
+              {[4, 3, 2, 1].map((n) => (
+                <option key={n} value={String(n)}>
+                  {n}+ estrelas
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </aside>
@@ -272,7 +315,11 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-          <span className="ae-toolbar__count">{effectiveData?.total ?? "—"} resultado(s)</span>
+          <span className="ae-toolbar__count">
+            {effectiveData?.total ?? "—"} resultado(s)
+            {featured ? <span className="ae-toolbar__pill ae-toolbar__pill--accent">Destaque</span> : null}
+            {onSale ? <span className="ae-toolbar__pill ae-toolbar__pill--promo">Promoções</span> : null}
+          </span>
         </div>
         {visualMode ? (
           <p className="ae-catalog-note">Pesquisa por imagem activa. Para nova imagem, use o ícone de câmara na barra de pesquisa.</p>

@@ -122,6 +122,44 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     label: "Título — mais vendidos",
     defaultValue: "Mais vendidos",
   },
+  "public.home_category_rail_title": {
+    label: "Home — título do carril de categorias",
+    defaultValue: "Explore por categoria",
+    hint: "Aparece acima do mega-menu de categorias na página inicial.",
+  },
+  "public.home_flash_deals_enabled": {
+    label: "Home — faixa «Ofertas do dia» (activar)",
+    defaultValue: "true",
+    hint: "true / 1 / sim: mostra a faixa horizontal com countdown e produtos em promoção.",
+  },
+  "public.home_flash_deals_title": {
+    label: "Home — «Ofertas do dia» (título)",
+    defaultValue: "Ofertas do dia · preços rebaixados",
+  },
+  "public.home_flash_deals_subtitle": {
+    label: "Home — «Ofertas do dia» (subtítulo)",
+    defaultValue:
+      "Seleção editorial de artigos em promoção. Stock e prazos dependem da loja — primeiro a encomendar, primeiro a garantir.",
+  },
+  "public.home_flash_deals_end_at": {
+    label: "Home — «Ofertas do dia» — fim da janela (ISO)",
+    defaultValue: "",
+    hint: "Ex.: 2026-05-10T21:59:00+01:00. Vazio = sem contagem decrescente a mostrar.",
+  },
+  "public.home_flash_deals_cta": {
+    label: "Home — «Ofertas do dia» — texto do botão",
+    defaultValue: "Ver todas as promoções",
+  },
+  "public.home_flash_deals_link": {
+    label: "Home — «Ofertas do dia» — link do botão (opcional)",
+    defaultValue: "",
+    hint: "Vazio = /search?onSale=true&sort=preco_asc. Ou URL/caminho próprio iniciado por /.",
+  },
+  "public.home_pulse_tags": {
+    label: "Home — benefícios (separados por |)",
+    defaultValue: "Lojas nacionais|Envio em Kz|Pagamento COD quando disponível|Ofertas diárias",
+    hint: "Faixa discreta sob as ofertas do dia.",
+  },
   "public.trust_strip_1": {
     label: "Faixa de confiança — cartão 1 (título|texto)",
     defaultValue: "Pagamento à entrega|Kwanzas ao receber, quando a loja oferece COD.",

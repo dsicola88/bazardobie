@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch } from "../api.js";
+import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { resolveMediaUrl } from "../utils/media.js";
 
 type Row = {
   id: string;
@@ -47,6 +48,8 @@ export default function AdminCategories() {
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editParentId, setEditParentId] = useState<string>("");
   const [editOrder, setEditOrder] = useState(0);
+  const [newUploadBusy, setNewUploadBusy] = useState(false);
+  const [editUploadBusy, setEditUploadBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -128,6 +131,40 @@ export default function AdminCategories() {
     }
   }
 
+  async function uploadNewImg(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !token) return;
+    setErr(null);
+    setNewUploadBusy(true);
+    try {
+      const url = await uploadAdminFile(token, f);
+      setNewImageUrl(url);
+      setMsg("Imagem enviada. Guarde ou continue a edição antes de criar.");
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Falha no envio da imagem");
+    } finally {
+      setNewUploadBusy(false);
+    }
+  }
+
+  async function uploadEditImg(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !token) return;
+    setErr(null);
+    setEditUploadBusy(true);
+    try {
+      const url = await uploadAdminFile(token, f);
+      setEditImageUrl(url);
+      setMsg("Imagem enviada. Prima «Guardar alterações» para persistir.");
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Falha no envio da imagem");
+    } finally {
+      setEditUploadBusy(false);
+    }
+  }
+
   async function removeCat(r: Row) {
     if (!token) return;
     if (r.childCount > 0) {
@@ -191,13 +228,30 @@ export default function AdminCategories() {
             />
           </label>
           <label className="ae-admin-field">
-            Imagem da categoria (URL ou /uploads/...)
-            <input
-              className="ae-input"
-              value={newImageUrl}
-              onChange={(e) => setNewImageUrl(e.target.value)}
-              placeholder="https://... ou /uploads/categorias/electronicos.webp"
-            />
+            Imagem da categoria (URL ou ficheiro local)
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <input
+                className="ae-input"
+                style={{ flex: "1 1 220px" }}
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                placeholder="https://… ou caminho devolvido após upload"
+              />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                id="ae-newcat-file"
+                className="sr-only"
+                disabled={newUploadBusy}
+                onChange={(ev) => void uploadNewImg(ev)}
+              />
+              <label htmlFor="ae-newcat-file" className="btn" style={{ cursor: "pointer", margin: 0 }}>
+                {newUploadBusy ? "A enviar…" : "Carregar imagem"}
+              </label>
+            </div>
+            <small className="ae-muted">
+              Sugestão: PNG ou WebP com fundo neutro para efeito estilo marketplace.
+            </small>
           </label>
           <label className="ae-admin-field">
             Dentro da categoria pai (opcional)
@@ -225,7 +279,12 @@ export default function AdminCategories() {
           </label>
           {newImageUrl.trim() ? (
             <div className="ae-admin-cat-preview">
-              <img src={newImageUrl.trim()} alt="Pré-visualização da nova categoria" loading="lazy" decoding="async" />
+              <img
+                src={resolveMediaUrl(newImageUrl.trim())}
+                alt="Pré-visualização da nova categoria"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
           ) : null}
           <button type="button" className="btn btn-primary" onClick={() => void createCat()}>
@@ -253,7 +312,13 @@ export default function AdminCategories() {
               <tr key={r.id}>
                 <td>
                   {r.imageUrl ? (
-                    <img className="ae-admin-cat-thumb" src={r.imageUrl} alt={r.name} loading="lazy" decoding="async" />
+                    <img
+                      className="ae-admin-cat-thumb"
+                      src={resolveMediaUrl(r.imageUrl)}
+                      alt={r.name}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className="ae-admin-cat-thumb ae-admin-cat-thumb--ph" aria-hidden />
                   )}
@@ -300,12 +365,26 @@ export default function AdminCategories() {
               />
             </label>
             <label className="ae-admin-field">
-              Imagem da categoria (URL ou /uploads/...)
-              <input
-                className="ae-input"
-                value={editImageUrl}
-                onChange={(e) => setEditImageUrl(e.target.value)}
-              />
+              Imagem da categoria (URL ou ficheiro local)
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <input
+                  className="ae-input"
+                  style={{ flex: "1 1 220px" }}
+                  value={editImageUrl}
+                  onChange={(e) => setEditImageUrl(e.target.value)}
+                />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  id="ae-editcat-file"
+                  className="sr-only"
+                  disabled={editUploadBusy}
+                  onChange={(ev) => void uploadEditImg(ev)}
+                />
+                <label htmlFor="ae-editcat-file" className="btn" style={{ cursor: "pointer", margin: 0 }}>
+                  {editUploadBusy ? "A enviar…" : "Carregar imagem"}
+                </label>
+              </div>
             </label>
             <label className="ae-admin-field">
               Pai (reorganizar hierarquia)
@@ -333,7 +412,12 @@ export default function AdminCategories() {
             </label>
             {editImageUrl.trim() ? (
               <div className="ae-admin-cat-preview">
-                <img src={editImageUrl.trim()} alt={`Pré-visualização ${editName || editing.name}`} loading="lazy" decoding="async" />
+                <img
+                  src={resolveMediaUrl(editImageUrl.trim())}
+                  alt={`Pré-visualização ${editName || editing.name}`}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
             ) : null}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

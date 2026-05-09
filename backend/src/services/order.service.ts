@@ -24,18 +24,9 @@ import {
 import { freightDistanceService } from "./freightDistance.service.js";
 import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
+import { variantUnitPrice } from "../utils/variantPricing.js";
 
 type Checkout = z.infer<typeof checkoutSchema>;
-
-function lineUnitPrice(
-  price: Decimal,
-  promo: Decimal | null,
-  adjust: Decimal | null
-): Decimal {
-  const base = promo ?? price;
-  const adj = adjust ?? new Decimal(0);
-  return base.plus(adj);
-}
 
 function groupCartByShop<T extends { product: { shopId: string } }>(items: T[]) {
   const map = new Map<string, T[]>();
@@ -390,11 +381,7 @@ export const orderService = {
             throw new HttpError(400, "Stock insuficiente");
           }
 
-          const unit = lineUnitPrice(
-            product.price,
-            product.promoPrice,
-            variantRow?.priceAdjust ?? null
-          );
+          const unit = variantUnitPrice(product.price, product.promoPrice, variantRow ?? null);
 
           subtotal = subtotal.plus(unit.times(item.quantity));
           deliveryTotal = deliveryTotal.plus(item.productDeliveryOption.custoEntrega);

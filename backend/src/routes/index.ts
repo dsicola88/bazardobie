@@ -19,6 +19,7 @@ import { reportController } from "../controllers/report.controller.js";
 import { logisticsController } from "../controllers/logistics.controller.js";
 import { logisticsPartnerController } from "../controllers/logisticsPartner.controller.js";
 import { freightController } from "../controllers/freight.controller.js";
+import { homepageGroupController } from "../controllers/homepageGroup.controller.js";
 import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
 import { chatController } from "../controllers/chat.controller.js";
 import { adminAuditLog } from "../middlewares/adminAuditLog.js";
@@ -60,6 +61,7 @@ r.patch("/auth/profile", requireAuth, authController.patchProfile);
 r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authController.becomeVendor);
 
 r.get("/categories", catalogController.categories);
+r.get("/homepage/product-groups", homepageGroupController.listPublic);
 r.get("/banners", catalogController.banners);
 r.get("/site-content", siteSettingsController.publicBundle);
 r.get("/freight/meta", freightController.meta);
@@ -237,6 +239,12 @@ admin.get("/products/moderation", productController.adminListModeration);
 admin.patch("/products/:id/moderation", productController.adminSetModeration);
 admin.patch("/products/:id/active", productController.adminSetActive);
 admin.patch("/products/:id/featured", productController.setFeatured);
+
+admin.get("/homepage-groups", homepageGroupController.adminListGroups);
+admin.get("/homepage-groups/:slug/members", homepageGroupController.adminListMembers);
+admin.patch("/homepage-groups/:slug", homepageGroupController.adminPatchGroup);
+admin.post("/homepage-groups/:slug/products", homepageGroupController.adminAddProduct);
+admin.delete("/homepage-groups/:slug/products/:productId", homepageGroupController.adminRemoveProduct);
 
 admin.get("/shipping/geo/municipalities", shippingGeoController.municipalitiesAdmin);
 admin.get("/shipping/geo/communes", shippingGeoController.communesAdmin);

@@ -9,6 +9,7 @@ import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
+import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
 
 type Img = { url: string };
 type Variant = {
@@ -19,6 +20,7 @@ type Variant = {
   size?: string | null;
   stock: number;
   imageUrl?: string | null;
+  salePrice?: string | null;
   priceAdjust?: string | null;
 };
 type Delivery = {
@@ -188,11 +190,8 @@ export default function ProductPage() {
   const seoVariant = selectedVariant ?? undefined;
   const unitPriceNum = useMemo(() => {
     if (!product) return null;
-    const promoRaw = product.promoPrice != null ? String(product.promoPrice).trim() : "";
-    const promo = promoRaw !== "" && Number(product.promoPrice) > 0 ? Number(product.promoPrice) : null;
-    const base = promo ?? Number(product.price);
-    if (needVariant && selectedVariant?.priceAdjust != null && String(selectedVariant.priceAdjust).trim() !== "") {
-      return base + Number(selectedVariant.priceAdjust);
+    if (needVariant && selectedVariant) {
+      return variantEffectiveUnitKz(product, selectedVariant);
     }
     return Number(product.displayPrice);
   }, [needVariant, product, selectedVariant]);
@@ -461,14 +460,6 @@ export default function ProductPage() {
               <span className="ae-buybox__now">
                 {formatKz(unitPriceNum ?? product.displayPrice)}
               </span>
-              {needVariant &&
-              selectedVariant?.priceAdjust != null &&
-              String(selectedVariant.priceAdjust).trim() !== "" &&
-              Number(selectedVariant.priceAdjust) !== 0 ? (
-                <span className="ae-muted" style={{ fontSize: 13, marginLeft: 8, fontWeight: 600 }}>
-                  (preço base {formatKz(product.displayPrice)})
-                </span>
-              ) : null}
               {product.promoPrice ? (
                 <span className="ae-buybox__was">{formatKz(product.price)}</span>
               ) : null}
