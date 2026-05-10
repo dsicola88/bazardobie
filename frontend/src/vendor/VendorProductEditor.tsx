@@ -753,6 +753,11 @@ export default function VendorProductEditor() {
             Cada variante tem o seu SKU e stock. Defina um <strong>preço final próprio</strong> por variante (recomendado,
             estilo marketplaces como AliExpress). A opção «ajuste ±» permanece só por compatibilidade com fichas antigas.
           </p>
+          <p className="ae-field-hint" style={{ marginBottom: 14 }}>
+            Se várias variantes partilham a mesma <strong>cor</strong>, preencha sempre{" "}
+            <strong>tamanho / medida</strong> ou uma <strong>designação</strong> diferente por SKU — assim os botões na
+            página do produto mostram texto legível em vez de pastilhas vazias.
+          </p>
           {variants.map((v, ix) => (
             <div key={ix} className="ae-v-prod-variant-block">
               <div className="ae-field-grid-2">

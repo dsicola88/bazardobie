@@ -24,6 +24,7 @@ import {
 import { freightDistanceService } from "./freightDistance.service.js";
 import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
+import { variantDisplaySummary } from "../utils/variantDisplay.js";
 import { variantUnitPrice } from "../utils/variantPricing.js";
 import { mapOrderWithItemsMedia } from "../utils/publicMediaUrl.js";
 import { enqueueOrderConfirmationEmail } from "../emails/orderConfirmed.email.js";
@@ -396,7 +397,7 @@ export const orderService = {
             unitPrice: unit.toString(),
             deliveryCost: item.productDeliveryOption.custoEntrega.toString(),
             productNameSnapshot: product.name,
-            variantNameSnapshot: variantRow?.name ?? null,
+            variantNameSnapshot: variantRow ? variantDisplaySummary(variantRow) : null,
             deliveryTipo: item.productDeliveryOption.tipoEntrega,
             deliveryDays: item.productDeliveryOption.prazoEstimado,
             areaProvincia: item.productDeliveryOption.areaProvincia,
@@ -547,6 +548,11 @@ export const orderService = {
           orderCode: o.orderCode ?? o.id,
           grandTotal: o.grandTotal.toString(),
           shopNames: [...new Set(o.items.map((it) => it.shop.name))],
+          lines: o.items.map((it) => ({
+            productName: it.productNameSnapshot,
+            variantSubtitle: it.variantNameSnapshot?.trim() || null,
+            quantity: it.quantity,
+          })),
         })),
       }).catch((err) => console.error("[email] enqueue ORDER_CONFIRMED:", err));
     }

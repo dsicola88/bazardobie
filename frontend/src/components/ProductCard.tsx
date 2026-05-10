@@ -18,6 +18,9 @@ export type ProductCardData = {
   soldCount: number;
   averageRating?: string | number | null;
   reviewCount: number;
+  /** Texto curto quando a média de estrelas está oculta (poucas avaliações). */
+  ratingTrustShortPt?: string | null;
+  ratingTrustHintPt?: string | null;
   images: { url: string }[];
 };
 
@@ -86,7 +89,7 @@ function ProductCardInner({
       <div className="ae-pcard__body">
         <h3 className="ae-pcard__title">{p.name}</h3>
         <div className="ae-pcard__meta">
-          {p.averageRating != null && p.reviewCount > 0 ? (
+          {p.averageRating != null ? (
             <StarRating
               value={Number(p.averageRating)}
               size="sm"
@@ -94,6 +97,11 @@ function ProductCardInner({
               reviewCount={p.reviewCount}
               className="ae-pcard__rate"
             />
+          ) : p.reviewCount > 0 ? (
+            <span className="ae-pcard__rate ae-muted" title={p.ratingTrustHintPt ?? undefined}>
+              {p.ratingTrustShortPt ?? "Reputação em formação"} · {p.reviewCount}{" "}
+              {p.reviewCount === 1 ? "avaliação" : "avaliações"}
+            </span>
           ) : (
             <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações</span>
           )}

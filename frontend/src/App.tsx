@@ -62,6 +62,7 @@ const VendorProductEditor = lazy(() => import("./vendor/VendorProductEditor.js")
 const VendorOrders = lazy(() => import("./vendor/VendorOrders.js"));
 const VendorProducts = lazy(() => import("./vendor/VendorProducts.js"));
 const VendorShopSetup = lazy(() => import("./vendor/VendorShopSetup.js"));
+const VendorAccount = lazy(() => import("./vendor/VendorAccount.js"));
 
 export default function App() {
   return (
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="orders" element={<VendorOrders />} />
           <Route path="credibility" element={<VendorCredibility />} />
           <Route path="loja" element={<VendorShopSetup />} />
+          <Route path="conta" element={<VendorAccount />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>

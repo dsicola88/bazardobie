@@ -21,6 +21,8 @@ import { siteSettingsService } from "./siteSettings.service.js";
 import { notificationService } from "./notification.service.js";
 import { env } from "../config/env.js";
 import { mapProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
+import { mergePublicRatingFields } from "../utils/ratingTrust.js";
+import { mapEmbeddedReviewsForApi } from "./review.service.js";
 import { syncProductDisplayFromVariants } from "./productDisplaySync.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
@@ -621,7 +623,10 @@ export const productService = {
         reviews: {
           take: 20,
           orderBy: { createdAt: "desc" },
-          include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+          include: {
+            user: { select: { id: true, name: true, avatarUrl: true } },
+            _count: { select: { helpfulMarks: true } },
+          },
         },
       },
     });
@@ -645,8 +650,14 @@ export const productService = {
     if (deliveryOptions.length === 0) throw new HttpError(404, "Produto não encontrado");
 
     const mapped = mapProductMediaForApi(product);
+    const withReviews = mapEmbeddedReviewsForApi(mapped);
+    const ratingPub = mergePublicRatingFields({
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
+    });
     return {
-      ...mapped,
+      ...withReviews,
+      ...ratingPub,
       deliveryOptions,
       shop: lojaResumoProduto(product.shop),
       ratingDistribution,
@@ -712,11 +723,14 @@ export const productService = {
       const deliveryOptions = allowSeller
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
-      return mapProductMediaForApi({
-        ...p,
-        deliveryOptions,
-        shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
-      });
+        return {
+          ...mapProductMediaForApi({
+            ...p,
+            deliveryOptions,
+            shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
+          }),
+          ...mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount }),
+        };
     });
     return { items: safe, total, skip, take };
   },
@@ -777,13 +791,14 @@ export const productService = {
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
       if (deliveryOptions.length === 0) continue;
-      out.push(
-        mapProductMediaForApi({
+      out.push({
+        ...mapProductMediaForApi({
           ...p,
           deliveryOptions,
           shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
         }),
-      );
+        ...mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount }),
+      });
     }
     return out;
   },
@@ -881,20 +896,25 @@ export const productService = {
         };
       });
 
-    const items = ordered.map((p) => ({
-      id: p.id,
-      name: p.name,
-      condition: p.condition,
-      conditionDetail: p.conditionDetail,
-      isFeatured: p.isFeatured,
-      price: p.price,
-      promoPrice: p.promoPrice,
-      displayPrice: p.displayPrice,
-      soldCount: Number(p.soldCount || 0),
-      averageRating: p.averageRating,
-      reviewCount: Number(p.reviewCount || 0),
-      images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
-    }));
+    const items = ordered.map((p) => {
+      const rp = mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount });
+      return {
+        id: p.id,
+        name: p.name,
+        condition: p.condition,
+        conditionDetail: p.conditionDetail,
+        isFeatured: p.isFeatured,
+        price: p.price,
+        promoPrice: p.promoPrice,
+        displayPrice: p.displayPrice,
+        soldCount: Number(p.soldCount || 0),
+        averageRating: rp.averageRating,
+        reviewCount: rp.reviewCount,
+        ratingTrustHintPt: rp.ratingTrustHintPt,
+        ratingTrustShortPt: rp.ratingTrustShortPt,
+        images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
+      };
+    });
     return { items, total: items.length };
   },
 

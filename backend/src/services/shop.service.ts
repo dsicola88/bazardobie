@@ -10,6 +10,10 @@ import type {
 import { prisma } from "../lib/prisma.js";
 import { calcularSearchRankBoost, lojaPaginaPublica } from "../utils/shopCredibility.js";
 import { sinaisConfiancaPublicos } from "../utils/shopPublicSobre.js";
+import {
+  MIN_DELIVERED_ORDERS_FOR_SELLER_MATURITY,
+  MIN_REVIEWS_FOR_PUBLIC_STAR_AVG,
+} from "../constants/reputation.js";
 import { notificationService } from "./notification.service.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
@@ -22,6 +26,13 @@ type CredAdminInput = z.infer<typeof shopCredibilityAdminSchema>;
 function emptToUndef(url?: string): string | undefined {
   const t = url?.trim();
   return t ? t : undefined;
+}
+
+function roundRating1(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 10) / 10;
 }
 
 /** Taxa de resposta no chat: pedidos em que o comprador escreveu primeiro vs. resposta do vendedor em ≤24h. */
@@ -332,13 +343,14 @@ export const shopService = {
     const [
       pedidosEntregues,
       unidadesEntreguesAgg,
-      revAvg,
+      revAgg,
       totalAvaliacoes,
       produtosActivos,
       soldCatalog,
       lastOrder,
       lastProduct,
       taxaResposta,
+      pedidosComDisputa,
     ] = await Promise.all([
       prisma.order.count({
         where: { status: "ENTREGUE", items: { some: { shopId } } },
@@ -349,7 +361,12 @@ export const shopService = {
       }),
       prisma.review.aggregate({
         where: { product: { shopId } },
-        _avg: { rating: true },
+        _avg: {
+          rating: true,
+          ratingQuality: true,
+          ratingSellerCommunication: true,
+          ratingDelivery: true,
+        },
       }),
       prisma.review.count({ where: { product: { shopId } } }),
       prisma.product.count({
@@ -375,9 +392,46 @@ export const shopService = {
         select: { updatedAt: true },
       }),
       amostraTaxaRespostaChat(shopId, sellerUserId),
+      prisma.order.count({
+        where: {
+          status: "ENTREGUE",
+          items: { some: { shopId } },
+          disputes: { some: {} },
+        },
+      }),
     ]);
 
     const unidadesEntregues = Number(unidadesEntreguesAgg._sum.quantity ?? 0);
+    const taxaSemDisputaPct =
+      pedidosEntregues > 0
+        ? Math.round(
+            Math.min(100, Math.max(0, (100 * (pedidosEntregues - pedidosComDisputa)) / pedidosEntregues)),
+          )
+        : null;
+
+    const avaliacaoMediaPublica =
+      totalAvaliacoes >= MIN_REVIEWS_FOR_PUBLIC_STAR_AVG ? roundRating1(revAgg._avg.rating) : null;
+
+    const avaliacaoAspectos =
+      totalAvaliacoes >= MIN_REVIEWS_FOR_PUBLIC_STAR_AVG
+        ? {
+            produto: roundRating1(revAgg._avg.ratingQuality ?? revAgg._avg.rating),
+            comunicacao: roundRating1(revAgg._avg.ratingSellerCommunication ?? revAgg._avg.rating),
+            entrega: roundRating1(revAgg._avg.ratingDelivery ?? revAgg._avg.rating),
+          }
+        : null;
+
+    const novoVendedor =
+      pedidosEntregues < MIN_DELIVERED_ORDERS_FOR_SELLER_MATURITY ||
+      totalAvaliacoes < MIN_REVIEWS_FOR_PUBLIC_STAR_AVG;
+
+    let reputacaoHintPt: string | null = null;
+    if (novoVendedor) {
+      reputacaoHintPt =
+        totalAvaliacoes < MIN_REVIEWS_FOR_PUBLIC_STAR_AVG
+          ? `Vendedor em fase de construção de reputação na plataforma. As médias públicas aparecem após pelo menos ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} avaliações verificadas de compradores.`
+          : `Histórico de vendas ainda curto na plataforma (menos de ${MIN_DELIVERED_ORDERS_FOR_SELLER_MATURITY} pedidos entregues registados).`;
+    }
     const lastActivity = new Date(
       Math.max(
         shop.updatedAt.getTime(),
@@ -397,9 +451,14 @@ export const shopService = {
         entregasUnidades: unidadesEntregues,
         taxaRespostaPercent: taxaResposta.percent,
         taxaRespostaBaseConversas: taxaResposta.base,
-        avaliacaoMedia:
-          revAvg._avg.rating != null ? Math.round(Number(revAvg._avg.rating) * 10) / 10 : null,
+        avaliacaoMedia: avaliacaoMediaPublica,
+        avaliacaoAspectos,
         totalAvaliacoes,
+        vendasSemDisputaPercent: taxaSemDisputaPct,
+        pedidosComDisputaEntregues: pedidosComDisputa,
+        novoVendedor,
+        reputacaoHintPt,
+        avaliacoesMinimoParaMediaPublica: MIN_REVIEWS_FOR_PUBLIC_STAR_AVG,
         produtosActivos,
         vendasRegistadasCatalogo: soldCatalog._sum.soldCount ?? 0,
         ultimaActividadeEm: lastActivity.toISOString(),

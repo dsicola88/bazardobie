@@ -1,10 +1,22 @@
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
-import { NotificationType } from "@prisma/client";
+import { NotificationType, type Prisma } from "@prisma/client";
+import {
+  actorLabelPt,
+  orderStatusChangeBuyerCopy,
+  orderStatusChangeVendorCopy,
+  orderStatusLabelPt,
+} from "../utils/orderNotificationCopy.js";
 
 type UserRef = { id: string };
 
-async function createForUserIds(userIds: string[], type: NotificationType, title: string, message: string) {
+async function createForUserIds(
+  userIds: string[],
+  type: NotificationType,
+  title: string,
+  message: string,
+  payload?: Prisma.InputJsonValue | null
+) {
   const uniq = [...new Set(userIds.map((x) => x.trim()).filter(Boolean))];
   if (uniq.length === 0) return { notified: 0 };
   const active = await prisma.user.findMany({
@@ -18,9 +30,41 @@ async function createForUserIds(userIds: string[], type: NotificationType, title
       type,
       title,
       message,
+      ...(payload != null ? { payload } : {}),
     })),
   });
   return { notified: active.length };
+}
+
+async function createNotificationRows(
+  rows: Array<{
+    userId: string;
+    type: NotificationType;
+    title: string;
+    message: string;
+    payload?: Prisma.InputJsonValue | null;
+  }>
+): Promise<{ notified: number }> {
+  const uniqRows = rows.filter((r) => r.userId?.trim());
+  if (!uniqRows.length) return { notified: 0 };
+  const ids = [...new Set(uniqRows.map((r) => r.userId.trim()))];
+  const active = await prisma.user.findMany({
+    where: { id: { in: ids }, blocked: false },
+    select: { id: true },
+  });
+  const activeSet = new Set(active.map((a) => a.id));
+  const data = uniqRows
+    .filter((r) => activeSet.has(r.userId.trim()))
+    .map((r) => ({
+      userId: r.userId.trim(),
+      type: r.type,
+      title: r.title,
+      message: r.message,
+      ...(r.payload != null ? { payload: r.payload } : {}),
+    }));
+  if (!data.length) return { notified: 0 };
+  await prisma.notification.createMany({ data });
+  return { notified: data.length };
 }
 
 async function adminIds(): Promise<string[]> {
@@ -109,11 +153,73 @@ export const notificationService = {
     orderId: string,
     payload: { previous: string; next: string; actorRole: string; buyerUserId: string }
   ) {
-    const vendorIds = await vendorUserIdsFromOrder(orderId);
-    const title = "Actualização de estado da encomenda";
-    const message = `Pedido ${orderId.slice(0, 12)}… mudou de ${payload.previous} para ${payload.next} por ${payload.actorRole}.`;
-    const targets = [payload.buyerUserId, ...vendorIds];
-    return createForUserIds(targets, NotificationType.PEDIDO, title, message);
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, orderCode: true, userId: true },
+    });
+    if (!order) return { notified: 0 };
+
+    const vendorIds = [...new Set(await vendorUserIdsFromOrder(orderId))];
+    const code =
+      order.orderCode != null && String(order.orderCode).trim() !== ""
+        ? String(order.orderCode).trim()
+        : `#${order.id.slice(0, 10)}`;
+
+    const prevLabel = orderStatusLabelPt(payload.previous === "—" ? null : payload.previous);
+    const nextLabel = orderStatusLabelPt(payload.next);
+    const actor = actorLabelPt(payload.actorRole);
+
+    const buyer = orderStatusChangeBuyerCopy({
+      orderRef: code,
+      previous: payload.previous,
+      next: payload.next,
+      actorRole: payload.actorRole,
+    });
+    const vendor = orderStatusChangeVendorCopy({
+      orderRef: code,
+      previous: payload.previous,
+      next: payload.next,
+      actorRole: payload.actorRole,
+    });
+
+    const basePayload = {
+      kind: "ORDER_STATUS" as const,
+      orderId: order.id,
+      orderCode: order.orderCode,
+      fromStatus: payload.previous,
+      toStatus: payload.next,
+      fromLabel: prevLabel,
+      toLabel: nextLabel,
+      actorRole: payload.actorRole,
+      actorLabel: actor.label,
+    };
+
+    const rows: Parameters<typeof createNotificationRows>[0] = [
+      {
+        userId: order.userId,
+        type: NotificationType.PEDIDO,
+        title: buyer.title,
+        message: buyer.message,
+        payload: {
+          ...basePayload,
+          audience: "buyer",
+          primaryHref: `/orders/${encodeURIComponent(order.id)}/seguir`,
+        },
+      },
+      ...vendorIds.map((vid) => ({
+        userId: vid,
+        type: NotificationType.PEDIDO,
+        title: vendor.title,
+        message: vendor.message,
+        payload: {
+          ...basePayload,
+          audience: "vendor",
+          primaryHref: "/vendor/orders",
+        },
+      })),
+    ];
+
+    return createNotificationRows(rows);
   },
 
   async notifyOrderTrackingUpdated(
@@ -126,11 +232,32 @@ export const notificationService = {
     }
   ) {
     const vendorIds = await vendorUserIdsFromOrder(orderId);
-    const targets = [payload.buyerUserId, ...vendorIds].filter((id) => id !== payload.actorUserId);
-    const ref = (payload.orderCode && payload.orderCode.trim()) || `${orderId.slice(0, 12)}…`;
-    const title = "Rastreio actualizado";
-    const message = `Dados de rastreio da encomenda ${ref} foram actualizados (${payload.actorRole}). Abra a ficha do pedido para ver transportadora, código e hiperligação de consulta.`;
-    return createForUserIds(targets, NotificationType.PEDIDO, title, message);
+    const ref = (payload.orderCode && payload.orderCode.trim()) || `#${orderId.slice(0, 10)}`;
+    const actor = actorLabelPt(payload.actorRole);
+    const title = `Rastreio · pedido ${ref}`;
+    const message = `${actor.label} actualizou os dados de envio (transportadora, código ou hiperligação). Abra o pedido para consultar e seguir a entrega.`;
+    const trackingPayload = {
+      kind: "TRACKING" as const,
+      orderId,
+      orderCode: payload.orderCode ?? null,
+      actorRole: payload.actorRole,
+      actorLabel: actor.label,
+      primaryHrefBuyer: `/orders/${encodeURIComponent(orderId)}/seguir`,
+      primaryHrefVendor: "/vendor/orders",
+    };
+    const buyerTargets = [payload.buyerUserId].filter((id) => id !== payload.actorUserId);
+    const vendorTargets = vendorIds.filter((id) => id !== payload.actorUserId);
+    await createForUserIds(buyerTargets, NotificationType.PEDIDO, title, message, {
+      ...trackingPayload,
+      audience: "buyer",
+      primaryHref: trackingPayload.primaryHrefBuyer,
+    });
+    await createForUserIds(vendorTargets, NotificationType.PEDIDO, title, message, {
+      ...trackingPayload,
+      audience: "vendor",
+      primaryHref: trackingPayload.primaryHrefVendor,
+    });
+    return { notified: buyerTargets.length + vendorTargets.length };
   },
 
   async notifyBuyerActionToVendors(
@@ -140,13 +267,20 @@ export const notificationService = {
     const vendorIds = await vendorUserIdsFromOrder(orderId);
     const title =
       payload.action === "CONFIRM_RECEIPT"
-        ? "Comprador confirmou receção"
-        : "Comprador abriu disputa";
+        ? "Comprador confirmou que recebeu o pedido"
+        : "O comprador abriu uma disputa neste pedido";
     const message =
       payload.action === "CONFIRM_RECEIPT"
-        ? `O comprador confirmou receção do pedido ${orderId.slice(0, 12)}….`
-        : `O comprador abriu disputa no pedido ${orderId.slice(0, 12)}….`;
-    return createForUserIds(vendorIds, NotificationType.PEDIDO, title, message);
+        ? `O comprador confirmou a receção. Consulte o pedido no painel e mantenha o registo de entrega organizado.`
+        : `Foi aberta uma disputa. Responda no chat e aguarde a mediação da plataforma. Detalhes na ficha do pedido.`;
+    const pb =
+      payload.action === "CONFIRM_RECEIPT"
+        ? ({ kind: "BUYER_ACTION" as const, action: "CONFIRM_RECEIPT" as const, orderId })
+        : ({ kind: "BUYER_ACTION" as const, action: "OPEN_DISPUTE" as const, orderId });
+    return createForUserIds(vendorIds, NotificationType.PEDIDO, title, message, {
+      ...pb,
+      primaryHref: "/vendor/orders",
+    });
   },
 
   async notifyChatCounterparty(
@@ -160,14 +294,34 @@ export const notificationService = {
       : payload.senderRole === "CLIENTE"
         ? vendorIds
         : [payload.buyerUserId];
-    const title = "Nova mensagem no chat da encomenda";
-    const message = `Pedido ${orderId.slice(0, 12)}… · ${payload.preview}`;
-    return createForUserIds(
-      recipients.filter((id) => id !== payload.senderUserId),
-      NotificationType.PEDIDO,
-      title,
-      message
-    );
+    const title = "Mensagem no chat da encomenda";
+    const message = `Encomenda #${orderId.slice(0, 10)} · «${payload.preview}»`;
+    const chatPayloadBase = {
+      kind: "CHAT" as const,
+      orderId,
+      preview: payload.preview,
+    };
+    const filtered = recipients.filter((id) => id !== payload.senderUserId);
+    const toBuyer = filtered.filter((id) => id === payload.buyerUserId);
+    const toVendor = filtered.filter((id) => id !== payload.buyerUserId);
+    let notified = 0;
+    if (toBuyer.length) {
+      await createForUserIds(toBuyer, NotificationType.PEDIDO, title, message, {
+        ...chatPayloadBase,
+        audience: "buyer",
+        primaryHref: `/orders/${encodeURIComponent(orderId)}/seguir#chat`,
+      });
+      notified += toBuyer.length;
+    }
+    if (toVendor.length) {
+      await createForUserIds(toVendor, NotificationType.PEDIDO, title, message, {
+        ...chatPayloadBase,
+        audience: "vendor",
+        primaryHref: "/vendor/orders",
+      });
+      notified += toVendor.length;
+    }
+    return { notified };
   },
 
   async notifyPlatformPickupReady(orderId: string, grandTotalKz: string, shippingCity: string) {

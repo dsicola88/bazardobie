@@ -22,7 +22,17 @@ type SobrePayload = {
     taxaRespostaPercent: number | null;
     taxaRespostaBaseConversas: number;
     avaliacaoMedia: number | null;
+    avaliacaoAspectos: {
+      produto: number | null;
+      comunicacao: number | null;
+      entrega: number | null;
+    } | null;
     totalAvaliacoes: number;
+    vendasSemDisputaPercent: number | null;
+    pedidosComDisputaEntregues: number;
+    novoVendedor: boolean;
+    reputacaoHintPt: string | null;
+    avaliacoesMinimoParaMediaPublica: number;
     produtosActivos: number;
     vendasRegistadasCatalogo: number;
     ultimaActividadeEm: string;
@@ -128,6 +138,11 @@ export default function ShopPublicAboutPage() {
                 <span className="ae-buybox__chip">Parceiro em desenvolvimento de confiança</span>
               )}
               <span className="ae-buybox__chip">Nível {resumoReputacao.nivelConfianca} / 3</span>
+              {metricas.novoVendedor ? (
+                <span className="ae-buybox__chip" title={metricas.reputacaoHintPt ?? undefined}>
+                  Novo vendedor · reputação em formação
+                </span>
+              ) : null}
             </div>
             <p style={{ marginTop: 14 }}>
               <Link
@@ -148,6 +163,11 @@ export default function ShopPublicAboutPage() {
 
       <section className="page-panel ae-shop-sobre-metrics" aria-label="Métricas públicas">
         <h2 className="ae-shop-sobre-h2">Métricas e reputação</h2>
+        {metricas.reputacaoHintPt ? (
+          <p className="ae-muted" style={{ marginTop: 4, maxWidth: 820, fontSize: 13, lineHeight: 1.5 }}>
+            {metricas.reputacaoHintPt}
+          </p>
+        ) : null}
         <div className="ae-shop-sobre-grid">
           <div className="ae-shop-sobre-stat">
             <span className="ae-shop-sobre-stat__val">{metricas.totalAvaliacoes}</span>
@@ -155,13 +175,30 @@ export default function ShopPublicAboutPage() {
             {metricas.avaliacaoMedia != null ? (
               <div className="ae-muted" style={{ fontSize: 13, marginTop: 8 }}>
                 <StarRating value={metricas.avaliacaoMedia} size="sm" showValue />
-                <span style={{ marginLeft: 6 }}>em 5</span>
+                <span style={{ marginLeft: 6 }}>experiência global (média pública)</span>
               </div>
             ) : (
               <span className="ae-muted" style={{ fontSize: 13 }}>
-                Sem média ainda
+                Média oculta até {metricas.avaliacoesMinimoParaMediaPublica}+ avaliações verificadas · actualmente{" "}
+                {metricas.totalAvaliacoes}
               </span>
             )}
+            {metricas.avaliacaoAspectos != null &&
+            (metricas.avaliacaoAspectos.produto != null ||
+              metricas.avaliacaoAspectos.comunicacao != null ||
+              metricas.avaliacaoAspectos.entrega != null) ? (
+              <ul className="ae-muted" style={{ fontSize: 12, margin: "10px 0 0", paddingLeft: 18 }}>
+                {metricas.avaliacaoAspectos.produto != null ? (
+                  <li>Qualidade do produto (média): {metricas.avaliacaoAspectos.produto}/5</li>
+                ) : null}
+                {metricas.avaliacaoAspectos.comunicacao != null ? (
+                  <li>Comunicação do vendedor: {metricas.avaliacaoAspectos.comunicacao}/5</li>
+                ) : null}
+                {metricas.avaliacaoAspectos.entrega != null ? (
+                  <li>Entrega / logística: {metricas.avaliacaoAspectos.entrega}/5</li>
+                ) : null}
+              </ul>
+            ) : null}
           </div>
           <div className="ae-shop-sobre-stat">
             <span className="ae-shop-sobre-stat__val">{metricas.vendasRegistadasCatalogo.toLocaleString("pt-PT")}</span>
@@ -177,6 +214,16 @@ export default function ShopPublicAboutPage() {
           <div className="ae-shop-sobre-stat">
             <span className="ae-shop-sobre-stat__val">{metricas.produtosActivos}</span>
             <span className="ae-shop-sobre-stat__lbl">Anúncios activos aprovados</span>
+          </div>
+          <div className="ae-shop-sobre-stat ae-shop-sobre-stat--wide">
+            <span className="ae-shop-sobre-stat__val">
+              {metricas.vendasSemDisputaPercent != null ? `${metricas.vendasSemDisputaPercent}%` : "—"}
+            </span>
+            <span className="ae-shop-sobre-stat__lbl">Pedidos entregues sem disputa registada</span>
+            <span className="ae-muted" style={{ fontSize: 13 }}>
+              {metricas.pedidosEntregues.toLocaleString("pt-PT")} entregues no total ·{" "}
+              {metricas.pedidosComDisputaEntregues.toLocaleString("pt-PT")} com pelo menos uma disputa
+            </span>
           </div>
           <div className="ae-shop-sobre-stat ae-shop-sobre-stat--wide">
             <span className="ae-shop-sobre-stat__val">{taxa}</span>

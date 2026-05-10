@@ -7,6 +7,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { CartThumbWithZoom } from "../components/CartThumbWithZoom.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
+import { variantDisplaySummary } from "../utils/variantDisplay.js";
 
 type CartItem = {
   id: string;
@@ -51,9 +52,7 @@ function cartLineUnitPrice(item: CartItem): number {
 }
 
 function cartVariantLine(variant: NonNullable<CartItem["variant"]>): string {
-  const parts = [variant.color, variant.size, variant.name].map((x) => (x ?? "").trim()).filter(Boolean);
-  if (parts.length) return parts.join(" · ");
-  return (variant.sku ?? "").trim() || "Variante seleccionada";
+  return variantDisplaySummary(variant);
 }
 
 export default function CartPage() {

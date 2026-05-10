@@ -12,6 +12,16 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
 import { variantCompareAtUnitKz, variantEffectiveUnitKz } from "../utils/variantPrice.js";
+import {
+  variantDisplaySummary,
+  variantSecondaryAxisHeading,
+  variantSecondaryChipLabel,
+} from "../utils/variantDisplay.js";
+import {
+  formatReviewerDisplayName,
+  formatReviewDatePt,
+  reviewerAvatarInitials,
+} from "../utils/reviewDisplay.js";
 
 type Img = { url: string };
 type Variant = {
@@ -48,8 +58,10 @@ type ProductDetail = {
   displayPrice: string;
   soldCount: number;
   stock: number;
-  averageRating?: string | null;
+  averageRating?: string | number | null;
   reviewCount: number;
+  ratingTrustHintPt?: string | null;
+  ratingTrustShortPt?: string | null;
   images: Img[];
   variants: Variant[];
   deliveryOptions: Delivery[];
@@ -73,17 +85,61 @@ type ProductDetail = {
       };
     };
   };
-  reviews: { rating: number; comment?: string | null; photoUrls?: string[]; user?: { name: string } }[];
+  reviews: {
+    id?: string;
+    createdAt?: string;
+    rating: number;
+    ratingQuality?: number | null;
+    ratingSellerCommunication?: number | null;
+    ratingDelivery?: number | null;
+    comment?: string | null;
+    photoUrls?: string[];
+    helpfulCount?: number;
+    viewerMarkedHelpful?: boolean;
+    user?: { id?: string; name: string };
+  }[];
   /** Contagens por estrela: [5★, 4★, 3★, 2★, 1★]; vindo da API para gráfico de barras */
   ratingDistribution?: number[];
 };
 
+type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
+
+/** Opinião na PDP (lista pode vir do bundle do produto ou de `GET /products/:id/reviews`). */
+type PdpReviewItem = ProductDetail["reviews"][number];
+
 type Tab = "overview" | "reviews" | "ship";
 
-function variantLabel(v: Variant): string {
-  const parts = [v.name, v.color, v.size].map((x) => (x ?? "").trim()).filter(Boolean);
-  if (parts.length) return parts.join(" · ");
-  return v.sku;
+const PDP_REVIEWS_PAGE_SIZE = 20;
+
+/** Barras compactas estilo AliExpress (descrição, comunicação, envio). */
+function PdpReviewAspectBars(props: {
+  quality?: number | null;
+  communication?: number | null;
+  delivery?: number | null;
+  overall: number;
+}) {
+  const rows: { label: string; value: number }[] = [];
+  if (props.quality != null) rows.push({ label: "Descrição e qualidade do produto", value: props.quality });
+  if (props.communication != null)
+    rows.push({ label: "Comunicação do vendedor", value: props.communication });
+  if (props.delivery != null) rows.push({ label: "Velocidade / experiência de entrega", value: props.delivery });
+  if (rows.length === 0) return null;
+  return (
+    <div className="ae-pdp-review-aspects" aria-label="Pontuações por dimensão">
+      {rows.map((row) => (
+        <div key={row.label} className="ae-pdp-review-aspect">
+          <span className="ae-pdp-review-aspect__label">{row.label}</span>
+          <div className="ae-pdp-review-aspect__track">
+            <div className="ae-pdp-review-aspect__fill" style={{ width: `${Math.min(100, Math.max(0, row.value * 20))}%` }} />
+          </div>
+          <span className="ae-pdp-review-aspect__val">{row.value}<span className="ae-pdp-review-aspect__max">/5</span></span>
+        </div>
+      ))}
+      <p className="ae-pdp-review-aspects__overall ae-muted">
+        Experiência global nesta compra: <strong>{props.overall}</strong>/5
+      </p>
+    </div>
+  );
 }
 
 function normSelKey(s: string | null | undefined): string {
@@ -136,9 +192,36 @@ function buildSizeOnlyOrder(variants: Variant[]): Variant[] | null {
 function pdpMainAlt(productName: string, variant: Variant | null): string {
   const n = productName.trim();
   if (!variant) return n || "Artigo à venda";
-  const vl = variantLabel(variant);
+  const vl = variantDisplaySummary(variant);
   if (!vl || vl === n) return n;
   return `${n} — ${vl}`;
+}
+
+function helpfulReviewSentence(count: number): string {
+  if (count <= 0) return "Ainda sem marcações «útil» por outros visitantes.";
+  if (count === 1) return "1 pessoa considerou esta opinião útil.";
+  return `${count.toLocaleString("pt-PT")} pessoas consideraram esta opinião útil.`;
+}
+
+function PdpReviewsListSkeleton() {
+  return (
+    <ul className="ae-pdp-reviews-list ae-pdp-reviews-list--loading" aria-busy="true" aria-label="A carregar opiniões">
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="ae-pdp-review-card ae-pdp-review-card--skeleton">
+          <div className="ae-pdp-review-card__top">
+            <div className="ae-skel ae-pdp-review-sk-avatar" aria-hidden />
+            <div className="ae-pdp-review-sk-col">
+              <div className="ae-skel ae-pdp-review-sk-line ae-pdp-review-sk-line--title" aria-hidden />
+              <div className="ae-skel ae-pdp-review-sk-line ae-pdp-review-sk-line--short" aria-hidden />
+            </div>
+          </div>
+          <div className="ae-skel ae-pdp-review-sk-block" aria-hidden />
+          <div className="ae-skel ae-pdp-review-sk-line" aria-hidden />
+          <div className="ae-skel ae-pdp-review-sk-line ae-pdp-review-sk-line--short" aria-hidden />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function ProductPageSkeleton() {
@@ -200,6 +283,19 @@ export default function ProductPage() {
   const [heroImgBroken, setHeroImgBroken] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [reviewSort, setReviewSort] = useState<ReviewSortKey>("recent");
+  const [reviewsPhotosOnly, setReviewsPhotosOnly] = useState(false);
+  const [pdpReviews, setPdpReviews] = useState<{
+    loading: boolean;
+    loadingMore: boolean;
+    items: PdpReviewItem[];
+    total: number;
+    error: string | null;
+  }>({ loading: false, loadingMore: false, items: [], total: 0, error: null });
+  const [helpfulBusyId, setHelpfulBusyId] = useState<string | null>(null);
+  const [reviewPhotoLb, setReviewPhotoLb] = useState<null | { urls: string[]; index: number }>(null);
+  const pdpReviewsRef = useRef(pdpReviews);
+  pdpReviewsRef.current = pdpReviews;
   const mainSwipeRef = useRef<{ x: number; y: number } | null>(null);
   const lbTouchRef = useRef<{ x: number; y: number } | null>(null);
   const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
@@ -218,6 +314,176 @@ export default function ProductPage() {
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Referência indisponível."));
   }, [id]);
+
+  useEffect(() => {
+    setReviewSort("recent");
+    setReviewsPhotosOnly(false);
+    setPdpReviews({ loading: false, loadingMore: false, items: [], total: 0, error: null });
+  }, [id]);
+
+  const tabQs = searchParams.get("tab");
+  useEffect(() => {
+    if (tabQs === "reviews") setTab("reviews");
+  }, [id, tabQs]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (!product || product.id !== id) {
+      setPdpReviews({ loading: false, loadingMore: false, items: [], total: 0, error: null });
+      return;
+    }
+    if (product.reviewCount === 0) {
+      setPdpReviews({ loading: false, loadingMore: false, items: [], total: 0, error: null });
+      return;
+    }
+    let cancelled = false;
+    setPdpReviews((s) => ({ ...s, loading: true, loadingMore: false, error: null }));
+    const qs = new URLSearchParams();
+    qs.set("sort", reviewSort);
+    if (reviewsPhotosOnly) qs.set("photosOnly", "1");
+    qs.set("take", String(PDP_REVIEWS_PAGE_SIZE));
+    qs.set("skip", "0");
+    void apiFetch<{ items: PdpReviewItem[]; total: number }>(
+      `/products/${encodeURIComponent(id)}/reviews?${qs.toString()}`,
+      { token: token ?? undefined },
+    )
+      .then((r) => {
+        if (cancelled) return;
+        setPdpReviews({
+          loading: false,
+          loadingMore: false,
+          items: Array.isArray(r.items) ? r.items : [],
+          total: typeof r.total === "number" ? r.total : 0,
+          error: null,
+        });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setPdpReviews({
+          loading: false,
+          loadingMore: false,
+          items: product.reviews as PdpReviewItem[],
+          total: product.reviewCount,
+          error: e instanceof Error ? e.message : "Não foi possível actualizar a lista de opiniões.",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, product?.id, product?.reviewCount, reviewSort, reviewsPhotosOnly, token]);
+
+  const markReviewHelpful = useCallback(
+    async (reviewId: string) => {
+      if (!token || !reviewId) return;
+      setHelpfulBusyId(reviewId);
+      try {
+        const data = await apiFetch<{ helpfulCount: number; marked: boolean }>(
+          `/reviews/${encodeURIComponent(reviewId)}/helpful`,
+          { method: "POST", token },
+        );
+        setPdpReviews((s) => ({
+          ...s,
+          items: s.items.map((it) =>
+            it.id === reviewId
+              ? { ...it, helpfulCount: data.helpfulCount, viewerMarkedHelpful: data.marked }
+              : it,
+          ),
+        }));
+      } finally {
+        setHelpfulBusyId(null);
+      }
+    },
+    [token],
+  );
+
+  const loadMoreReviews = useCallback(async () => {
+    if (!id || !product || product.id !== id) return;
+    const s = pdpReviewsRef.current;
+    if (s.loading || s.loadingMore || s.items.length >= s.total) return;
+    const skip = s.items.length;
+    setPdpReviews((prev) => ({ ...prev, loadingMore: true }));
+    try {
+      const qs = new URLSearchParams();
+      qs.set("sort", reviewSort);
+      if (reviewsPhotosOnly) qs.set("photosOnly", "1");
+      qs.set("take", String(PDP_REVIEWS_PAGE_SIZE));
+      qs.set("skip", String(skip));
+      const r = await apiFetch<{ items: PdpReviewItem[] }>(
+        `/products/${encodeURIComponent(id)}/reviews?${qs.toString()}`,
+        { token: token ?? undefined },
+      );
+      const chunk = Array.isArray(r.items) ? r.items : [];
+      setPdpReviews((prev) => {
+        const seen = new Set(prev.items.map((x) => x.id).filter(Boolean));
+        const merged = [...prev.items];
+        for (const it of chunk) {
+          if (it.id) {
+            if (seen.has(it.id)) continue;
+            seen.add(it.id);
+          }
+          merged.push(it);
+        }
+        return { ...prev, loadingMore: false, items: merged };
+      });
+    } catch {
+      setPdpReviews((prev) => ({ ...prev, loadingMore: false }));
+    }
+  }, [id, product?.id, reviewSort, reviewsPhotosOnly, token]);
+
+  const handlePdpTab = useCallback(
+    (next: Tab) => {
+      setTab(next);
+      setSearchParams(
+        (prev) => {
+          const n = new URLSearchParams(prev);
+          if (next === "reviews") n.set("tab", "reviews");
+          else n.delete("tab");
+          return n;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const scrollToReviewsPanel = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      document.getElementById("ae-pdp-panel-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
+  const openAllReviews = useCallback(() => {
+    handlePdpTab("reviews");
+    scrollToReviewsPanel();
+  }, [handlePdpTab, scrollToReviewsPanel]);
+
+  useEffect(() => {
+    if (!reviewPhotoLb) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setReviewPhotoLb(null);
+      if (e.key === "ArrowLeft") {
+        setReviewPhotoLb((cur) =>
+          cur && cur.urls.length > 1
+            ? { ...cur, index: (cur.index - 1 + cur.urls.length) % cur.urls.length }
+            : cur,
+        );
+      }
+      if (e.key === "ArrowRight") {
+        setReviewPhotoLb((cur) =>
+          cur && cur.urls.length > 1
+            ? { ...cur, index: (cur.index + 1) % cur.urls.length }
+            : cur,
+        );
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [reviewPhotoLb]);
 
   const viewTrackedKey = useRef<string | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<ProductCardData[] | null>(null);
@@ -442,6 +708,43 @@ export default function ProductPage() {
     return fb;
   }, [product]);
 
+  const reviewRows = useMemo(() => {
+    if (!product || product.reviewCount === 0) return [];
+    if (
+      pdpReviews.loading &&
+      reviewSort === "recent" &&
+      !reviewsPhotosOnly &&
+      product.reviews.length > 0
+    ) {
+      return product.reviews as PdpReviewItem[];
+    }
+    return pdpReviews.items;
+  }, [product, pdpReviews.loading, pdpReviews.items, reviewSort, reviewsPhotosOnly]);
+
+  const reviewsFilterEmpty =
+    Boolean(product && product.reviewCount > 0) &&
+    !pdpReviews.loading &&
+    reviewsPhotosOnly &&
+    pdpReviews.total === 0;
+
+  const reviewsListTotalShown =
+    pdpReviews.loading && reviewSort === "recent" && !reviewsPhotosOnly
+      ? (product?.reviewCount ?? 0)
+      : pdpReviews.total;
+
+  const reviewsHasMore =
+    !reviewsFilterEmpty &&
+    !pdpReviews.loading &&
+    !pdpReviews.loadingMore &&
+    pdpReviews.items.length < pdpReviews.total;
+
+  const reviewsRemaining = Math.max(0, pdpReviews.total - pdpReviews.items.length);
+
+  const showReviewsSkeleton =
+    pdpReviews.loading &&
+    reviewRows.length === 0 &&
+    !(reviewSort === "recent" && !reviewsPhotosOnly && (product?.reviews.length ?? 0) > 0);
+
   const mainResolved = useMemo(() => {
     if (!product) return "";
     const rawVariantFallback =
@@ -462,7 +765,7 @@ export default function ProductPage() {
     return product.variants
       .map((v) => ({
         ...v,
-        label: variantLabel(v),
+        label: variantDisplaySummary(v),
       }))
       .filter((v, ix, arr) => arr.findIndex((x) => x.id === v.id) === ix);
   }, [product]);
@@ -743,26 +1046,61 @@ export default function ProductPage() {
               </p>
             ) : null}
             <div className="ae-buybox__reviews">
-              {product.reviewCount > 0 && product.averageRating != null ? (
-                <div className="ae-buybox__reviews-line">
-                  <StarRating value={Number(product.averageRating)} tone="gold" size="lg" showValue />
-                  <span>
-                    {product.reviewCount.toLocaleString("pt-PT")} avaliações
+              <div className="ae-buybox__reviews-head">
+                <span className="ae-buybox__reviews-kicker">Opiniões de clientes</span>
+              </div>
+              {product.averageRating != null ? (
+                <>
+                  <div className="ae-buybox__reviews-line ae-buybox__reviews-line--rated">
+                    <StarRating
+                      value={Number(product.averageRating)}
+                      tone="gold"
+                      size="lg"
+                      showValue
+                      reviewCount={product.reviewCount}
+                    />
+                  </div>
+                  <p className="ae-buybox__reviews-foot">
+                    Média global do artigo · apenas avaliações após entrega ·{" "}
                     {product.soldCount > 0 ? (
                       <>
-                        {" "}
-                        · {product.soldCount.toLocaleString("pt-PT")}+ unidades vendidas
+                        <strong>{product.soldCount.toLocaleString("pt-PT")}+</strong> unidades vendidas no catálogo
                       </>
-                    ) : null}
-                  </span>
-                </div>
+                    ) : (
+                      "histórico de vendas em construção"
+                    )}
+                  </p>
+                </>
+              ) : product.reviewCount > 0 ? (
+                <>
+                  <div className="ae-buybox__reviews-line">
+                    <span className="ae-buybox__reviews-soon">
+                      <strong>{product.ratingTrustShortPt ?? "Classificação em consolidação"}</strong>
+                    </span>
+                  </div>
+                  <p className="ae-buybox__reviews-foot">
+                    <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
+                    {product.reviewCount === 1 ? "opinião verificada" : "opiniões verificadas"} — a média em estrelas só é
+                    exibida publicamente após volume mínimo de feedback, para maior fiabilidade (modelo tipo Amazon /
+                    AliExpress).
+                  </p>
+                  {product.ratingTrustHintPt ? <p className="ae-buybox__reviews-note ae-muted">{product.ratingTrustHintPt}</p> : null}
+                </>
               ) : product.soldCount > 0 ? (
-                <span>
-                  {product.soldCount.toLocaleString("pt-PT")}+ unidades vendidas · ainda sem avaliações publicadas
-                </span>
+                <p className="ae-buybox__reviews-foot">
+                  <strong>{product.soldCount.toLocaleString("pt-PT")}+</strong> unidades vendidas ·{" "}
+                  <span className="ae-muted">ainda sem opiniões públicas neste artigo.</span>
+                </p>
               ) : (
-                <span>Ainda sem avaliações publicadas neste artigo.</span>
+                <p className="ae-buybox__reviews-foot ae-muted">Sem opiniões públicas ainda neste artigo.</p>
               )}
+              {product.reviewCount > 0 ? (
+                <p className="ae-buybox__reviews-cta-wrap">
+                  <button type="button" className="ae-linkbtn ae-buybox__reviews-cta" onClick={openAllReviews}>
+                    Ver todas as opiniões e filtros
+                  </button>
+                </p>
+              ) : null}
             </div>
             <div className="ae-buybox__price">
               <span className="ae-buybox__now">{formatKz(unitPriceNum ?? product.displayPrice)}</span>
@@ -809,7 +1147,7 @@ export default function ProductPage() {
               <div className="ae-field ae-pdp-variant-field">
                 <div className="ae-pdp-variant-head">
                   Variante seleccionada:{" "}
-                  <strong>{selectedVariant ? variantLabel(selectedVariant) : "— escolha abaixo —"}</strong>
+                  <strong>{selectedVariant ? variantDisplaySummary(selectedVariant) : "— escolha abaixo —"}</strong>
                 </div>
                 {colorSizeMatrix && colorUiGroups ? (
                   <>
@@ -843,20 +1181,32 @@ export default function ProductPage() {
                     </div>
                     {sizesForSelectedColor.length > 1 ? (
                       <>
-                        <div className="ae-pdp-variant-head">Tamanho · {selectedVariant?.size?.trim() ?? "—"}</div>
-                        <div className="ae-variant-sizes" role="radiogroup" aria-label="Escolha o tamanho">
+                        <div className="ae-pdp-variant-head">
+                          <strong>{variantSecondaryAxisHeading(sizesForSelectedColor)}</strong>
+                          {": "}
+                          <strong>
+                            {selectedVariant
+                              ? variantSecondaryChipLabel(selectedVariant, product.name)
+                              : "—"}
+                          </strong>
+                        </div>
+                        <div
+                          className="ae-variant-sizes"
+                          role="radiogroup"
+                          aria-label={`Escolha ${variantSecondaryAxisHeading(sizesForSelectedColor).toLowerCase()}`}
+                        >
                           {sizesForSelectedColor.map((v) => (
                             <button
                               key={v.id}
                               type="button"
                               role="radio"
                               aria-checked={variantId === v.id}
-                              title={`${variantLabel(v)} · stock ${v.stock}`}
+                              title={`${variantDisplaySummary(v)} · stock ${v.stock}`}
                               className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
                               disabled={v.stock <= 0}
                               onClick={() => setVariantId(v.id)}
                             >
-                              {(v.size ?? "").trim()}
+                              {variantSecondaryChipLabel(v, product.name)}
                             </button>
                           ))}
                         </div>
@@ -865,20 +1215,30 @@ export default function ProductPage() {
                   </>
                 ) : sizeOnlyOrder ? (
                   <>
-                    <div className="ae-pdp-variant-head">Tamanho · {selectedVariant?.size?.trim() ?? "—"}</div>
-                    <div className="ae-variant-sizes" role="radiogroup" aria-label="Escolha o tamanho">
+                    <div className="ae-pdp-variant-head">
+                      <strong>{variantSecondaryAxisHeading(sizeOnlyOrder)}</strong>
+                      {": "}
+                      <strong>
+                        {selectedVariant ? variantSecondaryChipLabel(selectedVariant, product.name) : "—"}
+                      </strong>
+                    </div>
+                    <div
+                      className="ae-variant-sizes"
+                      role="radiogroup"
+                      aria-label={`Escolha ${variantSecondaryAxisHeading(sizeOnlyOrder).toLowerCase()}`}
+                    >
                       {sizeOnlyOrder.map((v) => (
                         <button
                           key={v.id}
                           type="button"
                           role="radio"
                           aria-checked={variantId === v.id}
-                          title={`${variantLabel(v)} · stock ${v.stock}`}
+                          title={`${variantDisplaySummary(v)} · stock ${v.stock}`}
                           className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
                           disabled={v.stock <= 0}
                           onClick={() => setVariantId(v.id)}
                         >
-                          {(v.size ?? "").trim()}
+                          {variantSecondaryChipLabel(v, product.name)}
                         </button>
                       ))}
                     </div>
@@ -998,15 +1358,15 @@ export default function ProductPage() {
       </div>
 
       <div className="page-panel" style={{ padding: 0, overflow: "hidden" }}>
-        <div className="ae-tabs">
-          <button type="button" className={tab === "overview" ? "ae-on" : ""} onClick={() => setTab("overview")}>
+        <div className="ae-tabs" id="ae-pdp-panel-tabs">
+          <button type="button" className={tab === "overview" ? "ae-on" : ""} onClick={() => handlePdpTab("overview")}>
             Visão geral
           </button>
-          <button type="button" className={tab === "ship" ? "ae-on" : ""} onClick={() => setTab("ship")}>
+          <button type="button" className={tab === "ship" ? "ae-on" : ""} onClick={() => handlePdpTab("ship")}>
             Envio, prazos e devoluções
           </button>
-          <button type="button" className={tab === "reviews" ? "ae-on" : ""} onClick={() => setTab("reviews")}>
-            Avaliações ({product.reviewCount})
+          <button type="button" className={tab === "reviews" ? "ae-on" : ""} onClick={() => handlePdpTab("reviews")}>
+            Opiniões de clientes ({product.reviewCount})
           </button>
         </div>
         {tab === "overview" ? (
@@ -1062,88 +1422,335 @@ export default function ProductPage() {
           </div>
         ) : null}
         {tab === "reviews" ? (
-          <div className="ae-tab-panel">
+          <div className="ae-tab-panel ae-tab-panel--reviews">
             {product.reviewCount === 0 ? (
-              <div className="ae-muted" style={{ padding: "4px 0 12px" }}>
-                <p style={{ marginTop: 0 }}>Ainda não existem avaliações para este artigo.</p>
-                <p style={{ marginBottom: 0, fontSize: 13 }}>
-                  Depois de concluir a compra e receber a encomenda, poderá deixar estrelas e um comentário.
+              <div className="ae-pdp-reviews-empty">
+                <h3 className="ae-pdp-reviews-empty__title">Sem opiniões de clientes</h3>
+                <p className="ae-pdp-reviews-empty__lead">
+                  Este artigo ainda não recebeu classificações públicas após entregas concluídas.
+                </p>
+                <p className="ae-pdp-reviews-empty__hint ae-muted">
+                  No BAZAR DO BIÉ, tal como na Amazon ou na AliExpress, só quem comprou e recebeu a encomenda no estado
+                  «Entregue» pode opinar — isto mantém o sistema mais fiável e menos suscetível a manipulação.
                 </p>
               </div>
             ) : (
               <>
+                <header className="ae-pdp-reviews-page-head">
+                  <h2 className="ae-pdp-reviews-page-head__title">Opiniões de clientes</h2>
+                  <p className="ae-pdp-reviews-page-head__sub ae-muted">
+                    Classificações verificadas · conta na plataforma · compra concluída e entregue
+                  </p>
+                </header>
                 <div className="ae-pdp-reviews-hero">
                   <div className="ae-pdp-reviews-hero__left">
-                    <span className="ae-pdp-reviews-hero__avg">
-                      {formatRating(Number(product.averageRating ?? 0))}
-                    </span>
-                    <StarRating
-                      value={Number(product.averageRating ?? 0)}
-                      tone="dark"
-                      size="lg"
-                      className="ae-pdp-reviews-hero__stars"
-                    />
-                    <p className="ae-pdp-reviews-hero__verified">Todas de compras verificadas na plataforma.</p>
+                    {product.averageRating != null ? (
+                      <>
+                        <span className="ae-pdp-reviews-hero__avg ae-pdp-reviews-hero__avg--neutral">
+                          {formatRating(Number(product.averageRating))}
+                        </span>
+                        <StarRating
+                          value={Number(product.averageRating)}
+                          tone="dark"
+                          size="lg"
+                          className="ae-pdp-reviews-hero__stars"
+                          showValue={false}
+                        />
+                        <p className="ae-pdp-reviews-hero__meta ae-muted">
+                          de 5 estrelas ·{" "}
+                          <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
+                          {product.reviewCount === 1 ? "opinião global" : "opiniões globais"}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="ae-pdp-reviews-hero__pending">—</span>
+                        <p className="ae-pdp-reviews-hero__pending-copy ae-muted">
+                          {product.ratingTrustHintPt ??
+                            "A média global só é mostrada depois de um número mínimo de opiniões verificadas — protege compradores contra médias pouco representativas."}
+                        </p>
+                        <p className="ae-pdp-reviews-hero__meta ae-muted">
+                          Já existem{" "}
+                          <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
+                          {product.reviewCount === 1 ? "opinião publicada" : "opiniões publicadas"} — histograma à direita
+                          reflecte todas.
+                        </p>
+                      </>
+                    )}
+                    <p className="ae-pdp-reviews-hero__verified">
+                      Inclui apenas clientes com pedido entregue neste artigo. Fotos e texto são da experiência real de
+                      compra.
+                    </p>
                   </div>
-                  <div className="ae-pdp-reviews-bars" aria-label="Distribuição das avaliações por estrelas">
-                    {[5, 4, 3, 2, 1].map((star) => {
-                      const idx = 5 - star;
-                      const count = ratingDistribution[idx] ?? 0;
-                      const total = product.reviewCount;
-                      const pct = total > 0 ? Math.min(100, Math.round((count / total) * 1000) / 10) : 0;
-                      return (
-                        <div key={star} className="ae-pdp-review-dist-row">
-                          <span className="ae-pdp-review-dist-label">{star} estrelas</span>
-                          <div className="ae-pdp-review-dist-track">
-                            <div className="ae-pdp-review-dist-fill" style={{ width: `${pct}%` }} />
+                  <div className="ae-pdp-reviews-bars-wrap">
+                    <p className="ae-pdp-reviews-bars-caption">Histograma global · por número de estrelas</p>
+                    <div className="ae-pdp-reviews-bars" role="list" aria-label="Distribuição das opiniões por estrelas">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const idx = 5 - star;
+                        const count = ratingDistribution[idx] ?? 0;
+                        const total = product.reviewCount;
+                        const pct = total > 0 ? Math.min(100, Math.round((count / total) * 1000) / 10) : 0;
+                        return (
+                          <div
+                            key={star}
+                            className="ae-pdp-review-dist-row"
+                            role="listitem"
+                            aria-label={`${star} estrelas: ${count.toLocaleString("pt-PT")} opiniões`}
+                          >
+                            <span className="ae-pdp-review-dist-stars" aria-hidden="true">
+                              {"★".repeat(star)}
+                            </span>
+                            <div className="ae-pdp-review-dist-track">
+                              <div className="ae-pdp-review-dist-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="ae-pdp-review-dist-count">{count.toLocaleString("pt-PT")}</span>
                           </div>
-                          <span className="ae-pdp-review-dist-count">{count.toLocaleString("pt-PT")}</span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-                <ul className="ae-pdp-reviews-list">
-                  {product.reviews.map((r, i) => (
-                    <li key={i}>
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>
-                        <StarRating value={r.rating} size="sm" tone="gold" />
-                        <span className="ae-muted" style={{ fontSize: 13 }}>
-                          {(r.user && r.user.name) || "Comprador"}
-                        </span>
-                      </div>
-                      <div className="ae-muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>
-                        {r.comment}
-                      </div>
-                      {r.photoUrls && r.photoUrls.length > 0 ? (
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                          {r.photoUrls.map((u) => (
-                            <a key={u} href={u} target="_blank" rel="noopener noreferrer">
-                              <img
-                                src={resolveMediaUrl(u)}
-                                alt="Fotografia publicada pelo comprador na avaliação"
-                                loading="lazy"
-                                decoding="async"
-                                style={{
-                                  width: 72,
-                                  height: 72,
-                                  objectFit: "cover",
-                                  borderRadius: 6,
-                                  border: "1px solid var(--ae-line)",
-                                }}
+                <div className="ae-pdp-reviews-toolbar">
+                  <div className="ae-pdp-reviews-toolbar__grid">
+                    <div className="ae-pdp-reviews-toolbar__field">
+                      <label htmlFor="ae-pdp-review-sort">Ordenar por</label>
+                      <select
+                        id="ae-pdp-review-sort"
+                        className="ae-pdp-reviews-toolbar__select"
+                        value={reviewSort}
+                        onChange={(e) => setReviewSort(e.target.value as ReviewSortKey)}
+                      >
+                        <option value="recent">Mais recentes</option>
+                        <option value="helpful">Mais úteis</option>
+                        <option value="rating_desc">Classificação · maior primeiro</option>
+                        <option value="rating_asc">Classificação · menor primeiro</option>
+                      </select>
+                    </div>
+                    <label className="ae-pdp-reviews-toolbar__toggle">
+                      <input
+                        type="checkbox"
+                        checked={reviewsPhotosOnly}
+                        onChange={(e) => setReviewsPhotosOnly(e.target.checked)}
+                      />
+                      <span>Só opiniões com fotos do cliente</span>
+                    </label>
+                  </div>
+                  <p className="ae-pdp-reviews-toolbar__meta ae-muted">
+                    {pdpReviews.error ? (
+                      <>
+                        <span className="ae-pdp-reviews-toolbar__warn">{pdpReviews.error}</span>
+                        {" · "}
+                      </>
+                    ) : null}
+                    {pdpReviews.loading ? (
+                      <>A sincronizar opiniões com o servidor…</>
+                    ) : reviewsFilterEmpty ? null : (
+                      <>
+                        Exibindo <strong>{reviewRows.length}</strong> de{" "}
+                        <strong>{reviewsListTotalShown.toLocaleString("pt-PT")}</strong>
+                        {reviewsPhotosOnly ? " opiniões com fotografias de cliente." : " opiniões verificadas."}
+                        {reviewsHasMore ? (
+                          <>
+                            {" "}
+                            Utilize «Carregar mais» para ver entradas adicionais ({PDP_REVIEWS_PAGE_SIZE} por passo).
+                          </>
+                        ) : null}
+                      </>
+                    )}
+                  </p>
+                  {!reviewsFilterEmpty && !pdpReviews.loading ? (
+                    <p className="ae-pdp-reviews-toolbar__fine ae-muted">
+                      O feedback «útil» é público apenas como contagem agregada — cada conta pode votar uma vez por
+                      opinião.
+                    </p>
+                  ) : null}
+                </div>
+                {reviewsFilterEmpty ? (
+                  <div className="ae-pdp-reviews-filter-empty" role="status">
+                    <p className="ae-pdp-reviews-filter-empty__title">Nenhuma opinião com fotos</p>
+                    <p className="ae-muted">
+                      Este artigo ainda não tem avaliações verificadas com imagens de cliente. Desactive o filtro para ver
+                      todas as classificações e comentários publicados.
+                    </p>
+                  </div>
+                ) : showReviewsSkeleton ? (
+                  <PdpReviewsListSkeleton />
+                ) : (
+                  <>
+                    <ul className="ae-pdp-reviews-list">
+                      {reviewRows.map((r) => {
+                        const displayName = formatReviewerDisplayName(r.user?.name);
+                        const initials = reviewerAvatarInitials(displayName);
+                        const dateStr = formatReviewDatePt(r.createdAt);
+                        const key = r.id ?? `${r.createdAt ?? "x"}-${displayName}-${r.rating}`;
+                        const ownReview = Boolean(user?.id && r.user?.id && user.id === r.user.id);
+                        const hc = r.helpfulCount ?? 0;
+                        const photoUrlsResolved =
+                          r.photoUrls && r.photoUrls.length > 0 ? r.photoUrls.map((u) => resolveMediaUrl(u)) : [];
+                        return (
+                          <li key={key} className="ae-pdp-review-card">
+                            <div className="ae-pdp-review-card__top">
+                              <div className="ae-pdp-review-card__avatar" aria-hidden="true">
+                                {initials}
+                              </div>
+                              <div className="ae-pdp-review-card__identity">
+                                <span className="ae-pdp-review-card__name">{displayName}</span>
+                                <div className="ae-pdp-review-card__badges">
+                                  <span className="ae-pdp-review-verified">Compra verificada</span>
+                                  {dateStr ? (
+                                    <time className="ae-pdp-review-card__date" dateTime={r.createdAt}>
+                                      {dateStr}
+                                    </time>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <StarRating
+                                value={r.rating}
+                                size="sm"
+                                tone="gold"
+                                showValue
+                                className="ae-pdp-review-card__stars"
                               />
-                            </a>
-                          ))}
-                        </div>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                            </div>
+                            <PdpReviewAspectBars
+                              quality={r.ratingQuality}
+                              communication={r.ratingSellerCommunication}
+                              delivery={r.ratingDelivery}
+                              overall={r.rating}
+                            />
+                            {r.comment?.trim() ? (
+                              <div className="ae-pdp-review-card__body">{r.comment.trim()}</div>
+                            ) : null}
+                            {photoUrlsResolved.length > 0 ? (
+                              <div className="ae-pdp-review-card__photos">
+                                {photoUrlsResolved.map((resolved, pi) => (
+                                  <button
+                                    key={`${key}-${pi}`}
+                                    type="button"
+                                    className="ae-pdp-review-card__photo-hit"
+                                    aria-label={`Ampliar fotografia ${pi + 1} de ${photoUrlsResolved.length} enviada pelo cliente`}
+                                    onClick={() => setReviewPhotoLb({ urls: photoUrlsResolved, index: pi })}
+                                  >
+                                    <img src={resolved} alt="" loading="lazy" decoding="async" />
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                            <footer className="ae-pdp-review-card__footer">
+                              <div className="ae-pdp-review-helpful" aria-label="Utilidade desta opinião para outros compradores">
+                                <p className="ae-pdp-review-helpful__stat">{helpfulReviewSentence(hc)}</p>
+                                <div className="ae-pdp-review-helpful__actions">
+                                  {ownReview ? (
+                                    <span className="ae-muted ae-pdp-review-helpful__self">A sua opinião verificada</span>
+                                  ) : token ? (
+                                    <button
+                                      type="button"
+                                      className={`ae-pdp-review-helpful__btn${r.viewerMarkedHelpful ? " ae-pdp-review-helpful__btn--on" : ""}`}
+                                      disabled={!r.id || helpfulBusyId === r.id}
+                                      aria-pressed={Boolean(r.viewerMarkedHelpful)}
+                                      onClick={() => r.id && void markReviewHelpful(r.id)}
+                                    >
+                                      {helpfulBusyId === r.id
+                                        ? "A registar…"
+                                        : r.viewerMarkedHelpful
+                                          ? "Marcado como útil"
+                                          : "Útil"}
+                                    </button>
+                                  ) : (
+                                    <Link className="ae-linkbtn ae-pdp-review-helpful__login" to="/login">
+                                      Inicie sessão para votar
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            </footer>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {reviewsHasMore ? (
+                      <div className="ae-pdp-reviews-more-wrap">
+                        <button
+                          type="button"
+                          className="btn ae-pdp-reviews-more"
+                          disabled={pdpReviews.loadingMore}
+                          onClick={() => void loadMoreReviews()}
+                        >
+                          {pdpReviews.loadingMore
+                            ? "A carregar…"
+                            : `Carregar mais opiniões (${reviewsRemaining.toLocaleString("pt-PT")} restantes)`}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </>
             )}
           </div>
         ) : null}
       </div>
+
+      {reviewPhotoLb ? (
+        <div
+          className="ae-modal-backdrop ae-pdp-review-photo-lb"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fotografia da opinião do cliente"
+          onClick={() => setReviewPhotoLb(null)}
+        >
+          <div className="ae-pdp-review-photo-lb__dialog" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="ae-pdp-review-photo-lb__close"
+              aria-label="Fechar"
+              onClick={() => setReviewPhotoLb(null)}
+            >
+              ×
+            </button>
+            {reviewPhotoLb.urls.length >= 2 ? (
+              <>
+                <button
+                  type="button"
+                  className="ae-pdp-review-photo-lb__nav ae-pdp-review-photo-lb__nav--prev"
+                  aria-label="Fotografia anterior"
+                  onClick={() =>
+                    setReviewPhotoLb((c) =>
+                      c && c.urls.length > 1
+                        ? { ...c, index: (c.index - 1 + c.urls.length) % c.urls.length }
+                        : c,
+                    )
+                  }
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ae-pdp-review-photo-lb__nav ae-pdp-review-photo-lb__nav--next"
+                  aria-label="Fotografia seguinte"
+                  onClick={() =>
+                    setReviewPhotoLb((c) =>
+                      c && c.urls.length > 1 ? { ...c, index: (c.index + 1) % c.urls.length } : c,
+                    )
+                  }
+                >
+                  ›
+                </button>
+              </>
+            ) : null}
+            <img
+              src={reviewPhotoLb.urls[reviewPhotoLb.index]}
+              alt="Fotografia enviada pelo cliente na opinião verificada"
+              className="ae-pdp-review-photo-lb__img"
+              decoding="async"
+            />
+            {reviewPhotoLb.urls.length >= 2 ? (
+              <p className="ae-pdp-review-photo-lb__counter" aria-live="polite">
+                {reviewPhotoLb.index + 1} / {reviewPhotoLb.urls.length}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {relatedProducts !== null && relatedProducts.length > 0 ? (
         <section className="ae-shell ae-section ae-section--catalog" style={{ marginTop: 8 }} aria-label="Artigos relacionados">

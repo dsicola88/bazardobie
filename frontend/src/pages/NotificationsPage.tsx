@@ -10,7 +10,70 @@ type NotificationRow = {
   message: string;
   read: boolean;
   createdAt: string;
+  payload?: unknown;
 };
+
+type OrderStatusPayload = {
+  kind: "ORDER_STATUS";
+  fromLabel?: string;
+  toLabel?: string;
+  primaryHref?: string;
+  actorLabel?: string;
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function OrderStatusExtras({ payload }: { payload: unknown }) {
+  if (!isRecord(payload) || payload.kind !== "ORDER_STATUS") return null;
+  const p = payload as OrderStatusPayload;
+  return (
+    <div className="ae-notif-payload" style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <span className="ae-notif-pill">{p.fromLabel ?? "—"}</span>
+        <span className="ae-muted" aria-hidden>
+          →
+        </span>
+        <span className="ae-notif-pill ae-notif-pill--accent">{p.toLabel ?? "—"}</span>
+        {p.actorLabel ? (
+          <span className="ae-muted" style={{ fontSize: 12 }}>
+            · {p.actorLabel}
+          </span>
+        ) : null}
+      </div>
+      {typeof p.primaryHref === "string" && p.primaryHref ? (
+        <Link to={p.primaryHref} className="ae-tracking__cta" style={{ marginTop: 10, display: "inline-block" }}>
+          Ver encomenda
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function TrackingExtras({ payload }: { payload: unknown }) {
+  if (!isRecord(payload) || payload.kind !== "TRACKING") return null;
+  const href = typeof payload.primaryHref === "string" ? payload.primaryHref : "";
+  return href ? (
+    <div style={{ marginTop: 10 }}>
+      <Link to={href} className="ae-tracking__cta">
+        Abrir ficha do pedido
+      </Link>
+    </div>
+  ) : null;
+}
+
+function ChatExtras({ payload }: { payload: unknown }) {
+  if (!isRecord(payload) || payload.kind !== "CHAT") return null;
+  const href = typeof payload.primaryHref === "string" ? payload.primaryHref : "";
+  return href ? (
+    <div style={{ marginTop: 10 }}>
+      <Link to={href} className="ae-tracking__cta">
+        Abrir chat da encomenda
+      </Link>
+    </div>
+  ) : null;
+}
 
 export default function NotificationsPage() {
   const { token, user } = useAuth();
@@ -93,7 +156,10 @@ export default function NotificationsPage() {
               <strong>{n.title}</strong>
               <span className="ae-muted" style={{ fontSize: 12 }}>{new Date(n.createdAt).toLocaleString("pt-AO")}</span>
             </div>
-            <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap" }}>{n.message}</p>
+            <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{n.message}</p>
+            <OrderStatusExtras payload={n.payload} />
+            <TrackingExtras payload={n.payload} />
+            <ChatExtras payload={n.payload} />
             {!n.read ? (
               <button type="button" className="ae-tracking__cta" style={{ marginTop: 8 }} onClick={() => void markRead(n.id)}>
                 Marcar como lida

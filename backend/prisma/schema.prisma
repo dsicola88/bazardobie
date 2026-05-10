@@ -233,6 +233,7 @@ model User {
   cart           Cart?
   orders         Order[]
   reviews        Review[]
+  reviewHelpfulVotes ReviewHelpful[]
   favorites      Favorite[]
   /// Rasto de produtos vistos (chave `u:{userId}` em `ProductRecentView.identityKey`)
   recentProductViews ProductRecentView[]
@@ -697,6 +698,7 @@ model OrderItem {
   unitPrice           Decimal       @db.Decimal(12, 2)
   deliveryCost        Decimal       @db.Decimal(12, 2)
   productNameSnapshot String
+  /// Resumo da variante no momento da compra (cor · tamanho · nome ou SKU), alinhado com a PDP/carrinho.
   variantNameSnapshot String?
   deliveryTipo        TipoEntrega
   deliveryDays        Int
@@ -755,7 +757,14 @@ model Review {
   userId    String
   productId String
   orderId   String
+  /// Experiência global (obrigatória; compatível com avaliações antigas).
   rating    Int
+  /// Qualidade percebida do artigo (opcional nas fichas antigas).
+  ratingQuality                Int?
+  /// Comunicação do vendedor.
+  ratingSellerCommunication    Int?
+  /// Entrega / logística da compra.
+  ratingDelivery               Int?
   comment   String?  @db.Text
   /// URLs de fotos (ex.: uploads da plataforma), máximo sugerido 6 na API
   photoUrls String[] @default([])
@@ -764,9 +773,25 @@ model Review {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  helpfulMarks ReviewHelpful[]
 
   @@unique([userId, productId, orderId])
   @@index([productId])
+}
+
+/// Voto «isto foi útil» por utilizador autenticado (uma vez por opinião).
+model ReviewHelpful {
+  id        String   @id @default(cuid())
+  reviewId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@index([userId])
 }
 
 model Favorite {
@@ -842,6 +867,8 @@ model Notification {
   type      NotificationType @default(GERAL)
   title     String
   message   String           @db.Text
+  /// Metadados estruturados (tipo de evento, refs de pedido, hiperligações) para UI rica.
+  payload   Json?
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
 

@@ -50,11 +50,15 @@ function OfferShowcaseTileInner({
       <h3 className="ae-offer-tile__title">{p.name}</h3>
       {showRating ? (
         <div className="ae-offer-tile__social">
-          {p.reviewCount > 0 ? (
+          {p.averageRating != null ? (
             <>
-              <StarRating value={Number(p.averageRating ?? 0)} size="sm" showValue />
+              <StarRating value={Number(p.averageRating)} size="sm" showValue />
               <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
             </>
+          ) : p.reviewCount > 0 ? (
+            <span className="ae-offer-tile__sold ae-muted" title={p.ratingTrustHintPt ?? undefined}>
+              {p.ratingTrustShortPt ?? "Reputação em formação"} · {p.soldCount.toLocaleString("pt-AO")}+ vendidos
+            </span>
           ) : (
             <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
           )}

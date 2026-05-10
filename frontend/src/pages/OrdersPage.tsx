@@ -15,10 +15,18 @@ import {
   type BuyerOrdersTab,
 } from "../utils/buyerOrderFilters.js";
 import { orderLogisticsFromItems } from "../utils/vendorOrderStatuses.js";
+import { orderItemDisplayTitle, orderItemVariantSubtitle } from "../utils/variantDisplay.js";
 
 type OrderItem = {
   productId: string;
   productNameSnapshot: string;
+  variantNameSnapshot?: string | null;
+  variant?: {
+    sku?: string | null;
+    name?: string | null;
+    color?: string | null;
+    size?: string | null;
+  } | null;
   quantity?: number;
   shopId?: string;
   deliveryTipo?: string;
@@ -321,13 +329,22 @@ export default function OrdersPage() {
                   Artigos
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                  {o.items.map((it, idx) => (
+                  {o.items.map((it, idx) => {
+                    const vSub = orderItemVariantSubtitle(it);
+                    return (
                     <li key={`${it.productId}-${idx}`} className="ae-order-items__line">
                       <div>
-                        <Link to={`/product/${it.productId}`} style={{ fontWeight: 600 }}>
-                          {it.productNameSnapshot}
-                        </Link>
-                        <span className="ae-muted"> · Qtd. {it.quantity ?? 1}</span>
+                        <div>
+                          <Link to={`/product/${it.productId}`} style={{ fontWeight: 600 }}>
+                            {it.productNameSnapshot}
+                          </Link>
+                          <span className="ae-muted"> · Qtd. {it.quantity ?? 1}</span>
+                        </div>
+                        {vSub ? (
+                          <div className="ae-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                            {vSub}
+                          </div>
+                        ) : null}
                       </div>
                       {o.status === "ENTREGUE" ? (
                         <button
@@ -337,7 +354,7 @@ export default function OrdersPage() {
                             setReviewModal({
                               orderId: o.id,
                               productId: it.productId,
-                              productName: it.productNameSnapshot,
+                              productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
                             })
                           }
                         >
@@ -345,7 +362,8 @@ export default function OrdersPage() {
                         </button>
                       ) : null}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </div>
             ) : null}

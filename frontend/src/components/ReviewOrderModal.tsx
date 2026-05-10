@@ -26,6 +26,9 @@ function parseUrls(raw: string): string[] {
 
 export function ReviewOrderModal({ open, token, orderId, productId, productName, onClose, onCreated }: Props) {
   const [rating, setRating] = useState(5);
+  const [ratingQuality, setRatingQuality] = useState(5);
+  const [ratingSellerCommunication, setRatingSellerCommunication] = useState(5);
+  const [ratingDelivery, setRatingDelivery] = useState(5);
   const [comment, setComment] = useState("");
   const [urlsText, setUrlsText] = useState("");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -36,6 +39,9 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
   useEffect(() => {
     if (!open) {
       setRating(5);
+      setRatingQuality(5);
+      setRatingSellerCommunication(5);
+      setRatingDelivery(5);
       setComment("");
       setUrlsText("");
       setPhotoUrls([]);
@@ -88,6 +94,9 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
           orderId,
           productId,
           rating,
+          ratingQuality,
+          ratingSellerCommunication,
+          ratingDelivery,
           comment: comment.trim() || undefined,
           photoUrls: merged.length ? merged : undefined,
         }),
@@ -114,20 +123,40 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
     >
       <div className="ae-modal" onClick={(e) => e.stopPropagation()}>
         <h2 id="ae-review-head" style={{ marginTop: 0 }}>
-          Avaliar artigo
+          Opinião sobre o produto
         </h2>
         <p className="ae-muted" style={{ fontSize: 13 }}>
           {productName}
         </p>
+        <p className="ae-muted" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+          Só pode publicar após a encomenda estar <strong>entregue</strong>. A opinião fica ligada ao seu pedido e conta —
+          é tratada como <strong>compra verificada</strong> e contribui para a classificação visível na página do artigo.
+        </p>
         <form className="form-stack" onSubmit={submit}>
-          <label>Avaliação</label>
+          <label>Classificação geral</label>
           <StarRating value={rating} size="lg" onChange={setRating} disabled={loading || uploading} />
-          <label>Comentário</label>
-          <textarea rows={4} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Opcional mas recomendado" />
+          <label>Qualidade do produto</label>
+          <StarRating value={ratingQuality} size="md" onChange={setRatingQuality} disabled={loading || uploading} />
+          <label>Comunicação do vendedor</label>
+          <StarRating
+            value={ratingSellerCommunication}
+            size="md"
+            onChange={setRatingSellerCommunication}
+            disabled={loading || uploading}
+          />
+          <label>Velocidade da entrega</label>
+          <StarRating value={ratingDelivery} size="md" onChange={setRatingDelivery} disabled={loading || uploading} />
+          <label>Comentário escrito</label>
+          <textarea
+            rows={4}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Opcional. Descreva o produto recebido, embalagem ou qualquer detalhe útil para outros compradores."
+          />
 
-          <label>Fotos da avaliação (opcional, até {MAX_REVIEW_PHOTOS})</label>
-          <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 8px" }}>
-            Carregue fotos do produto recebido. São tratadas no servidor (orientação e tamanho).
+          <label>Fotos (opcional, até {MAX_REVIEW_PHOTOS})</label>
+          <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 8px", lineHeight: 1.45 }}>
+            Fotografias do artigo real ajudam a validar a sua opinião. As imagens são optimizadas no servidor.
           </p>
           <input
             type="file"
@@ -157,7 +186,7 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
           {uploading ? <div className="ae-muted" style={{ fontSize: 12 }}>A carregar imagens…</div> : null}
 
           <label className="ae-muted" style={{ fontSize: 12 }}>
-            Ou cole URLs públicas (opcional, até preencher {MAX_REVIEW_PHOTOS} fotos no total)
+            Ou URLs públicas de imagens (opcional, até {MAX_REVIEW_PHOTOS} no total)
           </label>
           <textarea
             rows={2}
@@ -173,7 +202,7 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
               Cancelar
             </button>
             <button type="submit" className="btn btn-primary" disabled={loading || uploading}>
-              {loading ? "A publicar…" : "Publicar avaliação"}
+              {loading ? "A enviar…" : "Enviar opinião"}
             </button>
           </div>
         </form>

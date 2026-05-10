@@ -15,8 +15,30 @@ export const reviewController = {
   }),
 
   list: asyncHandler(async (req, res) => {
-    const list = await reviewService.listForProduct(req.params.productId);
-    res.json(list);
+    const sortRaw = req.query.sort;
+    const sort =
+      sortRaw === "helpful" || sortRaw === "rating_desc" || sortRaw === "rating_asc" || sortRaw === "recent"
+        ? sortRaw
+        : "recent";
+    const photosOnly = req.query.photosOnly === "1" || req.query.photosOnly === "true";
+    const skip = Number(req.query.skip) || 0;
+    const take = Number(req.query.take) || 50;
+    const viewerUserId = req.user?.sub;
+    const out = await reviewService.listForProduct(req.params.productId, {
+      sort,
+      photosOnly,
+      skip,
+      take,
+      viewerUserId,
+    });
+    res.json(out);
+  }),
+
+  markHelpful: asyncHandler(async (req, res) => {
+    const userId = req.user?.sub;
+    if (!userId) throw new HttpError(401, "Autenticação necessária");
+    const out = await reviewService.markHelpful(userId, req.params.reviewId);
+    res.json(out);
   }),
 
   adminList: asyncHandler(async (req, res) => {

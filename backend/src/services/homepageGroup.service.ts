@@ -5,6 +5,7 @@ import { HttpError } from "../middlewares/errorHandler.js";
 import type { PatchHomeProductGroupInput } from "../validators/homepageGroup.validators.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { publicMediaUrl } from "../utils/publicMediaUrl.js";
+import { mergePublicRatingFields } from "../utils/ratingTrust.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 function isListedProductPublic(
@@ -39,6 +40,7 @@ function cardDto(p: {
   reviewCount: number;
   images: { url: string }[];
 }) {
+  const rp = mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount });
   return {
     id: p.id,
     name: p.name,
@@ -48,8 +50,10 @@ function cardDto(p: {
     promoPrice: p.promoPrice?.toString() ?? null,
     displayPrice: p.displayPrice.toString(),
     soldCount: Number(p.soldCount || 0),
-    averageRating: p.averageRating,
-    reviewCount: Number(p.reviewCount || 0),
+    averageRating: rp.averageRating,
+    reviewCount: rp.reviewCount,
+    ratingTrustHintPt: rp.ratingTrustHintPt,
+    ratingTrustShortPt: rp.ratingTrustShortPt,
     images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
   };
 }

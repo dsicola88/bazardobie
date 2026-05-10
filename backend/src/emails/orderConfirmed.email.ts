@@ -4,10 +4,18 @@ import { emailOutboxService } from "../services/emailOutbox.service.js";
 
 export const TEMPLATE_ORDER_CONFIRMED = "ORDER_CONFIRMED";
 
+export type OrderConfirmedItemLine = {
+  productName: string;
+  variantSubtitle: string | null;
+  quantity: number;
+};
+
 export type OrderConfirmedLine = {
   orderCode: string;
   grandTotal: string;
   shopNames: string[];
+  /** Linhas de artigo (nome da ficha + variante no momento da compra). */
+  lines?: OrderConfirmedItemLine[];
 };
 
 function formatMoneyKz(amountStr: string): string {
@@ -36,9 +44,43 @@ export function buildOrderConfirmationEmail(input: {
     })
     .join("");
 
+  const detailBlocksHtml = input.orders
+    .map((o) => {
+      if (!o.lines?.length) return "";
+      const lis = o.lines
+        .map((ln) => {
+          const name = escapeHtml(ln.productName);
+          const sub =
+            ln.variantSubtitle != null && ln.variantSubtitle.trim() !== ""
+              ? ` · <span style="color:#64748b;">${escapeHtml(ln.variantSubtitle.trim())}</span>`
+              : "";
+          return `<li style="margin:4px 0;">${name}${sub} <strong>× ${ln.quantity}</strong></li>`;
+        })
+        .join("");
+      return `<div style="margin:14px 0 10px;padding:12px 14px;background:#fff;border:1px solid #e8e8e8;border-radius:8px;"><div style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:8px;">Pedido ${escapeHtml(o.orderCode)}</div><ul style="margin:0;padding-left:18px;">${lis}</ul></div>`;
+    })
+    .join("");
+
   const linesText = input.orders
     .map((o) => `- ${o.orderCode} (${o.shopNames.join(", ")}) — ${formatMoneyKz(o.grandTotal)}`)
     .join("\n");
+
+  const detailText = input.orders
+    .map((o) => {
+      if (!o.lines?.length) return "";
+      const inner = o.lines
+        .map((ln) => {
+          const sub =
+            ln.variantSubtitle != null && ln.variantSubtitle.trim() !== ""
+              ? ` · ${ln.variantSubtitle.trim()}`
+              : "";
+          return `  • ${ln.productName}${sub} × ${ln.quantity}`;
+        })
+        .join("\n");
+      return `${o.orderCode}:\n${inner}`;
+    })
+    .filter(Boolean)
+    .join("\n\n");
 
   const html = `
       <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111;line-height:1.45;max-width:560px;">
@@ -50,6 +92,7 @@ export function buildOrderConfirmationEmail(input: {
           <thead><tr><th align="left" style="padding:10px 12px;background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;">Pedido</th><th align="left" style="padding:10px 12px;background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;">Loja(s)</th><th align="right" style="padding:10px 12px;background:#f1f5f9;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;">Total</th></tr></thead>
           <tbody>${linesHtml}</tbody>
         </table>
+        ${detailBlocksHtml ? `<div style="margin-top:8px;">${detailBlocksHtml}</div>` : ""}
         <p style="margin:18px 0 10px;">
           <a href="${ordersUrl}" style="display:inline-block;padding:10px 16px;background:#e62e04;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;">
             Ver encomendas na conta
@@ -68,6 +111,7 @@ export function buildOrderConfirmationEmail(input: {
       : `Foram registados ${input.orders.length} pedidos no BAZAR DO BIÉ.`,
     "",
     linesText,
+    ...(detailText ? ["", "Artigos:", detailText] : []),
     "",
     `Consulte as encomendas em: ${ordersUrl}`,
     `Grupo: ${input.checkoutGroupId}`,

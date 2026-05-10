@@ -3,6 +3,7 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { OrderTrackingEditor } from "../components/OrderTrackingEditor.js";
 import { formatKz } from "../utils/format.js";
+import { orderItemVariantSubtitle } from "../utils/variantDisplay.js";
 import { etiquetaEstadoPedidoCliente } from "../utils/buyerOrderFilters.js";
 import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
 import { logisticsSelectableStatuses } from "../utils/vendorOrderStatuses.js";
@@ -23,6 +24,7 @@ type Row = {
   user?: { name: string; phone: string | null };
   items: {
     productNameSnapshot: string;
+    variantNameSnapshot?: string | null;
     quantity: number;
     shop?: { name: string; city: string; province: string } | null;
   }[];
@@ -160,15 +162,25 @@ export default function LogisticsOrders() {
             </div>
             <table className="ae-data-table" style={{ border: "none", borderRadius: 0 }}>
               <tbody>
-                {o.items.map((it, i) => (
+                {o.items.map((it, i) => {
+                  const vSub = orderItemVariantSubtitle(it);
+                  return (
                   <tr key={i}>
-                    <td>{it.productNameSnapshot}</td>
+                    <td>
+                      {it.productNameSnapshot}
+                      {vSub ? (
+                        <div className="ae-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                          {vSub}
+                        </div>
+                      ) : null}
+                    </td>
                     <td style={{ width: 100 }}>× {it.quantity}</td>
                     <td style={{ width: 160 }} className="ae-muted">
                       {it.shop?.city}, {it.shop?.province}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <div style={{ padding: "14px", borderTop: "1px solid var(--ae-line)" }}>

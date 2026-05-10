@@ -7,6 +7,7 @@ import { formatKz, formatFreteKz, formatBusinessDaysPt } from "../utils/format.j
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
+import { variantDisplaySummary } from "../utils/variantDisplay.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -77,12 +78,6 @@ function coerceFreightMode(raw: unknown): FreightMode {
 
 function unitPriceKz(it: CheckoutCartItem): number {
   return variantEffectiveUnitKz(it.product, it.variant ?? null);
-}
-
-function checkoutVariantSubtitle(v: NonNullable<CheckoutCartItem["variant"]>): string {
-  const parts = [v.color, v.size, v.name].map((x) => (x ?? "").trim()).filter(Boolean);
-  if (parts.length) return parts.join(" · ");
-  return (v.sku ?? "").trim() || "";
 }
 
 function totals(items: CheckoutCartItem[]) {
@@ -1064,7 +1059,7 @@ export default function CheckoutPage() {
                               : "plataforma (BAZAR DO BIÉ)"
                             : "loja parceira"}{" "}
                           · {formatBusinessDaysPt(it.productDeliveryOption.prazoEstimado)}
-                          {it.variant ? ` · ${checkoutVariantSubtitle(it.variant)}` : ""}
+                          {it.variant ? ` · ${variantDisplaySummary(it.variant)}` : ""}
                         </div>
                         <div className="ae-checkout-sum-line__pr">
                           <span>{formatKz(line)}</span>

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { OrderTrackingEditor } from "../components/OrderTrackingEditor.js";
 import { OrderChatPanel } from "../components/OrderChatPanel.js";
 import { formatKz } from "../utils/format.js";
+import { orderItemVariantSubtitle } from "../utils/variantDisplay.js";
 import { etiquetaEstadoPedidoCliente } from "../utils/buyerOrderFilters.js";
 import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
 import type { LogisticsKind } from "../utils/orderTracking.js";
@@ -20,6 +21,7 @@ type Row = {
   user?: { name: string; email: string };
   items: {
     productNameSnapshot: string;
+    variantNameSnapshot?: string | null;
     quantity: number;
     unitPrice: string;
     deliveryTipo?: string;
@@ -213,13 +215,23 @@ export default function VendorOrders() {
             <div className="ae-table-wrap">
               <table className="ae-data-table" style={{ border: "none", borderRadius: 0 }}>
                 <tbody>
-                  {o.items.map((it, i) => (
+                  {o.items.map((it, i) => {
+                    const vSub = orderItemVariantSubtitle(it);
+                    return (
                     <tr key={i}>
-                      <td>{it.productNameSnapshot}</td>
+                      <td>
+                        {it.productNameSnapshot}
+                        {vSub ? (
+                          <div className="ae-muted" style={{ fontSize: 11, marginTop: 4 }}>
+                            {vSub}
+                          </div>
+                        ) : null}
+                      </td>
                       <td style={{ width: 120 }}>× {it.quantity}</td>
                       <td style={{ width: 120 }}>{formatKz(it.unitPrice)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

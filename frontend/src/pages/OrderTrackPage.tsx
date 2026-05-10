@@ -21,10 +21,18 @@ import {
   etiquetaPagamento,
 } from "../utils/paymentLabels.js";
 import { orderLogisticsFromItems } from "../utils/vendorOrderStatuses.js";
+import { orderItemDisplayTitle, orderItemVariantSubtitle } from "../utils/variantDisplay.js";
 
 type TrackItem = {
   productId: string;
   productNameSnapshot: string;
+  variantNameSnapshot?: string | null;
+  variant?: {
+    sku?: string | null;
+    name?: string | null;
+    color?: string | null;
+    size?: string | null;
+  } | null;
   quantity?: number;
   deliveryTipo?: string;
 };
@@ -284,7 +292,9 @@ export default function OrderTrackPage() {
         <div className="page-panel" style={{ marginBottom: 14 }}>
           <h2 style={{ marginTop: 0, marginBottom: 10, fontSize: 15 }}>Artigos</h2>
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-            {row.items.map((it, idx) => (
+            {row.items.map((it, idx) => {
+              const vSub = orderItemVariantSubtitle(it);
+              return (
               <li
                 key={`${it.productId}-${idx}`}
                 style={{
@@ -298,10 +308,17 @@ export default function OrderTrackPage() {
                 }}
               >
                 <div>
-                  <Link to={`/product/${it.productId}`} style={{ fontWeight: 600 }}>
-                    {it.productNameSnapshot}
-                  </Link>
-                  <span className="ae-muted"> · Qtd. {it.quantity ?? 1}</span>
+                  <div>
+                    <Link to={`/product/${it.productId}`} style={{ fontWeight: 600 }}>
+                      {it.productNameSnapshot}
+                    </Link>
+                    <span className="ae-muted"> · Qtd. {it.quantity ?? 1}</span>
+                  </div>
+                  {vSub ? (
+                    <div className="ae-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                      {vSub}
+                    </div>
+                  ) : null}
                   {it.deliveryTipo ? (
                     <div className="ae-muted" style={{ fontSize: 12, marginTop: 4 }}>
                       Envio: {it.deliveryTipo === "PLATAFORMA" ? "BAZAR DO BIÉ (plataforma)" : "Loja parceira"}
@@ -316,7 +333,7 @@ export default function OrderTrackPage() {
                       setReviewModal({
                         orderId: row.id,
                         productId: it.productId,
-                        productName: it.productNameSnapshot,
+                        productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
                       })
                     }
                   >
@@ -324,7 +341,8 @@ export default function OrderTrackPage() {
                   </button>
                 ) : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       ) : null}

@@ -15,6 +15,7 @@ import {
   etiquetaPagamento,
 } from "../utils/paymentLabels.js";
 import { formatKz } from "../utils/format.js";
+import { orderItemVariantSubtitle } from "../utils/variantDisplay.js";
 import { orderLogisticsFromItems } from "../utils/vendorOrderStatuses.js";
 
 const ORDER_STATUSES = [
@@ -59,6 +60,7 @@ type AdminOrder = {
   items: {
     productId: string;
     productNameSnapshot: string;
+    variantNameSnapshot?: string | null;
     quantity: number;
     unitPrice: string;
     deliveryTipo?: string;
@@ -406,15 +408,25 @@ export default function AdminOrderDetail() {
             </tr>
           </thead>
           <tbody>
-            {order.items.map((it, i) => (
+            {order.items.map((it, i) => {
+              const vSub = orderItemVariantSubtitle(it);
+              return (
               <tr key={`${it.productId}-${i}`}>
                 <td>{it.shop?.name ?? "—"}</td>
-                <td>{it.productNameSnapshot}</td>
+                <td>
+                  {it.productNameSnapshot}
+                  {vSub ? (
+                    <div className="ae-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      {vSub}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="ae-muted">{it.deliveryTipo === "PLATAFORMA" ? "Plataforma" : "Parceiro"}</td>
                 <td>{it.quantity}</td>
                 <td>{formatKz(it.unitPrice)}</td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -99,7 +99,7 @@ r.get("/products/facet-categories", productController.facetCategories);
 r.get("/products/suggest", productController.suggest);
 r.post("/products/visual-search", visualSearchLimiter, runImageSearchUpload, productController.visualSearch);
 r.get("/products/:id/related", productController.related);
-r.get("/products/:productId/reviews", reviewController.list);
+r.get("/products/:productId/reviews", optionalAuth, reviewController.list);
 r.get("/products/:id", productController.get);
 
 r.get("/cart", optionalAuth, cartController.get);
@@ -184,6 +184,7 @@ r.post(
 );
 
 r.post("/reviews", requireAuth, requireRoles("CLIENTE"), reviewController.create);
+r.post("/reviews/:reviewId/helpful", requireAuth, reviewController.markHelpful);
 
 r.get(
   "/orders/:id/chat/messages",

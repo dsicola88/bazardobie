@@ -16,6 +16,7 @@ type ProductLike = {
   images?: { url: string }[];
   variants?: { imageUrl: string | null }[] | null;
   reviews?: Array<{
+    photoUrls?: string[];
     user?: { avatarUrl: string | null } | null;
   }> | null;
 };
@@ -39,6 +40,9 @@ export function mapProductMediaForApi<T extends ProductLike>(p: T): T {
     ...(p.reviews && {
       reviews: p.reviews.map((r) => ({
         ...r,
+        photoUrls: Array.isArray(r.photoUrls)
+          ? r.photoUrls.map((u) => (typeof u === "string" ? publicMediaUrl(u) : u))
+          : r.photoUrls,
         ...(r.user && {
           user: {
             ...r.user,
