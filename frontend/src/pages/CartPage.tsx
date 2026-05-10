@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, cartSessionHeaders } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
-import { formatKz, formatFreteKz } from "../utils/format.js";
+import { formatKz, formatFreteKz, formatBusinessDaysPt } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { CartThumbWithZoom } from "../components/CartThumbWithZoom.js";
 import { productConditionLabel } from "../utils/productCondition.js";
@@ -338,13 +338,14 @@ export default function CartPage() {
                           </div>
                           {item.variant ? (
                             <div className="ae-table-cart__variant">
+                              <span className="ae-table-cart__variant-kicker">Variante</span>
                               <span className="ae-table-cart__variant-label">{cartVariantLine(item.variant)}</span>
                             </div>
                           ) : null}
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td className="ae-table-cart__ship">
                       <div style={{ fontSize: 13 }}>
                         {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
                           ? item.productDeliveryOption.logisticsPartner
@@ -354,7 +355,7 @@ export default function CartPage() {
                         · {formatFreteKz(item.productDeliveryOption.custoEntrega)}
                       </div>
                       <div className="ae-muted" style={{ fontSize: 12 }}>
-                        Prazo: {item.productDeliveryOption.prazoEstimado} dias úteis
+                        Prazo: {formatBusinessDaysPt(item.productDeliveryOption.prazoEstimado)}
                       </div>
                     </td>
                     <td className="ae-table-cart__num">

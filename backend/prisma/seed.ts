@@ -216,7 +216,7 @@ async function seedAngolaGeoCatalog() {
   await prisma.deliveryPickupPoint.upsert({
     where: { id: "demo-pickup-cuito-central" },
     update: {
-      namePt: "BAZAR Pickup — Centro Cuito (demo)",
+      namePt: "BAZAR Pickup — Centro Cuito",
       refCode: "P-CUITO-01",
       latitude: -12.46,
       longitude: 16.7,
@@ -227,7 +227,7 @@ async function seedAngolaGeoCatalog() {
     create: {
       id: "demo-pickup-cuito-central",
       municipalityId: "geo-mun-bie-cuito",
-      namePt: "BAZAR Pickup — Centro Cuito (demo)",
+      namePt: "BAZAR Pickup — Centro Cuito",
       refCode: "P-CUITO-01",
       latitude: -12.46,
       longitude: 16.7,
@@ -309,7 +309,9 @@ async function seedDemoAeGalleryProduct() {
 
     const logisticsPartnerId = (
       await prisma.logisticsPartner.findFirst({
-        where: { name: "Expresso BAZAR — Bié (demo)" },
+        where: {
+          OR: [{ name: "Expresso BAZAR — Bié" }, { name: "Expresso BAZAR — Bié (demo)" }],
+        },
         select: { id: true },
       })
     )?.id;
@@ -405,36 +407,41 @@ async function main() {
     create: { name: "Geral Angola", slug: catSlug },
   });
 
-  /** Transportadoras de demonstração (Admin → Transportadoras). Vendedores podem associá-las às opções PLATAFORMA. */
+  /** Transportadoras exemplo (Admin → Transportadoras). Vendedores podem associá-las às opções PLATAFORMA. */
   const demoCarriers = [
     {
-      name: "Expresso BAZAR — Bié (demo)",
+      name: "Expresso BAZAR — Bié",
+      /** Migra nome antigo do seed sem duplicar registo. */
+      legacyNames: ["Expresso BAZAR — Bié (demo)"],
       nif: "5000123456",
       phone: "+244 999 000 111",
       contactName: "Central de rota",
       province: "Bié",
       city: "Cuito",
-      notes: "Dados fictícios para ambiente de desenvolvimento / demonstração.",
+      notes: "Dados fictícios para desenvolvimento; substituir por parceiros reais em produção.",
     },
     {
-      name: "Última milha Cuito (demo)",
+      name: "Última milha Cuito",
+      legacyNames: ["Última milha Cuito (demo)"],
       nif: "5000654321",
       phone: "+244 923 000 222",
       contactName: "Operações",
       province: "Bié",
       city: "Cuito",
-      notes: "Segundo parceiro demo — permite testar escolha no produto.",
+      notes: "Segundo parceiro exemplo — permite testar escolha no produto.",
     },
   ] as const;
   for (const c of demoCarriers) {
+    const namesToMatch = [c.name, ...c.legacyNames];
     const existing = await prisma.logisticsPartner.findFirst({
-      where: { name: c.name },
+      where: { OR: namesToMatch.map((name) => ({ name })) },
       select: { id: true },
     });
     if (existing) {
       await prisma.logisticsPartner.update({
         where: { id: existing.id },
         data: {
+          name: c.name,
           nif: c.nif,
           phone: c.phone,
           contactName: c.contactName,
@@ -520,7 +527,7 @@ async function main() {
     };
 
     await upsertLoc(
-      "Cuito centro (referência demo)",
+      "Cuito centro",
       "Bié",
       "Cuito",
       -12.46,
@@ -528,7 +535,7 @@ async function main() {
       "geo-mun-bie-cuito"
     );
     await upsertLoc(
-      "Luanda — centro (referência demo)",
+      "Luanda — centro",
       "Luanda",
       "Luanda",
       -8.8383,
@@ -541,14 +548,14 @@ async function main() {
       update: {
         price: 1500,
         active: true,
-        label: "Luanda · Talatona (demo)",
+        label: "Luanda · Talatona",
         sortOrder: 0,
         municipalityId: "geo-mun-lua-talatona",
       },
       create: {
         province: "Luanda",
         city: "Talatona",
-        label: "Luanda · Talatona (demo)",
+        label: "Luanda · Talatona",
         price: 1500,
         sortOrder: 0,
         active: true,
@@ -560,14 +567,14 @@ async function main() {
       update: {
         price: 800,
         active: true,
-        label: "Bié · Cuito (demo)",
+        label: "Bié · Cuito",
         sortOrder: 0,
         municipalityId: "geo-mun-bie-cuito",
       },
       create: {
         province: "Bié",
         city: "Cuito",
-        label: "Bié · Cuito (demo)",
+        label: "Bié · Cuito",
         price: 800,
         sortOrder: 0,
         active: true,

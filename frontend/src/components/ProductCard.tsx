@@ -103,7 +103,9 @@ function ProductCardInner({
           <span className="ae-pcard__price">{formatKz(p.displayPrice)}</span>
           {hasPromo ? <span className="ae-pcard__old">{formatKz(p.price)}</span> : null}
         </div>
-        <div className="ae-pcard__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendas</div>
+        {p.soldCount > 0 ? (
+          <div className="ae-pcard__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendas</div>
+        ) : null}
       </div>
     </Link>
   );

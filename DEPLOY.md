@@ -36,7 +36,9 @@ Configuração típica:
 
 - Railway — `PUBLIC_BASE_URL` = `https://api.bazardobie.com` (sem barra no fim).
 - Railway — `FRONTEND_URL` = o URL canónico do site (ex. `https://bazardobie.com`); usa o mesmo host que os utilizadores abrem no browser (se redireccionares `www` ↔ apex, escolhe um como «oficial» nesta variável).
+- Railway — opcional `CORS_ALLOWED_ORIGINS` = origens adicionais permitidas pelo browser (separadas por vírgula, sem espaços desnecessários), por exemplo `https://www.bazardobie.com` se o site canónico for o apex mas algumas páginas ou previews abrirem em `www`; cada URL deve coincidir exactamente com o `Origin` enviado pelo browser (protocolo + host + porta).
 - Vercel — `VITE_API_BASE` = `https://api.bazardobie.com/api/v1`.
+- Vercel — opcional `VITE_SHOW_ONLINE_PAYMENT` = `true` só para pilotos internos com fluxo MOCK na API; num lançamento público sem gateway real, omitir esta variável (ou `false`) para esconder «Pagamento online» no checkout.
 
 **OAuth:** redirects autorizados (Google/Facebook):
 
@@ -68,6 +70,7 @@ Defina no serviço Node (produção):
 | `JWT_SECRET` | String longa e aleatória (obrigatória). |
 | `PUBLIC_BASE_URL` | URL **pública da API**, ex. `https://api.bazardobie.com` (sem barra final). Usada em OAuth e links. |
 | `FRONTEND_URL` | URL canónico do site, ex. `https://bazardobie.com`. |
+| `CORS_ALLOWED_ORIGINS` | Opcional: mais hosts autorizados para pedidos com cookies (ex.: `https://www.bazardobie.com`). |
 | `JWT_EXPIRES_IN` | Opcional; ex. `7d`. |
 | `PORT` | Railway injecta automaticamente; não é preciso definir manualmente na maioria dos casos. |
 

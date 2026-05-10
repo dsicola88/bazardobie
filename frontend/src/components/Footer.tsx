@@ -22,6 +22,7 @@ export function Footer() {
           <Link to="/search">Explorar catálogo</Link>
           <Link to="/cart">Carrinho de compras</Link>
           <Link to="/orders">As minhas encomendas</Link>
+          <Link to="/privacidade">Privacidade</Link>
         </div>
         <div>
           <div className="ae-footer__h">Parceiros</div>

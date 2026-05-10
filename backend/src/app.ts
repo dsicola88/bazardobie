@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import path from "node:path";
 import { env, isR2Configured } from "./config/env.js";
+import { corsAllowedOrigins } from "./config/corsOrigins.js";
 import routes from "./routes/index.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import "./types/auth.js";
@@ -41,7 +42,19 @@ export function createApp() {
     app.set("trust proxy", 1);
   }
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  app.use(cors({ origin: true, credentials: true }));
+  const allowedBrowserOrigins = corsAllowedOrigins();
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+        callback(null, allowedBrowserOrigins.includes(origin));
+      },
+      credentials: true,
+    })
+  );
   app.use(express.json({ limit: "2mb" }));
 
   app.use("/uploads", express.static(path.resolve(env.UPLOAD_DIR)));

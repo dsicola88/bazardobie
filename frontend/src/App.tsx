@@ -53,6 +53,7 @@ const OrdersPage = lazy(() => import("./pages/OrdersPage.js"));
 const OrderTrackPage = lazy(() => import("./pages/OrderTrackPage.js"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage.js"));
 const TermsPartnersPage = lazy(() => import("./pages/TermsPartnersPage.js"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage.js"));
 const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage.js"));
 const VendorLayout = lazy(() => import("./vendor/VendorLayout.js"));
 const VendorCredibility = lazy(() => import("./vendor/VendorCredibility.js"));
@@ -163,6 +164,7 @@ export default function App() {
           <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="quero-vender" element={<BecomeVendorPage />} />
           <Route path="termos-parceiros" element={<TermsPartnersPage />} />
+          <Route path="privacidade" element={<PrivacyPage />} />
           <Route path="product/:id" element={<ProductPage />} />
           <Route path="loja/:shopId/sobre" element={<ShopPublicAboutPage />} />
           <Route path="cart" element={<CartPage />} />

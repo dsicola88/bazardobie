@@ -29,6 +29,15 @@ import { adminAuditLog } from "../middlewares/adminAuditLog.js";
 import { runImageSearchUpload, runUpload } from "../middlewares/upload.js";
 import { notificationService } from "../services/notification.service.js";
 import { HttpError } from "../middlewares/errorHandler.js";
+import {
+  apiGeneralLimiter,
+  authLoginLimiter,
+  authPasswordRecoveryLimiter,
+  authRegisterLimiter,
+  oauthFlowLimiter,
+  uploadLimiter,
+  visualSearchLimiter,
+} from "../middlewares/rateLimit.js";
 
 const r = Router();
 
@@ -49,16 +58,18 @@ r.get("/health", (_req, res) => {
   });
 });
 
-r.post("/auth/register", authController.register);
-r.post("/auth/login", authController.login);
-r.post("/auth/forgot-password", authController.forgotPassword);
-r.post("/auth/reset-password", authController.resetPassword);
+r.use(apiGeneralLimiter);
+
+r.post("/auth/register", authRegisterLimiter, authController.register);
+r.post("/auth/login", authLoginLimiter, authController.login);
+r.post("/auth/forgot-password", authPasswordRecoveryLimiter, authController.forgotPassword);
+r.post("/auth/reset-password", authPasswordRecoveryLimiter, authController.resetPassword);
 r.get("/auth/oauth/providers", oauthController.providers);
-r.get("/auth/oauth/google", oauthController.googleStart);
-r.get("/auth/oauth/google/callback", oauthController.googleCallback);
-r.get("/auth/oauth/facebook", oauthController.facebookStart);
-r.get("/auth/oauth/facebook/callback", oauthController.facebookCallback);
-r.get("/auth/oauth/exchange", oauthController.exchange);
+r.get("/auth/oauth/google", oauthFlowLimiter, oauthController.googleStart);
+r.get("/auth/oauth/google/callback", oauthFlowLimiter, oauthController.googleCallback);
+r.get("/auth/oauth/facebook", oauthFlowLimiter, oauthController.facebookStart);
+r.get("/auth/oauth/facebook/callback", oauthFlowLimiter, oauthController.facebookCallback);
+r.get("/auth/oauth/exchange", oauthFlowLimiter, oauthController.exchange);
 r.get("/auth/me", requireAuth, authController.me);
 r.patch("/auth/profile", requireAuth, authController.patchProfile);
 r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authController.becomeVendor);
@@ -86,7 +97,7 @@ r.get("/shops/:id", shopController.publicGet);
 r.get("/products", productController.search);
 r.get("/products/facet-categories", productController.facetCategories);
 r.get("/products/suggest", productController.suggest);
-r.post("/products/visual-search", runImageSearchUpload, productController.visualSearch);
+r.post("/products/visual-search", visualSearchLimiter, runImageSearchUpload, productController.visualSearch);
 r.get("/products/:id/related", productController.related);
 r.get("/products/:productId/reviews", reviewController.list);
 r.get("/products/:id", productController.get);
@@ -218,6 +229,7 @@ r.patch(
 // Upload — comprovativo / imagens (vendedores e admin)
 r.post(
   "/uploads",
+  uploadLimiter,
   requireAuth,
   requireRoles("ADMIN", "SUPORTE", "VENDEDOR", "CLIENTE"),
   runUpload,

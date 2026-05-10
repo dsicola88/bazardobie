@@ -16,6 +16,8 @@ export const env = {
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL ?? "http://localhost:4000",
   /** URL do site (redireccto após mock de pagamento ou futuro return do PayPal). */
   FRONTEND_URL: process.env.FRONTEND_URL ?? "http://localhost:5173",
+  /** Lista opcional separada por vírgulas (mesmo protocolo/host/porto que o browser usa). Em produção inclua www e apex se ambos existirem. */
+  CORS_ALLOWED_ORIGINS: process.env.CORS_ALLOWED_ORIGINS ?? "",
   /** OAuth Google — opcional; sem isto o botão no site fica inactivo até configurar. */
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? "",
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ?? "",

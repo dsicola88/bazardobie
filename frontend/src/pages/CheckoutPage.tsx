@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, apiErrorDetailsCode, cartSessionHeaders, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
-import { formatKz, formatFreteKz } from "../utils/format.js";
+import { formatKz, formatFreteKz, formatBusinessDaysPt } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
@@ -100,6 +100,21 @@ type PayMethod = "COD" | "TRANSFERENCIA" | "PAGAMENTO_ONLINE";
 function ordersPathAfterCheckout(pm: PayMethod): string {
   if (pm === "PAGAMENTO_ONLINE") return "/orders?tab=pagar";
   return "/orders?tab=espera_loja";
+}
+
+const SHOW_ONLINE_PAYMENT =
+  import.meta.env.VITE_SHOW_ONLINE_PAYMENT === "true" || Boolean(import.meta.env.DEV);
+
+function paymentMethodOptions(): { key: PayMethod; title: string; sub: string }[] {
+  const base: { key: PayMethod; title: string; sub: string }[] = [
+    { key: "COD", title: "Pagamento à entrega", sub: "Liquidar em kwanzas na entrega." },
+    { key: "TRANSFERENCIA", title: "Transferência bancária", sub: "Comprovativo: carregar ficheiro ou link." },
+  ];
+  if (!SHOW_ONLINE_PAYMENT) return base;
+  const onlineSub = import.meta.env.DEV
+    ? "Fluxo de demonstração ligado à API — não movimenta valores reais."
+    : "Disponível apenas em piloto autorizado enquanto o gateway de produção é finalizado.";
+  return [...base, { key: "PAGAMENTO_ONLINE", title: "Pagamento online", sub: onlineSub }];
 }
 
 export default function CheckoutPage() {
@@ -867,25 +882,7 @@ export default function CheckoutPage() {
               <h2>Pagamento</h2>
             </div>
             <div className="ae-pay-options">
-              {(
-                [
-                  {
-                    key: "COD" as const,
-                    title: "Pagamento à entrega",
-                    sub: "Liquidar em kwanzas na entrega.",
-                  },
-                  {
-                    key: "TRANSFERENCIA" as const,
-                    title: "Transferência bancária",
-                    sub: "Comprovativo: carregar ficheiro ou link.",
-                  },
-                  {
-                    key: "PAGAMENTO_ONLINE" as const,
-                    title: "Meio electrónico",
-                    sub: "Multicaixa ou carteira (se activo).",
-                  },
-                ] as const
-              ).map((opt) => (
+              {paymentMethodOptions().map((opt) => (
                 <label
                   key={opt.key}
                   className={`ae-pay-opt ${paymentMethod === opt.key ? "ae-pay-opt--on" : ""}`}
@@ -959,8 +956,31 @@ export default function CheckoutPage() {
             ) : null}
 
             {paymentMethod === "PAGAMENTO_ONLINE" ? (
-              <div className="ae-pay-online-hint ae-muted" style={{ fontSize: 12, marginTop: 12 }}>
-                Próximo passo: ecrã de pagamento.
+              <div
+                className="page-panel"
+                style={{
+                  marginTop: 12,
+                  padding: "12px 14px",
+                  borderLeft: "4px solid var(--ae-warn)",
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                }}
+              >
+                <p className="ae-muted" style={{ margin: "0 0 8px" }}>
+                  Após confirmar a compra será gerada uma sessão de pagamento na área «As minhas encomendas».
+                </p>
+                <p style={{ margin: 0 }}>
+                  {import.meta.env.DEV ? (
+                    <>
+                      <strong>Ambiente local:</strong> a API usa o fornecedor MOCK — não há cobrança real.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Piloto:</strong> confirme com o suporte se deve usar este meio; o gateway público será
+                      anunciado quando estiver disponível.
+                    </>
+                  )}
+                </p>
               </div>
             ) : null}
           </section>
@@ -1043,7 +1063,7 @@ export default function CheckoutPage() {
                               ? `plataforma · ${it.productDeliveryOption.logisticsPartner.name}`
                               : "plataforma (BAZAR DO BIÉ)"
                             : "loja parceira"}{" "}
-                          · {it.productDeliveryOption.prazoEstimado}d
+                          · {formatBusinessDaysPt(it.productDeliveryOption.prazoEstimado)}
                           {it.variant ? ` · ${checkoutVariantSubtitle(it.variant)}` : ""}
                         </div>
                         <div className="ae-checkout-sum-line__pr">

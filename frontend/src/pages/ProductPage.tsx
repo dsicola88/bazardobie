@@ -7,7 +7,7 @@ import { ProductReportModal } from "../components/ProductReportModal.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { StarRating } from "../components/StarRating.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
-import { formatKz, formatFreteKz, formatRating } from "../utils/format.js";
+import { formatKz, formatFreteKz, formatRating, formatBusinessDaysPt } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
@@ -747,12 +747,21 @@ export default function ProductPage() {
                 <div className="ae-buybox__reviews-line">
                   <StarRating value={Number(product.averageRating)} tone="gold" size="lg" showValue />
                   <span>
-                    {product.reviewCount.toLocaleString("pt-PT")} avaliações · {product.soldCount.toLocaleString("pt-PT")}+
-                    unidades vendidas
+                    {product.reviewCount.toLocaleString("pt-PT")} avaliações
+                    {product.soldCount > 0 ? (
+                      <>
+                        {" "}
+                        · {product.soldCount.toLocaleString("pt-PT")}+ unidades vendidas
+                      </>
+                    ) : null}
                   </span>
                 </div>
+              ) : product.soldCount > 0 ? (
+                <span>
+                  {product.soldCount.toLocaleString("pt-PT")}+ unidades vendidas · ainda sem avaliações publicadas
+                </span>
               ) : (
-                <span>{product.soldCount}+ unidades vendidas · ainda sem avaliações publicadas</span>
+                <span>Ainda sem avaliações publicadas neste artigo.</span>
               )}
             </div>
             <div className="ae-buybox__price">
@@ -763,8 +772,8 @@ export default function ProductPage() {
             </div>
 
             <div className="ae-buybox__trust">
-              <span className="ae-buybox__chip">Transacção segura</span>
-              <span className="ae-buybox__chip">Pagamento à entrega (COD)</span>
+              <span className="ae-buybox__chip">Transação segura na plataforma</span>
+              <span className="ae-buybox__chip">Pagamento na entrega (COD)</span>
               {trust?.seloPremium ? (
                 <span className="ae-buybox__chip ae-buybox__chip--premium">Parceiro premium</span>
               ) : null}
@@ -899,7 +908,9 @@ export default function ProductPage() {
               </div>
             ) : null}
             <p className="ae-muted" style={{ fontSize: 12, marginTop: 0 }}>
-              {outOfStock ? "Sem stock disponível no momento." : `Stock disponível: ${stockAvailable} unidade(s).`}
+              {outOfStock
+                ? "Sem stock disponível no momento."
+                : `Stock disponível: ${stockAvailable} ${stockAvailable === 1 ? "unidade" : "unidades"}.`}
             </p>
 
             <div className="ae-field">
@@ -910,7 +921,8 @@ export default function ProductPage() {
               <select value={deliveryId} onChange={(e) => setDeliveryId(e.target.value)}>
                 {product.deliveryOptions.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.areaCidade}, {d.areaProvincia} · {formatFreteKz(d.custoEntrega)} · {d.prazoEstimado} dias
+                    {d.areaCidade}, {d.areaProvincia} · {formatFreteKz(d.custoEntrega)} ·{" "}
+                    {formatBusinessDaysPt(d.prazoEstimado)}
                     {d.tipoEntrega === "PLATAFORMA" && d.logisticsPartner
                       ? ` · ${d.logisticsPartner.name}`
                       : ""}
@@ -1034,8 +1046,8 @@ export default function ProductPage() {
               {meta?.areaProvincia}, {meta?.areaCidade}
             </p>
             <p className="ae-muted">
-              Prazo indicado: <strong>{meta?.prazoEstimado}</strong> dias úteis após confirmação da encomenda. Os prazos
-              efectivos dependem da rota logística e podem variar.
+              Prazo indicado: <strong>{meta ? formatBusinessDaysPt(meta.prazoEstimado) : "—"}</strong> após confirmação da
+              encomenda. Os prazos efectivos dependem da rota logística e podem variar.
             </p>
             <p className="ae-muted">
               Portes desta opção: <strong>{meta ? formatFreteKz(meta.custoEntrega) : "—"}</strong>
@@ -1052,7 +1064,12 @@ export default function ProductPage() {
         {tab === "reviews" ? (
           <div className="ae-tab-panel">
             {product.reviewCount === 0 ? (
-              <p className="ae-muted">Ainda não existem avaliações para este artigo.</p>
+              <div className="ae-muted" style={{ padding: "4px 0 12px" }}>
+                <p style={{ marginTop: 0 }}>Ainda não existem avaliações para este artigo.</p>
+                <p style={{ marginBottom: 0, fontSize: 13 }}>
+                  Depois de concluir a compra e receber a encomenda, poderá deixar estrelas e um comentário.
+                </p>
+              </div>
             ) : (
               <>
                 <div className="ae-pdp-reviews-hero">

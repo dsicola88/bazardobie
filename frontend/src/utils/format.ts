@@ -16,6 +16,15 @@ export function formatFreteKz(value: string | number | null | undefined): string
   return formatKz(n);
 }
 
+/** Pluralização correcta para prazos em dias úteis (UI). */
+export function formatBusinessDaysPt(days: number): string {
+  const n = Math.floor(Number(days));
+  if (!Number.isFinite(n) || n < 0) return `${days} dias úteis`;
+  if (n === 0) return "0 dias úteis";
+  if (n === 1) return "1 dia útil";
+  return `${n} dias úteis`;
+}
+
 export function formatRating(r: string | number | null | undefined): string {
   if (r == null || r === "") return "—";
   const n = Number(r);
