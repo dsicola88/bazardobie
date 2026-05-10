@@ -13,6 +13,8 @@ export type ProductCardData = {
   promoPrice?: string | number | null;
   displayPrice: string | number;
   condition?: string | null;
+  /** Presente em algumas respostas API (ex.: pesquisa visual) para filtros no cliente. */
+  isFeatured?: boolean;
   soldCount: number;
   averageRating?: string | number | null;
   reviewCount: number;

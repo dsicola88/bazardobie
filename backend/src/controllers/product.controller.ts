@@ -6,6 +6,7 @@ import {
   createProductSchema,
   updateProductSchema,
   productListQuerySchema,
+  categoryFacetQuerySchema,
 } from "../validators/product.validators.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 
@@ -62,6 +63,12 @@ export const productController = {
   search: asyncHandler(async (req, res) => {
     const q = productListQuerySchema.parse(req.query);
     const out = await productService.search(q);
+    res.json(out);
+  }),
+
+  facetCategories: asyncHandler(async (req, res) => {
+    const q = categoryFacetQuerySchema.parse(req.query);
+    const out = await productService.facetCategories(q);
     res.json(out);
   }),
 

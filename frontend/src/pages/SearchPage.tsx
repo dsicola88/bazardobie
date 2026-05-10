@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
@@ -25,6 +25,157 @@ function conditionShortLabel(c: string): string {
   if (c === "USED") return "Usado";
   if (c === "REFURBISHED") return "Recondicionado";
   return c;
+}
+
+function cmpPublicCategory(a: Category, b: Category): number {
+  return (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, "pt");
+}
+
+/** `selId` é o próprio `nodeId` ou um descendente na árvore. */
+function categoryMatchesSubtree(selId: string | undefined, nodeId: string, all: Category[]): boolean {
+  if (!selId) return false;
+  if (selId === nodeId) return true;
+  let cur = all.find((c) => c.id === selId);
+  while (cur?.parentId) {
+    if (cur.parentId === nodeId) return true;
+    cur = all.find((c) => c.id === cur.parentId);
+  }
+  return false;
+}
+
+function sumSubtreeCounts(
+  catId: string,
+  childrenByParent: Map<string, Category[]>,
+  counts: Record<string, number>,
+): number {
+  let n = counts[catId] ?? 0;
+  for (const ch of childrenByParent.get(catId) ?? []) {
+    n += sumSubtreeCounts(ch.id, childrenByParent, counts);
+  }
+  return n;
+}
+
+type CategoryFacetNavProps = {
+  params: URLSearchParams;
+  cats: Category[];
+  categoryId: string;
+  facet: { counts: Record<string, number>; total: number } | null;
+  facetLoading: boolean;
+  visualMode: boolean;
+};
+
+function CategoryFacetNav({ params, cats, categoryId, facet, facetLoading, visualMode }: CategoryFacetNavProps) {
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string, Category[]>();
+    for (const c of cats) {
+      if (!c.parentId) continue;
+      const arr = m.get(c.parentId) ?? [];
+      arr.push(c);
+      m.set(c.parentId, arr);
+    }
+    for (const arr of m.values()) arr.sort(cmpPublicCategory);
+    return m;
+  }, [cats]);
+
+  const roots = useMemo(() => cats.filter((c) => !c.parentId).sort(cmpPublicCategory), [cats]);
+
+  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!categoryId || cats.length === 0) return;
+    let cur = cats.find((c) => c.id === categoryId);
+    const ancestors: string[] = [];
+    while (cur?.parentId) {
+      ancestors.push(cur.parentId);
+      cur = cats.find((c) => c.id === cur.parentId);
+    }
+    if (ancestors.length === 0) return;
+    setExpandedMap((prev) => {
+      const next = { ...prev };
+      for (const id of ancestors) next[id] = true;
+      return next;
+    });
+  }, [categoryId, cats]);
+
+  const counts = facet?.counts ?? {};
+  const ready = facet != null && !visualMode;
+
+  function formatCount(displayed: number): string {
+    if (visualMode) return "—";
+    if (!ready && facetLoading) return "…";
+    if (!ready) return "—";
+    return displayed.toLocaleString("pt-AO");
+  }
+
+  function renderBranch(cat: Category, depth: number): ReactNode {
+    const children = childrenByParent.get(cat.id) ?? [];
+    const hasKids = children.length > 0;
+    const selBranch = categoryMatchesSubtree(categoryId, cat.id, cats);
+    const userOpen = expandedMap[cat.id];
+    const open = selBranch || Boolean(userOpen);
+    const countShown = hasKids ? sumSubtreeCounts(cat.id, childrenByParent, counts) : counts[cat.id] ?? 0;
+
+    return (
+      <div className={`ae-cat-tree__branch ae-cat-tree__branch--depth-${Math.min(depth, 4)}`}>
+        <div className="ae-cat-tree__row">
+          {hasKids ? (
+            <button
+              type="button"
+              className="ae-cat-tree__expand"
+              aria-expanded={open}
+              aria-controls={`ae-cat-sub-${cat.id}`}
+              id={`ae-cat-btn-${cat.id}`}
+              disabled={selBranch}
+              title={selBranch ? "Subcategorias visíveis enquanto há filtro activo nesta área" : undefined}
+              onClick={() => {
+                if (selBranch) return;
+                setExpandedMap((p) => ({ ...p, [cat.id]: !open }));
+              }}
+            >
+              <span className="ae-cat-tree__chev" aria-hidden>
+                {open ? "▼" : "▶"}
+              </span>
+            </button>
+          ) : (
+            <span className="ae-cat-tree__expand ae-cat-tree__expand--spacer" aria-hidden />
+          )}
+          <Link
+            to={buildSearchPath("/search", params, { categoryId: cat.id })}
+            className={`ae-cat-tree__link${categoryId === cat.id ? " ae-on" : ""}`}
+          >
+            <span className="ae-cat-tree__name">{cat.name}</span>
+            <span className="ae-cat-tree__count">{formatCount(countShown)}</span>
+          </Link>
+        </div>
+        {hasKids && open ? (
+          <div className="ae-cat-tree__subs" id={`ae-cat-sub-${cat.id}`} role="group">
+            {children.map((ch) => (
+              <div key={ch.id}>{renderBranch(ch, depth + 1)}</div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const totalLabel = formatCount(facet?.total ?? 0);
+
+  return (
+    <nav className="ae-cat-tree" aria-label="Categorias do catálogo">
+      <Link
+        to={buildSearchPath("/search", params, { categoryId: null })}
+        className={`ae-cat-tree__all${!categoryId ? " ae-on" : ""}`}
+      >
+        <span>Todas as categorias</span>
+        <span className="ae-cat-tree__count">{totalLabel}</span>
+      </Link>
+      <div className="ae-cat-tree__roots">
+        {roots.map((r) => (
+          <div key={r.id}>{renderBranch(r, 0)}</div>
+        ))}
+      </div>
+    </nav>
+  );
 }
 
 export default function SearchPage() {
@@ -57,6 +208,9 @@ export default function SearchPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [shopLabel, setShopLabel] = useState<string | null>(null);
+  const [debouncedQ, setDebouncedQ] = useState(q);
+  const [facet, setFacet] = useState<{ counts: Record<string, number>; total: number } | null>(null);
+  const [facetLoading, setFacetLoading] = useState(false);
 
   const seoTitle = q.trim()
     ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
@@ -90,8 +244,47 @@ export default function SearchPage() {
   }, [minPriceParam, maxPriceParam]);
 
   useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQ(q), 280);
+    return () => window.clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
     void getPublicCategories().then(setCats);
   }, []);
+
+  const facetQueryKey = useMemo(() => {
+    const p = new URLSearchParams();
+    const qt = debouncedQ.trim();
+    if (qt) p.set("q", qt);
+    if (condition) p.set("condition", condition);
+    const mn = Number(minRating);
+    if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
+    if (minPrice) p.set("minPrice", minPrice);
+    if (maxPrice) p.set("maxPrice", maxPrice);
+    if (featured) p.set("featured", "true");
+    if (onSale) p.set("onSale", "true");
+    if (shopId) p.set("shopId", shopId);
+    return p.toString();
+  }, [debouncedQ, condition, minRating, minPrice, maxPrice, featured, onSale, shopId]);
+
+  useEffect(() => {
+    if (visualMode) return;
+    let cancelled = false;
+    setFacetLoading(true);
+    void apiFetch<{ counts: Record<string, number>; total: number }>(`/products/facet-categories?${facetQueryKey}`)
+      .then((r) => {
+        if (!cancelled) setFacet({ counts: r.counts ?? {}, total: Number(r.total) || 0 });
+      })
+      .catch(() => {
+        /* mantém facet anterior em erro de rede */
+      })
+      .finally(() => {
+        if (!cancelled) setFacetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [facetQueryKey, visualMode]);
 
   useEffect(() => {
     if (!shopId) {
@@ -221,6 +414,11 @@ export default function SearchPage() {
         if (Number.isFinite(maxN) && maxPrice !== "" && priceN > maxN) return false;
         if (Number.isFinite(ratingN) && ratingN >= 1 && Number(p.averageRating ?? 0) < ratingN) return false;
         if (condition && (p.condition ?? "") !== condition) return false;
+        if (featured && !p.isFeatured) return false;
+        if (onSale) {
+          const promo = p.promoPrice != null ? Number(p.promoPrice) : NaN;
+          if (!Number.isFinite(promo) || promo <= 0) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -230,10 +428,11 @@ export default function SearchPage() {
         if (sort === "preco_desc") return priceB - priceA;
         if (sort === "mais_vendidos") return Number(b.soldCount || 0) - Number(a.soldCount || 0);
         if (sort === "melhor_avaliados") return Number(b.averageRating || 0) - Number(a.averageRating || 0);
-        return Number(b.soldCount || 0) - Number(a.soldCount || 0);
+        /* recentes: manter ordem por proximidade visual (relevância da pesquisa por imagem) */
+        return 0;
       });
     return { items, total: items.length };
-  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, condition, sort]);
+  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, condition, sort, featured, onSale]);
 
   const effectiveData = visualMode ? visualFiltered ?? { items: [], total: 0 } : data;
 
@@ -242,8 +441,6 @@ export default function SearchPage() {
     const to = effectiveData.items.length;
     return `Mostrando 1–${to.toLocaleString("pt-AO")} de ${effectiveData.total.toLocaleString("pt-AO")}`;
   }, [effectiveData]);
-
-  const roots = useMemo(() => cats.filter((c) => !c.parentId), [cats]);
 
   const categoryLabel = useMemo(() => {
     if (!categoryId) return "";
@@ -375,49 +572,25 @@ export default function SearchPage() {
           </div>
           <div className="ae-filters__group">
             <strong>Categoria</strong>
-            <nav className="ae-chip-list" style={{ marginTop: 8 }}>
-              <Link to={buildSearchPath("/search", params, { categoryId: null })} className={!categoryId ? "ae-on" : ""}>
-                Todas
-              </Link>
-              {roots.map((c) => (
-                <Link
-                  key={c.id}
-                  to={buildSearchPath("/search", params, { categoryId: c.id })}
-                  className={categoryId === c.id ? "ae-on" : ""}
-                >
-                  {c.name}
-                </Link>
-              ))}
-            </nav>
+            <p className="ae-filters__facet-hint ae-muted">
+              {visualMode
+                ? "Contagens não aplicáveis à pesquisa por imagem."
+                : "Números com os filtros actuais (exceto categoria)."}
+            </p>
+            <CategoryFacetNav
+              params={params}
+              cats={cats}
+              categoryId={categoryId}
+              facet={facet}
+              facetLoading={facetLoading}
+              visualMode={visualMode}
+            />
           </div>
           <div className="ae-filters__group">
-            <strong>Preço (Kz)</strong>
-            <div className="ae-filters__price-row">
-              <input
-                className="ae-filters__input"
-                type="number"
-                inputMode="numeric"
-                placeholder="Min"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-              />
-              <input
-                className="ae-filters__input"
-                type="number"
-                inputMode="numeric"
-                placeholder="Máx"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-              />
-            </div>
-            <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
-              Aplicar
-            </button>
-          </div>
-          <div className="ae-filters__group">
-            <strong>Condição</strong>
+            <strong>Condição do artigo</strong>
             <select
               className="ae-filters__select"
+              aria-label="Filtrar por condição do artigo"
               value={condition}
               onChange={(e) => {
                 const v = e.target.value;
@@ -434,9 +607,10 @@ export default function SearchPage() {
             </select>
           </div>
           <div className="ae-filters__group">
-            <strong>Avaliação mín.</strong>
+            <strong>Avaliação mínima</strong>
             <select
               className="ae-filters__select"
+              aria-label="Filtrar por avaliação mínima"
               value={minRating}
               onChange={(e) => {
                 const v = e.target.value;
@@ -454,17 +628,54 @@ export default function SearchPage() {
               ))}
             </select>
           </div>
+          <div className="ae-filters__group">
+            <strong>Preço (Kz)</strong>
+            <div className="ae-filters__price-row">
+              <input
+                className="ae-filters__input"
+                type="number"
+                inputMode="numeric"
+                placeholder="Mín."
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyPrice();
+                  }
+                }}
+              />
+              <input
+                className="ae-filters__input"
+                type="number"
+                inputMode="numeric"
+                placeholder="Máx."
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyPrice();
+                  }
+                }}
+              />
+            </div>
+            <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
+              Aplicar intervalo
+            </button>
+          </div>
         </div>
       </aside>
 
       <div className="ae-layout-search__main">
         <div className="ae-toolbar">
-          <div className="ae-sort">
+          <div className="ae-sort" role="group" aria-label="Ordenação dos resultados">
             {sorts.map((s) => (
               <button
                 key={s.k}
                 type="button"
                 className={sort === s.k ? "ae-on" : ""}
+                aria-pressed={sort === s.k}
                 onClick={() => {
                   const n = new URLSearchParams(params);
                   n.set("sort", s.k);

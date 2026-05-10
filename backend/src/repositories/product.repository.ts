@@ -163,6 +163,24 @@ export function productRepo() {
     countPublic(filters: ProductListFilters) {
       return prisma.product.count({ where: buildWhere(filters) });
     },
+    /** Agrega contagens por `categoryId` com os mesmos filtros da vitrina (sem filtro de categoria). */
+    facetCategoryAggregation(filters: Omit<ProductListFilters, "categoryId">) {
+      const where = buildWhere(filters as ProductListFilters);
+      return Promise.all([
+        prisma.product.groupBy({
+          by: ["categoryId"],
+          where,
+          _count: { _all: true },
+        }),
+        prisma.product.count({ where }),
+      ]).then(([groups, total]) => {
+        const counts: Record<string, number> = {};
+        for (const g of groups) {
+          if (g.categoryId != null) counts[g.categoryId] = g._count._all;
+        }
+        return { counts, total };
+      });
+    },
     suggestPublic(q: string, take: number) {
       const term = q.trim();
       if (!term) return Promise.resolve([]);

@@ -82,6 +82,7 @@ r.get("/shops/:id/sobre", shopController.publicSobre);
 r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);
+r.get("/products/facet-categories", productController.facetCategories);
 r.get("/products/suggest", productController.suggest);
 r.post("/products/visual-search", runImageSearchUpload, productController.visualSearch);
 r.get("/products/:id/related", productController.related);

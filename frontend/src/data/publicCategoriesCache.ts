@@ -7,6 +7,7 @@ export type PublicCategory = {
   slug: string;
   parentId: string | null;
   imageUrl?: string | null;
+  sortOrder?: number;
 };
 
 let inflight: Promise<PublicCategory[]> | null = null;

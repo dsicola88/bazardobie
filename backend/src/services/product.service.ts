@@ -13,6 +13,7 @@ import {
   createProductSchema,
   updateProductSchema,
   productListQuerySchema,
+  categoryFacetQuerySchema,
 } from "../validators/product.validators.js";
 import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
@@ -568,6 +569,23 @@ export const productService = {
     return { items: safe, total, skip, take };
   },
 
+  /** Contagens por categoria para facetas na pesquisa (critérios alinhados com `search`, sem `categoryId`). */
+  async facetCategories(query: z.infer<typeof categoryFacetQuerySchema>) {
+    const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
+    const filters = {
+      q: query.q,
+      condition: query.condition,
+      minPrice: query.minPrice ?? undefined,
+      maxPrice: query.maxPrice ?? undefined,
+      minRating: query.minRating ?? undefined,
+      featuredOnly: query.featured === "true",
+      onSaleOnly: query.onSale === "true",
+      shopId: query.shopId,
+      requirePlatformDelivery: !allowSeller,
+    };
+    return productRepo().facetCategoryAggregation(filters);
+  },
+
   /**
    * Vitrinha pública na ordem dos `ids` (ranking já resolvido no caller).
    * Omite referências inactivas ou sem opção de envio válida na política actual.
@@ -714,6 +732,7 @@ export const productService = {
       name: p.name,
       condition: p.condition,
       conditionDetail: p.conditionDetail,
+      isFeatured: p.isFeatured,
       price: p.price,
       promoPrice: p.promoPrice,
       displayPrice: p.displayPrice,

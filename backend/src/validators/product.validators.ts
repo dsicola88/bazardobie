@@ -165,3 +165,11 @@ export const productListQuerySchema = z.object({
   skip: z.coerce.number().int().nonnegative().optional(),
   take: z.coerce.number().int().positive().max(100).optional(),
 });
+
+/** Mesmos critérios que a listagem pública, sem `categoryId` — contagens por categoria para facetas. */
+export const categoryFacetQuerySchema = productListQuerySchema.omit({
+  categoryId: true,
+  skip: true,
+  take: true,
+  sort: true,
+});
