@@ -58,17 +58,13 @@ function padUnit(n: number): string {
   return String(Math.max(0, Math.floor(n))).padStart(2, "0");
 }
 
-type DiscoveryTab = "recent" | "featured" | "top";
-
 export default function Home() {
   const { content } = useSiteContent();
   const { token } = useAuth();
   const heroFallback = content["public.home_hero_fallback"] ?? "";
-  const featuredTitle = (content["public.home_featured_title"] ?? "").trim();
   const bestsellersTitle = (content["public.home_bestsellers_title"] ?? "").trim();
   const bestsellersHeading = bestsellersTitle || "Mais vendidos";
-  const featuredHeading = featuredTitle || "Em destaque";
-  const catRailTitle = (content["public.home_category_rail_title"] ?? "").trim() || "Comprar por categoria";
+  const catRailTitle = (content["public.home_category_rail_title"] ?? "").trim() || "Categorias populares";
   const t1 = parseTrustCell(content["public.trust_strip_1"] ?? "");
   const t2 = parseTrustCell(content["public.trust_strip_2"] ?? "");
   const t3 = parseTrustCell(content["public.trust_strip_3"] ?? "");
@@ -77,7 +73,7 @@ export default function Home() {
   const flashTitle = (content["public.home_flash_deals_title"] ?? "").trim() || "Ofertas do dia";
   const flashSubtitle =
     (content["public.home_flash_deals_subtitle"] ?? "").trim() ||
-    "Preços em kwanzas, com stock limitado. Veja e encomende com calma.";
+    "Preços em kwanzas · stock limitado.";
   const flashEndAtRaw = (content["public.home_flash_deals_end_at"] ?? "").trim();
   const flashCtaRaw = (content["public.home_flash_deals_cta"] ?? "").trim() || "Ver promoções";
   const flashExplore = resolveFlashExplore(content["public.home_flash_deals_link"] ?? "");
@@ -112,9 +108,7 @@ export default function Home() {
   const [activeRootId, setActiveRootId] = useState<string>("");
   const [megaProducts, setMegaProducts] = useState<Record<string, MegaProduct[]>>({});
   const [megaLoading, setMegaLoading] = useState(false);
-  const [featured, setFeatured] = useState<ProductCardData[]>([]);
   const [top, setTop] = useState<ProductCardData[]>([]);
-  const [recent, setRecent] = useState<ProductCardData[]>([]);
   const [homeGroups, setHomeGroups] = useState<HomeGroupPublicBlock[]>([]);
   const [homeSpotlights, setHomeSpotlights] = useState<HomeSpotlightPublicSection[]>([]);
   const [homeGroupsLoaded, setHomeGroupsLoaded] = useState(false);
@@ -122,7 +116,6 @@ export default function Home() {
   const flashCountdown = useFlashDealCountdown(flashEnabled ? flashEndAtRaw : undefined);
   const [personalRecent, setPersonalRecent] = useState<ProductCardData[] | null>(null);
   const [personalForYou, setPersonalForYou] = useState<ProductCardData[] | null>(null);
-  const [discoveryTab, setDiscoveryTab] = useState<DiscoveryTab>("recent");
 
   useSeo({
     title: "BAZAR DO BIÉ — Marketplace em Angola",
@@ -145,7 +138,7 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [bannerList, catList, groupsRes, spotRes, featRes, topRes, recentRes] = await Promise.all([
+      const [bannerList, catList, groupsRes, spotRes, topRes] = await Promise.all([
         apiFetch<Banner[]>("/banners").catch(() => [] as Banner[]),
         getPublicCategories().catch(() => [] as PublicCategory[]),
         apiFetch<{ groups: HomeGroupBlock[] }>("/homepage/product-groups").catch(() => ({
@@ -154,9 +147,7 @@ export default function Home() {
         apiFetch<{ sections: HomeSpotlightPublicSection[] }>("/homepage/spotlights").catch(() => ({
           sections: [] as HomeSpotlightPublicSection[],
         })),
-        apiFetch<{ items: ProductCardData[] }>("/products?featured=true&take=10").catch(() => ({ items: [] })),
-        apiFetch<{ items: ProductCardData[] }>("/products?sort=mais_vendidos&take=10").catch(() => ({ items: [] })),
-        apiFetch<{ items: ProductCardData[] }>("/products?sort=recentes&take=12").catch(() => ({ items: [] })),
+        apiFetch<{ items: ProductCardData[] }>("/products?sort=mais_vendidos&take=12").catch(() => ({ items: [] })),
       ]);
 
       if (cancelled) return;
@@ -170,9 +161,7 @@ export default function Home() {
       );
       setHomeSpotlights(Array.isArray(spotRes.sections) ? spotRes.sections : []);
       setHomeGroupsLoaded(true);
-      setFeatured(featRes.items ?? []);
       setTop(topRes.items ?? []);
-      setRecent(recentRes.items ?? []);
     })();
 
     return () => {
@@ -266,34 +255,6 @@ export default function Home() {
 
   const hero = banners[bi];
 
-  const discoveryConfig: Record<
-    DiscoveryTab,
-    { title: string; dek: string; primaryCta: { label: string; to: string }; secondaryCta?: { label: string; to: string }; items: ProductCardData[] }
-  > = {
-    recent: {
-      title: "Novidades",
-      dek: "Artigos que acabaram de entrar.",
-      primaryCta: { label: "Ver tudo", to: "/search?sort=recentes" },
-      secondaryCta: { label: "Promoções", to: "/search?onSale=true&sort=preco_asc" },
-      items: recent,
-    },
-    featured: {
-      title: featuredHeading,
-      dek: "Escolhidos para si na loja.",
-      primaryCta: { label: "Ver em destaque", to: "/search?featured=true" },
-      secondaryCta: { label: "Promoções", to: "/search?onSale=true" },
-      items: featured,
-    },
-    top: {
-      title: bestsellersHeading,
-      dek: "O que mais sai para outras pessoas.",
-      primaryCta: { label: "Ver ranking", to: "/search?sort=mais_vendidos" },
-      secondaryCta: { label: "Novidades", to: "/search?sort=recentes" },
-      items: top,
-    },
-  };
-  const disc = discoveryConfig[discoveryTab];
-
   return (
     <>
       <div className="ae-home-bleed-wrap">
@@ -366,26 +327,90 @@ export default function Home() {
         </nav>
       </section>
 
-      <section className="ae-shell ae-trust-shell ae-trust-shell--premium ae-home-trust-early">
-        <div className="ae-trust-strip ae-trust-strip--premium">
-          <div className="ae-trust-strip__item">
-            <strong>{t1.title}</strong>
-            {t1.body}
+      {flashEnabled ? (
+        <section
+          className="ae-home-bleed-wrap ae-home-flash-bleed"
+          aria-labelledby="ae-home-flash-title"
+          aria-describedby="ae-home-flash-dek"
+        >
+          <div className="ae-home-flash ae-home-flash--full">
+          <div className="ae-home-flash__surface" style={flashSurfaceStyle}>
+            <div className="ae-home-flash__hero">
+              <div className="ae-home-flash__lead">
+                <p className="ae-home-flash__eyebrow">Ofertas do dia</p>
+                <h2 id="ae-home-flash-title" className="ae-home-flash__title">
+                  {flashTitle}
+                </h2>
+                <p id="ae-home-flash-dek" className="ae-home-flash__dek">
+                  {flashSubtitle}
+                </p>
+              </div>
+              <div className="ae-home-flash__aside">
+                {flashCountdown !== null ? (
+                  flashCountdown.totalMs > 0 ? (
+                    <div className="ae-home-flash__timer" aria-live="polite" aria-atomic="true">
+                      {flashCountdown.days > 0 ? (
+                        <div className="ae-home-flash__unit">
+                          <span className="ae-home-flash__unit-val">{flashCountdown.days}</span>
+                          <span className="ae-home-flash__unit-lbl">dias</span>
+                        </div>
+                      ) : null}
+                      <div className="ae-home-flash__unit">
+                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.hours)}</span>
+                        <span className="ae-home-flash__unit-lbl">horas</span>
+                      </div>
+                      <div className="ae-home-flash__unit">
+                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.minutes)}</span>
+                        <span className="ae-home-flash__unit-lbl">min</span>
+                      </div>
+                      <div className="ae-home-flash__unit">
+                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.seconds)}</span>
+                        <span className="ae-home-flash__unit-lbl">seg</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="ae-home-flash__timer-note">
+                      Contagem terminada — as promoções no catálogo mantêm-se disponíveis.
+                    </p>
+                  )
+                ) : null}
+                {flashExplore.external ? (
+                  <a className="ae-home-flash__btn" href={flashExplore.path} rel="noopener noreferrer">
+                    {flashCtaRaw}
+                  </a>
+                ) : (
+                  <Link className="ae-home-flash__btn" to={flashExplore.path}>
+                    {flashCtaRaw}
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div className="ae-home-flash__rail-panel">
+              {flashDeals.length > 0 ? (
+                <div
+                  className={`ae-home-flash__scroller${flashDeals.length > 0 && flashDeals.length <= 4 ? " ae-home-flash__scroller--sparse" : ""}`}
+                  role="list"
+                >
+                  {flashDeals.map((p) => (
+                    <div key={`flash-${p.id}`} className="ae-home-flash__cell" role="listitem">
+                      <ProductCard p={p} className="ae-pcard--spotlight ae-pcard--flash-rail" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="ae-home-flash__rail-empty">
+                  Sem promoções activas neste momento —{" "}
+                  <Link className="ae-home-flash__inline-link" to="/search?onSale=true">
+                    ver artigos em desconto
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
           </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t2.title}</strong>
-            {t2.body}
           </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t3.title}</strong>
-            {t3.body}
-          </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t4.title}</strong>
-            {t4.body}
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {roots.length > 0 ? (
         <section
@@ -395,7 +420,6 @@ export default function Home() {
         >
           <header className="ae-home-cats__masthead">
             <h2 className="ae-home-cat-rail__title">{catRailTitle}</h2>
-            <span className="ae-home-cat-rail__kicker">Escolha uma área</span>
           </header>
           <div className="ae-home-cat-rail__viewport">
             <div className="ae-home-cat-rail__track" role="list">
@@ -502,6 +526,27 @@ export default function Home() {
         </section>
       ) : null}
 
+      <section className="ae-shell ae-trust-shell ae-trust-shell--premium ae-home-trust-strip">
+        <div className="ae-trust-strip ae-trust-strip--premium ae-trust-strip--home-compact">
+          <div className="ae-trust-strip__item">
+            <strong>{t1.title}</strong>
+            {t1.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t2.title}</strong>
+            {t2.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t3.title}</strong>
+            {t3.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t4.title}</strong>
+            {t4.body}
+          </div>
+        </div>
+      </section>
+
       {pulseTags.length > 0 ? (
         <section className="ae-shell ae-home-pulse" aria-label="Vantagens">
           <ul className="ae-home-pulse__list">
@@ -514,97 +559,11 @@ export default function Home() {
 
       {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
 
-      {flashEnabled ? (
-        <section
-          className="ae-home-bleed-wrap ae-home-flash-bleed"
-          aria-labelledby="ae-home-flash-title"
-          aria-describedby="ae-home-flash-dek"
-        >
-          <div className="ae-home-flash ae-home-flash--full">
-          <div className="ae-home-flash__surface" style={flashSurfaceStyle}>
-            <div className="ae-home-flash__hero">
-              <div className="ae-home-flash__lead">
-                <p className="ae-home-flash__eyebrow">Ofertas do dia</p>
-                <h2 id="ae-home-flash-title" className="ae-home-flash__title">
-                  {flashTitle}
-                </h2>
-                <p id="ae-home-flash-dek" className="ae-home-flash__dek">
-                  {flashSubtitle}
-                </p>
-              </div>
-              <div className="ae-home-flash__aside">
-                {flashCountdown !== null ? (
-                  flashCountdown.totalMs > 0 ? (
-                    <div className="ae-home-flash__timer" aria-live="polite" aria-atomic="true">
-                      {flashCountdown.days > 0 ? (
-                        <div className="ae-home-flash__unit">
-                          <span className="ae-home-flash__unit-val">{flashCountdown.days}</span>
-                          <span className="ae-home-flash__unit-lbl">dias</span>
-                        </div>
-                      ) : null}
-                      <div className="ae-home-flash__unit">
-                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.hours)}</span>
-                        <span className="ae-home-flash__unit-lbl">horas</span>
-                      </div>
-                      <div className="ae-home-flash__unit">
-                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.minutes)}</span>
-                        <span className="ae-home-flash__unit-lbl">min</span>
-                      </div>
-                      <div className="ae-home-flash__unit">
-                        <span className="ae-home-flash__unit-val">{padUnit(flashCountdown.seconds)}</span>
-                        <span className="ae-home-flash__unit-lbl">seg</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="ae-home-flash__timer-note">
-                      Contagem terminada — as promoções no catálogo mantêm-se disponíveis.
-                    </p>
-                  )
-                ) : null}
-                {flashExplore.external ? (
-                  <a className="ae-home-flash__btn" href={flashExplore.path} rel="noopener noreferrer">
-                    {flashCtaRaw}
-                  </a>
-                ) : (
-                  <Link className="ae-home-flash__btn" to={flashExplore.path}>
-                    {flashCtaRaw}
-                  </Link>
-                )}
-              </div>
-            </div>
-            <div className="ae-home-flash__rail-panel">
-              {flashDeals.length > 0 ? (
-                <div
-                  className={`ae-home-flash__scroller${flashDeals.length > 0 && flashDeals.length <= 4 ? " ae-home-flash__scroller--sparse" : ""}`}
-                  role="list"
-                >
-                  {flashDeals.map((p) => (
-                    <div key={`flash-${p.id}`} className="ae-home-flash__cell" role="listitem">
-                      <ProductCard p={p} className="ae-pcard--spotlight ae-pcard--flash-rail" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="ae-home-flash__rail-empty">
-                  Sem promoções activas neste momento —{" "}
-                  <Link className="ae-home-flash__inline-link" to="/search?onSale=true">
-                    ver artigos em desconto
-                  </Link>
-                  .
-                </p>
-              )}
-            </div>
-          </div>
-          </div>
-        </section>
-      ) : null}
-
       {personalRecent !== null && personalRecent.length > 0 ? (
         <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-recent-title">
           <header className="ae-section__masthead">
             <div className="ae-section__masthead-copy">
               <h2 id="ae-home-recent-title">Continuar a ver</h2>
-              <p className="ae-section__dek">Produtos que abriu recentemente.</p>
             </div>
           </header>
           <div className="ae-grid">
@@ -620,7 +579,6 @@ export default function Home() {
           <header className="ae-section__masthead">
             <div className="ae-section__masthead-copy">
               <h2 id="ae-home-foryou-title">Para si</h2>
-              <p className="ae-section__dek">Sugestões com base no que já viu ou pediu na loja.</p>
             </div>
             <div className="ae-section__masthead-actions">
               <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
@@ -691,64 +649,25 @@ export default function Home() {
             ),
           )}
 
-      {homeGroupsLoaded ? (
+      {homeGroupsLoaded && top.length > 0 ? (
         <section
-          className="ae-shell ae-section ae-section--catalog ae-home-discovery-hub"
-          aria-labelledby="ae-home-discovery-title"
+          className="ae-shell ae-section ae-section--catalog ae-home-bestsellers"
+          aria-labelledby="ae-home-best-title"
         >
-          <header className="ae-section__masthead ae-home-discovery-hub__masthead">
+          <header className="ae-section__masthead ae-home-bestsellers__masthead">
             <div className="ae-section__masthead-copy">
-              <p className="ae-home-discovery-hub__eyebrow" id="ae-home-discovery-eyebrow">
-                Catálogo
-              </p>
-              <h2 id="ae-home-discovery-title">{disc.title}</h2>
-              <p className="ae-section__dek">{disc.dek}</p>
+              <h2 id="ae-home-best-title">{bestsellersHeading}</h2>
             </div>
             <div className="ae-section__masthead-actions">
-              <Link className="ae-section__cta ae-section__cta--ghost" to={disc.primaryCta.to}>
-                {disc.primaryCta.label}
+              <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
+                Ver todos
               </Link>
-              {disc.secondaryCta ? (
-                <Link className="ae-section__link" to={disc.secondaryCta.to}>
-                  {disc.secondaryCta.label}
-                </Link>
-              ) : null}
             </div>
           </header>
-          <div className="ae-home-discovery-tabs" role="tablist" aria-label="Tipo de listagem">
-            {(
-              [
-                { id: "recent" as const, label: "Novidades" },
-                { id: "featured" as const, label: "Em destaque" },
-                { id: "top" as const, label: "Mais vendidos" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={discoveryTab === tab.id}
-                id={`ae-discovery-tab-${tab.id}`}
-                aria-controls="ae-home-discovery-panel"
-                className={`ae-home-discovery-tab ${discoveryTab === tab.id ? "ae-home-discovery-tab--active" : ""}`}
-                onClick={() => setDiscoveryTab(tab.id)}
-              >
-                {tab.label}
-              </button>
+          <div className="ae-grid ae-home-bestsellers__grid">
+            {top.map((p) => (
+              <ProductCard key={`best-${p.id}`} p={p} />
             ))}
-          </div>
-          <div id="ae-home-discovery-panel" role="tabpanel" aria-labelledby={`ae-discovery-tab-${discoveryTab}`}>
-            {disc.items.length > 0 ? (
-              <div className="ae-grid">
-                {disc.items.map((p) => (
-                  <ProductCard key={`${discoveryTab}-${p.id}`} p={p} />
-                ))}
-              </div>
-            ) : (
-              <p className="ae-home-discovery-empty">
-                Nada aqui por agora — <Link to="/search">abrir pesquisa</Link> ou mudar de separador.
-              </p>
-            )}
           </div>
         </section>
       ) : null}

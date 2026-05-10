@@ -34,9 +34,9 @@ export function NotificationsBell() {
   if (!token || !user) return null;
 
   return (
-    <Link to="/notifications" className="ae-ico-link" title="Notificações">
+    <Link to="/notifications" className="ae-ico-link" aria-label="Notificações" title="Notificações">
       <span className="ae-ico ae-ico--glyph" aria-hidden>N</span>
-      <span>Notificações</span>
+      <span className="ae-ico-link__lbl">Notificações</span>
       {unread > 0 ? <span className="ae-cart-badge">{unread > 99 ? "99+" : unread}</span> : null}
     </Link>
   );

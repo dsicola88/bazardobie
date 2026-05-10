@@ -208,7 +208,29 @@ a:hover {
 }
 @media (max-width: 900px) {
   .ae-mainhead__row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand tools"
+      "search search";
+    gap: 10px 12px;
+    align-items: center;
+  }
+  .ae-mainhead__row > .ae-logo {
+    grid-area: brand;
+    justify-self: start;
+    min-width: 0;
+  }
+  .ae-mainhead__row > .ae-search-wrap {
+    grid-area: search;
+    min-width: 0;
+  }
+  .ae-mainhead__row > .ae-mainhead__actions {
+    grid-area: tools;
+    justify-self: end;
+    width: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 10px;
   }
 }
 .ae-logo__main {
@@ -797,6 +819,38 @@ a:hover {
 .ae-ico-link--cart .ae-ico--inline-svg {
   color: var(--ae-red);
 }
+.ae-ico-link__lbl {
+  max-width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.2;
+}
+@media (max-width: 420px) {
+  .ae-mainhead__actions .ae-ico-link__lbl {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    max-width: none;
+  }
+  .ae-mainhead__actions .ae-ico-link {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 4px;
+  }
+  .ae-mainhead__actions .ae-ico-link .ae-ico {
+    margin-bottom: 0;
+  }
+}
+
 .ae-cart-badge {
   position: absolute;
   top: -6px;
@@ -831,13 +885,31 @@ a:hover {
 }
 .ae-promo-keywords {
   margin-top: 0;
+}
+/** Sem animação: scroll horizontal em ecrãs estreitos evita cortar o texto da primeira chip. */
+.ae-promo-keywords:not(.ae-promo-keywords--marquee) {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  max-width: 100%;
+  scrollbar-width: none;
+  padding-inline: 2px;
+}
+.ae-promo-keywords:not(.ae-promo-keywords--marquee)::-webkit-scrollbar {
+  display: none;
+}
+.ae-promo-keywords--marquee {
   overflow: hidden;
+  padding-inline: 10px;
 }
 .ae-promo-keywords__track {
   display: inline-flex;
   gap: 8px;
   align-items: center;
   white-space: nowrap;
+  padding-block: 2px;
+  padding-inline: 2px 6px;
 }
 .ae-promo-keywords__chip {
   display: inline-flex;
@@ -923,10 +995,10 @@ a:hover {
     padding: 10px 0;
   }
   .ae-mainhead__actions {
-    width: 100%;
-    justify-content: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
+    width: auto;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
   .ae-ico-link {
     min-width: auto;
@@ -1648,10 +1720,12 @@ a:hover {
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: max(14px, env(safe-area-inset-left), env(safe-area-inset-right));
     gap: 8px;
     padding: 2px 4px 8px;
     margin-inline: -16px;
-    padding-inline: 16px;
+    padding-inline: calc(14px + env(safe-area-inset-left, 0px))
+      calc(14px + env(safe-area-inset-right, 0px));
     overscroll-behavior-x: contain;
   }
   .ae-home-quick__pill {
@@ -1665,7 +1739,7 @@ a:hover {
 @media (max-width: 480px) {
   .ae-home-quick__track {
     margin-inline: -12px;
-    padding-inline: 12px;
+    padding-inline: calc(12px + env(safe-area-inset-left, 0px)) calc(12px + env(safe-area-inset-right, 0px));
   }
 }
 
@@ -1698,6 +1772,20 @@ a:hover {
 @media (max-width: 719px) {
   .ae-home-pulse__list {
     gap: 8px 12px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-inline: 12px;
+    padding-inline: 12px;
+    scrollbar-width: thin;
+  }
+  .ae-home-pulse__list li {
+    flex: 0 0 auto;
+  }
+  .ae-home-pulse__list::-webkit-scrollbar {
+    height: 4px;
   }
 }
 
@@ -2549,7 +2637,48 @@ a:hover {
   margin-bottom: clamp(10px, 2vw, 18px);
 }
 
-/** Hub: Novidades · Em destaque · Mais vendidos */
+/** Faixa de confiança após categorias (fluxo tipo marketplace). */
+.ae-home-trust-strip {
+  margin-top: clamp(6px, 1.4vw, 14px);
+  margin-bottom: clamp(10px, 2vw, 18px);
+}
+.ae-trust-strip--home-compact.ae-trust-strip--premium {
+  padding: clamp(10px, 2vw, 16px) clamp(12px, 2.4vw, 20px);
+  gap: clamp(8px, 2vw, 14px);
+}
+@media (max-width: 719px) {
+  .ae-trust-strip--home-compact.ae-trust-strip--premium {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .ae-trust-strip--home-compact.ae-trust-strip--premium {
+    grid-template-columns: 1fr;
+    font-size: 12px;
+    line-height: 1.38;
+  }
+  .ae-trust-strip--home-compact.ae-trust-strip--premium .ae-trust-strip__item {
+    padding: 6px 4px;
+  }
+  .ae-trust-strip--home-compact .ae-trust-strip__item strong {
+    font-size: 12.5px;
+  }
+}
+
+/** Uma só grelha de mais vendidos (sem tabs), estilo vitrine global */
+.ae-home-bestsellers {
+  scroll-margin-top: 88px;
+  margin-bottom: clamp(22px, 3.8vw, 40px);
+}
+.ae-home-bestsellers__masthead {
+  align-items: center;
+  gap: 10px;
+}
+.ae-home-bestsellers .ae-section__masthead .ae-section__masthead-copy h2 {
+  margin: 0;
+}
+
+/** Hub legacy (mantido por se houver outros usos futuros — home já não usa tabs) */
 .ae-home-discovery-hub {
   scroll-margin-top: 88px;
   margin-top: clamp(16px, 3vw, 26px);

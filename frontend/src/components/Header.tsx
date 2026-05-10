@@ -730,18 +730,18 @@ export function Header() {
             <NotificationsBell />
             {user?.role === "CLIENTE" && (
               <>
-                <Link to="/favorites" className="ae-ico-link ae-ico-link--fav">
+                <Link to="/favorites" className="ae-ico-link ae-ico-link--fav" aria-label="Lista de interesse">
                   <span className="ae-ico ae-ico--heart" aria-hidden>
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                     </svg>
                   </span>
-                  <span>Lista de interesse</span>
+                  <span className="ae-ico-link__lbl">Lista de interesse</span>
                   {favCount > 0 ? (
                     <span className="ae-cart-badge">{favCount > 99 ? "99+" : favCount}</span>
                   ) : null}
                 </Link>
-                <Link to="/orders" className="ae-ico-link">
+                <Link to="/orders" className="ae-ico-link" aria-label="As minhas encomendas">
                   <span className="ae-ico ae-ico--inline-svg" aria-hidden>
                     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.85">
                       <path
@@ -752,11 +752,11 @@ export function Header() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25V6a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v2.25" />
                     </svg>
                   </span>
-                  <span>Encomendas</span>
+                  <span className="ae-ico-link__lbl">Encomendas</span>
                 </Link>
               </>
             )}
-            <Link to="/cart" className="ae-ico-link ae-ico-link--cart">
+            <Link to="/cart" className="ae-ico-link ae-ico-link--cart" aria-label="Carrinho">
               <span className="ae-ico ae-ico--inline-svg" aria-hidden>
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.85">
                   <path
@@ -767,7 +767,7 @@ export function Header() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V6.75A3.75 3.75 0 0 0 12 3h0a3.75 3.75 0 0 0-3.75 3.75V9" />
                 </svg>
               </span>
-              <span>Carrinho</span>
+              <span className="ae-ico-link__lbl">Carrinho</span>
               {cartCount > 0 ? <span className="ae-cart-badge">{cartCount > 99 ? "99+" : cartCount}</span> : null}
             </Link>
           </div>
