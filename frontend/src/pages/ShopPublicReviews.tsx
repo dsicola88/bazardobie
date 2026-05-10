@@ -18,6 +18,7 @@ type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 type ShopReviewsSummary = {
   total: number;
   avgOverall: number | null;
+  minReviewsForPublicAvg: number;
   revisaoPositivaPercent: number | null;
   positivo: number;
   neutro: number;
@@ -187,7 +188,8 @@ export default function ShopPublicReviews() {
 
   const todosActive = !photosOnly && !textOnly && starFilter == null;
   const mediaClass = (on: boolean) => `ae-shop-reviews-pill${on ? " ae-shop-reviews-pill--on" : ""}`;
-  const ratingGeral = summary?.avgOverall ?? m?.avaliacaoMedia ?? null;
+  const ratingGeral = summary?.avgOverall ?? null;
+  const minMed = summary?.minReviewsForPublicAvg ?? m?.avaliacoesMinimoParaMediaPublica ?? 5;
   const base = shopId ? `/loja/${encodeURIComponent(shopId)}` : "";
   const hasMore = items.length < total;
 
@@ -222,13 +224,27 @@ export default function ShopPublicReviews() {
               {loja.city}, {loja.province}
             </p>
           ) : null}
+          <p className="ae-shop-reviews-sync-note ae-muted">
+            Números alinhados com o catálogo público da loja (só artigos aprovados e visíveis para compradores).
+          </p>
 
           <section className="ae-shop-reviews-sidebar__block" aria-labelledby="sr-class-title">
             <h3 id="sr-class-title" className="ae-shop-reviews-sidebar__h">
               Classificação da loja
             </h3>
             <p className="ae-shop-reviews-sidebar__big-score" aria-live="polite">
-              {ratingGeral != null ? ratingGeral.toLocaleString("pt-PT", { minimumFractionDigits: 0, maximumFractionDigits: 1 }) : "—"}
+              {ratingGeral != null ? (
+                ratingGeral.toLocaleString("pt-PT", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 1,
+                })
+              ) : summary && summary.total > 0 ? (
+                <span className="ae-shop-reviews-sidebar__score-pending ae-muted" style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>
+                  Média pública após {minMed}+ opiniões verificadas ({summary.total} neste momento).
+                </span>
+              ) : (
+                "—"
+              )}
             </p>
             <ul className="ae-shop-reviews-sidebar__aspects">
               <li>

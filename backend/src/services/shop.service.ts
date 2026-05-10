@@ -16,7 +16,7 @@ import {
 } from "../constants/reputation.js";
 import { notificationService } from "./notification.service.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
-import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
+import { shopPublicReviewProductWhere } from "../utils/shopPublicReviewScope.js";
 
 type ShopInput = z.infer<typeof upsertShopSchema>;
 type Tier2Input = z.infer<typeof submitTier2Schema>;
@@ -340,6 +340,10 @@ export const shopService = {
     const shopId = shop.id;
     const sellerUserId = shop.userId;
 
+    /** Artigos da vitrina pública — mesmo predicado que opiniões e lista `/shops/:id/reviews`. */
+    const reviewProd = shopPublicReviewProductWhere(shopId);
+    const orderItemPublicShelf = { shopId, product: reviewProd } as const;
+
     const [
       pedidosEntregues,
       unidadesEntreguesAgg,
@@ -354,14 +358,14 @@ export const shopService = {
       pedidosComDisputa,
     ] = await Promise.all([
       prisma.order.count({
-        where: { status: "ENTREGUE", items: { some: { shopId } } },
+        where: { status: "ENTREGUE", items: { some: orderItemPublicShelf } },
       }),
       prisma.orderItem.aggregate({
-        where: { shopId, order: { status: "ENTREGUE" } },
+        where: { shopId, order: { status: "ENTREGUE" }, product: reviewProd },
         _sum: { quantity: true },
       }),
       prisma.review.aggregate({
-        where: { product: { shopId } },
+        where: { product: reviewProd },
         _avg: {
           rating: true,
           ratingQuality: true,
@@ -369,27 +373,21 @@ export const shopService = {
           ratingDelivery: true,
         },
       }),
-      prisma.review.count({ where: { product: { shopId } } }),
-      prisma.review.count({ where: { product: { shopId }, rating: { gte: 4 } } }),
-      prisma.product.count({
-        where: {
-          shopId,
-          isActive: true,
-          moderationStatus: "APPROVED",
-          ...productPublicShelfExtras,
-        },
-      }),
+      prisma.review.count({ where: { product: reviewProd } }),
+      prisma.review.count({ where: { product: reviewProd, rating: { gte: 4 } } }),
+      /** Mesmo âmbito que `GET /shops/:id/reviews` — artigos públicos na prateleira. */
+      prisma.product.count({ where: reviewProd }),
       prisma.product.aggregate({
-        where: { shopId },
+        where: reviewProd,
         _sum: { soldCount: true },
       }),
       prisma.order.findFirst({
-        where: { items: { some: { shopId } } },
+        where: { items: { some: orderItemPublicShelf } },
         orderBy: { updatedAt: "desc" },
         select: { updatedAt: true },
       }),
       prisma.product.findFirst({
-        where: { shopId },
+        where: reviewProd,
         orderBy: { updatedAt: "desc" },
         select: { updatedAt: true },
       }),
@@ -397,7 +395,7 @@ export const shopService = {
       prisma.order.count({
         where: {
           status: "ENTREGUE",
-          items: { some: { shopId } },
+          items: { some: orderItemPublicShelf },
           disputes: { some: {} },
         },
       }),

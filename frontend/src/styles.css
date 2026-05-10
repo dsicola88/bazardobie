@@ -1485,44 +1485,85 @@ a:hover {
   border-radius: 2px;
 }
 
-.ae-buybox__reviews-line {
+/* Linha compacta antes do preço: estrelas · nota · N avaliações | vendidos (estilo marketplace) */
+.ae-pdp-buy-rail {
+  margin: 6px 0 12px;
+  padding: 8px 0 2px;
+  border-bottom: none;
+}
+
+.ae-pdp-buy-rail__main {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
+  align-items: baseline;
+  gap: 8px 10px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--ae-deep-text, #111);
 }
 
-.ae-buybox__reviews-head {
-  margin-bottom: 6px;
+.ae-pdp-buy-rail__rating.ae-star-rating--md .ae-star-rating__track {
+  font-size: 15px;
+  letter-spacing: 0.02em;
 }
 
-.ae-buybox__reviews-kicker {
-  font-size: 11px;
+.ae-pdp-buy-rail__rating .ae-star-rating__num {
+  font-weight: 800;
+  font-size: 0.98rem;
+  margin-left: 6px;
+  color: inherit;
+}
+
+.ae-pdp-buy-rail__reviews {
   font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--ae-dim, #555);
 }
 
-.ae-buybox__reviews-foot {
+.ae-pdp-buy-rail__sep {
+  color: #bdbdbd;
+  font-weight: 400;
+  user-select: none;
+  margin: 0 -2px;
+}
+
+.ae-pdp-buy-rail__sold {
+  font-weight: 600;
+}
+
+.ae-pdp-buy-rail__pending-mark {
+  color: #f59e0b;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.ae-pdp-buy-rail__pending-text {
+  font-weight: 500;
+  max-width: min(100%, 420px);
+}
+
+.ae-pdp-buy-rail__empty {
+  font-size: 13px;
+}
+
+.ae-pdp-buy-rail__cta {
   margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--ae-deep-text, #1f2937);
 }
 
-.ae-buybox__reviews-foot strong {
+.ae-pdp-buy-rail__cta .ae-linkbtn {
   font-weight: 700;
+  font-size: 13px;
 }
 
-.ae-buybox__reviews-note {
+.ae-pdp-buy-rail__micro {
   margin: 6px 0 0;
   font-size: 11px;
   line-height: 1.45;
 }
 
-.ae-buybox__reviews-soon {
-  font-size: 14px;
+@media (max-width: 640px) {
+  .ae-pdp-buy-rail__main {
+    font-size: 13px;
+    gap: 6px 8px;
+  }
 }
 
 /* Resumo de avaliações na ficha — média grande, estrelas escuras, barras */
@@ -2071,15 +2112,6 @@ a:hover {
   .ae-pdp-review-aspect__val {
     text-align: left;
   }
-}
-
-.ae-buybox__reviews-cta-wrap {
-  margin: 10px 0 0;
-}
-
-.ae-buybox__reviews-cta {
-  font-weight: 700;
-  font-size: 13px;
 }
 
 .ae-pdp-reviews-more-wrap {
@@ -5566,9 +5598,9 @@ a:hover {
     font-size: 22px;
     line-height: 1.2;
   }
-  .ae-buybox__reviews {
-    font-size: 12px;
-    line-height: 1.4;
+  .ae-pdp-buy-rail {
+    margin: 4px 0 10px;
+    padding-top: 4px;
   }
   .ae-buybox__now {
     font-size: 24px;
@@ -9960,6 +9992,19 @@ a:hover {
   align-items: center;
 }
 
+.ae-storefront-hero__scope-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.48;
+  color: rgba(248, 250, 252, 0.68);
+  max-width: 640px;
+}
+
+.ae-storefront-hero__scope-note strong {
+  color: rgba(248, 250, 252, 0.92);
+  font-weight: 700;
+}
+
 .ae-storefront-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -10147,6 +10192,12 @@ a:hover {
 .ae-shop-reviews-sidebar__loc {
   margin: 4px 0 0;
   font-size: 13px;
+}
+
+.ae-shop-reviews-sync-note {
+  margin: 10px 0 0 !important;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .ae-shop-reviews-sidebar__block {

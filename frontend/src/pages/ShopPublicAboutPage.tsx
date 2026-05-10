@@ -206,6 +206,12 @@ export default function ShopPublicAboutPage() {
 
       <section className="page-panel ae-shop-sobre-metrics" aria-label="Métricas públicas">
         <h2 className="ae-shop-sobre-h2">Métricas e reputação</h2>
+        <p className="ae-muted" style={{ marginTop: -4, marginBottom: 12, fontSize: 12, maxWidth: 760 }}>
+          As métricas abaixo (opiniões, médias, unidades vendidas e entregues, número de pedidos entregues, taxa «sem disputa»
+          e última actualização relacionada ao catálogo) aplicam apenas a linhas/anúncios públicos nesta loja — o mesmo âmbito
+          que «Avaliações».{" "}
+          A taxa de resposta no chat é uma amostra global de conversas com o vendedor, independente dos artigos da vitrina.
+        </p>
         {metricas.reputacaoHintPt ? (
           <p className="ae-muted" style={{ marginTop: 4, maxWidth: 820, fontSize: 13, lineHeight: 1.5 }}>
             {metricas.reputacaoHintPt}

@@ -1123,60 +1123,79 @@ export default function ProductPage() {
                 Estado informado pelo vendedor: {product.conditionDetail.trim()}
               </p>
             ) : null}
-            <div className="ae-buybox__reviews">
-              <div className="ae-buybox__reviews-head">
-                <span className="ae-buybox__reviews-kicker">Opiniões de clientes</span>
-              </div>
-              {product.averageRating != null ? (
-                <>
-                  <div className="ae-buybox__reviews-line ae-buybox__reviews-line--rated">
+            <div className="ae-pdp-buy-rail">
+              <div className="ae-pdp-buy-rail__main" role="group" aria-label="Classificação e vendas do artigo">
+                {product.averageRating != null && product.reviewCount > 0 ? (
+                  <>
                     <StarRating
                       value={Number(product.averageRating)}
                       tone="gold"
-                      size="lg"
+                      size="md"
                       showValue
-                      reviewCount={product.reviewCount}
+                      className="ae-pdp-buy-rail__rating"
                     />
-                  </div>
-                  <p className="ae-buybox__reviews-foot">
-                    Média global do artigo · apenas avaliações após entrega ·{" "}
-                    {product.soldCount > 0 ? (
-                      <>
-                        <strong>{product.soldCount.toLocaleString("pt-PT")}+</strong> unidades vendidas no catálogo
-                      </>
-                    ) : (
-                      "histórico de vendas em construção"
-                    )}
-                  </p>
-                </>
-              ) : product.reviewCount > 0 ? (
-                <>
-                  <div className="ae-buybox__reviews-line">
-                    <span className="ae-buybox__reviews-soon">
-                      <strong>{product.ratingTrustShortPt ?? "Classificação em consolidação"}</strong>
+                    <span className="ae-pdp-buy-rail__reviews">
+                      {product.reviewCount.toLocaleString("pt-PT")}{" "}
+                      {product.reviewCount === 1 ? "Avaliação" : "Avaliações"}
                     </span>
-                  </div>
-                  <p className="ae-buybox__reviews-foot">
-                    <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
-                    {product.reviewCount === 1 ? "opinião verificada" : "opiniões verificadas"} — a média em estrelas só é
-                    exibida publicamente após volume mínimo de feedback, para maior fiabilidade.
-                  </p>
-                  {product.ratingTrustHintPt ? <p className="ae-buybox__reviews-note ae-muted">{product.ratingTrustHintPt}</p> : null}
-                </>
-              ) : product.soldCount > 0 ? (
-                <p className="ae-buybox__reviews-foot">
-                  <strong>{product.soldCount.toLocaleString("pt-PT")}+</strong> unidades vendidas ·{" "}
-                  <span className="ae-muted">ainda sem opiniões públicas neste artigo.</span>
-                </p>
-              ) : (
-                <p className="ae-buybox__reviews-foot ae-muted">Sem opiniões públicas ainda neste artigo.</p>
-              )}
+                    <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
+                      |
+                    </span>
+                    <span className="ae-pdp-buy-rail__sold">
+                      {product.soldCount.toLocaleString("pt-PT")} vendido
+                      {product.soldCount === 1 ? "" : "(s)"}
+                    </span>
+                  </>
+                ) : product.reviewCount > 0 ? (
+                  <>
+                    <span className="ae-pdp-buy-rail__pending-mark" aria-hidden>
+                      ★
+                    </span>
+                    <span className="ae-pdp-buy-rail__pending-text">
+                      <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
+                      {product.reviewCount === 1 ? "avaliação verificada" : "avaliações verificadas"} ·{" "}
+                      <span className="ae-muted">
+                        {product.ratingTrustShortPt ?? "média em consolidação"}
+                      </span>
+                    </span>
+                    <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
+                      |
+                    </span>
+                    <span className="ae-pdp-buy-rail__sold">
+                      {product.soldCount > 0 ? (
+                        <>
+                          {product.soldCount.toLocaleString("pt-PT")} vendido
+                          {product.soldCount === 1 ? "" : "(s)"}
+                        </>
+                      ) : (
+                        <span className="ae-muted">0 vendido(s)</span>
+                      )}
+                    </span>
+                  </>
+                ) : product.soldCount > 0 ? (
+                  <>
+                    <span className="ae-muted">Sem avaliações públicas</span>
+                    <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
+                      |
+                    </span>
+                    <span className="ae-pdp-buy-rail__sold">
+                      {product.soldCount.toLocaleString("pt-PT")} vendido
+                      {product.soldCount === 1 ? "" : "(s)"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="ae-muted ae-pdp-buy-rail__empty">Sem avaliações · sem vendas registadas</span>
+                )}
+              </div>
               {product.reviewCount > 0 ? (
-                <p className="ae-buybox__reviews-cta-wrap">
-                  <button type="button" className="ae-linkbtn ae-buybox__reviews-cta" onClick={openAllReviews}>
-                    Ver todas as opiniões e filtros
+                <div className="ae-pdp-buy-rail__cta">
+                  <button type="button" className="ae-linkbtn" onClick={openAllReviews}>
+                    Ver todas as opiniões e filtros ↓
                   </button>
-                </p>
+                </div>
+              ) : null}
+              {product.reviewCount > 0 && product.averageRating == null && product.ratingTrustHintPt ? (
+                <p className="ae-pdp-buy-rail__micro ae-muted">{product.ratingTrustHintPt}</p>
               ) : null}
             </div>
             <div className="ae-pdp-price-deal">

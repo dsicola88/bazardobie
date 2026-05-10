@@ -5,7 +5,8 @@ import type { z } from "zod";
 import type { createReviewSchema } from "../validators/review.validators.js";
 import { Decimal } from "@prisma/client/runtime/library";
 import { publicMediaUrl } from "../utils/publicMediaUrl.js";
-import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
+import { shopPublicReviewProductWhere } from "../utils/shopPublicReviewScope.js";
+import { MIN_REVIEWS_FOR_PUBLIC_STAR_AVG } from "../constants/reputation.js";
 
 type CreateReview = z.infer<typeof createReviewSchema>;
 
@@ -15,14 +16,6 @@ const reviewPublicInclude = {
 } satisfies Prisma.ReviewInclude;
 
 export type ReviewPublicRow = Prisma.ReviewGetPayload<{ include: typeof reviewPublicInclude }>;
-
-const shopReviewProductWhere = (shopId: string): Prisma.ProductWhereInput => ({
-  shopId,
-  isActive: true,
-  moderationStatus: "APPROVED",
-  ...productPublicShelfExtras,
-  shop: { isApproved: true, tier1CompletedAt: { not: null } },
-});
 
 export type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
@@ -55,6 +48,7 @@ export function mapEmbeddedReviewsForApi<T extends { reviews?: ReviewPublicRow[]
 async function aggregateShopReviewsSummary(shopId: string): Promise<{
   total: number;
   avgOverall: number | null;
+  minReviewsForPublicAvg: number;
   revisaoPositivaPercent: number | null;
   positivo: number;
   neutro: number;
@@ -63,7 +57,7 @@ async function aggregateShopReviewsSummary(shopId: string): Promise<{
   comFotos: number;
   comTexto: number;
 }> {
-  const baseWhere: Prisma.ReviewWhereInput = { product: shopReviewProductWhere(shopId) };
+  const baseWhere: Prisma.ReviewWhereInput = { product: shopPublicReviewProductWhere(shopId) };
 
   const [rows, comFotos, comTexto] = await Promise.all([
     prisma.review.groupBy({
@@ -101,12 +95,17 @@ async function aggregateShopReviewsSummary(shopId: string): Promise<{
   const negativo = (starCounts[1] ?? 0) + (starCounts[2] ?? 0);
   const revisaoPositivaPercent =
     total > 0 ? Math.min(100, Math.max(0, Math.round((100 * positivo) / total))) : null;
-  const avgOverall = total > 0 ? Math.round((sumWeighted / total) * 10) / 10 : null;
+  const avgOverall =
+    total >= MIN_REVIEWS_FOR_PUBLIC_STAR_AVG
+      ? Math.round((sumWeighted / total) * 10) / 10
+      : null;
+
   const porEstrela = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: starCounts[stars] ?? 0 }));
 
   return {
     total,
     avgOverall,
+    minReviewsForPublicAvg: MIN_REVIEWS_FOR_PUBLIC_STAR_AVG,
     revisaoPositivaPercent,
     positivo,
     neutro,
@@ -275,7 +274,7 @@ export const reviewService = {
         : undefined;
 
     const productScope: Prisma.ReviewWhereInput = {
-      product: shopReviewProductWhere(shopId),
+      product: shopPublicReviewProductWhere(shopId),
     };
 
     const where: Prisma.ReviewWhereInput = {

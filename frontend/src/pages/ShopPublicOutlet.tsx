@@ -227,7 +227,9 @@ export default function ShopPublicOutlet() {
                   </>
                 ) : (
                   <span className="ae-storefront-muted-on-dark">
-                    Média pública após {m.avaliacoesMinimoParaMediaPublica}+ avaliações
+                    {m.totalAvaliacoes > 0
+                      ? `Média oculta até ${m.avaliacoesMinimoParaMediaPublica}+ opiniões (${m.totalAvaliacoes.toLocaleString("pt-PT")} actuais)`
+                      : `Média pública após ${m.avaliacoesMinimoParaMediaPublica}+ avaliações`}
                   </span>
                 )}
               </div>
@@ -246,6 +248,11 @@ export default function ShopPublicOutlet() {
               </div>
             </div>
           </div>
+
+          <p className="ae-storefront-hero__scope-note">
+            Avaliações, médias públicas quando visíveis e o número «unidades vendidas» acima usam sempre o mesmo conjunto
+            de <strong>anúncios aprovados e visíveis</strong> no catálogo (critério idêntico à página Avaliações).
+          </p>
 
           <div className="ae-storefront-hero__cta">
             <Link className="ae-btn-lg ae-btn-buy" to={catalogSearchPath}>
