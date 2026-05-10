@@ -919,10 +919,8 @@ export default function ProductPage() {
               </select>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <span className="ae-muted" style={{ fontSize: 12 }}>
-                Quantidade
-              </span>
+            <div className="ae-buybox__qty-row">
+              <span className="ae-buybox__qty-label ae-muted">Quantidade</span>
               <div className="ae-buybox__qty">
                 <button type="button" disabled={outOfStock} onClick={() => setQty((n) => Math.max(1, n - 1))}>
                   −
@@ -967,7 +965,7 @@ export default function ProductPage() {
               <button type="button" className="ae-btn-lg ae-btn-buy" disabled={!canAdd || adding} onClick={() => void addToCart()}>
                 {adding ? "A adicionar…" : "Adicionar ao carrinho"}
               </button>
-              <Link className="ae-btn-lg ae-btn-cart" to="/cart" style={{ textAlign: "center", textDecoration: "none" }}>
+              <Link className="ae-btn-lg ae-btn-cart" to="/cart">
                 Ver carrinho
               </Link>
             </div>

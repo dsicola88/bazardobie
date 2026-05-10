@@ -4323,6 +4323,7 @@ a:hover {
   background: linear-gradient(180deg, #fffefb, var(--ae-card));
   position: sticky;
   top: 110px;
+  text-align: left;
 }
 @media (max-width: 1024px) {
   .ae-buybox {
@@ -4337,19 +4338,25 @@ a:hover {
 }
 .ae-buy-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 14px;
   flex-wrap: wrap;
+  width: 100%;
 }
 .ae-btn-lg {
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(140px, 42%);
+  box-sizing: border-box;
   height: 44px;
   border-radius: 4px;
   font-weight: 700;
   font-size: 14px;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 .ae-btn-buy {
   background: linear-gradient(180deg, #ff7a42, var(--ae-deep));
@@ -4364,12 +4371,25 @@ a:hover {
   color: var(--ae-deep);
   border: 2px solid var(--ae-deep);
 }
+.ae-buybox__qty-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  width: 100%;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+.ae-buybox__qty-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
 .ae-buybox__qty {
   display: inline-flex;
+  flex: 0 0 auto;
   border: 1px solid var(--ae-line);
   border-radius: 4px;
   overflow: hidden;
-  margin-right: 6px;
 }
 .ae-buybox__qty button {
   width: 32px;
@@ -4613,8 +4633,10 @@ a:hover {
   }
   .ae-buy-actions {
     flex-direction: column;
+    gap: 10px;
   }
   .ae-btn-lg {
+    flex: none;
     width: 100%;
     min-width: 0;
     height: 42px;
