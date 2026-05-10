@@ -6,6 +6,7 @@ import { ProductCard, type ProductCardData } from "../components/ProductCard.js"
 import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useSeo } from "../seo/useSeo.js";
+import { parsePriceFilterInput } from "../utils/priceFilter.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
@@ -259,13 +260,15 @@ export default function SearchPage() {
     if (condition) p.set("condition", condition);
     const mn = Number(minRating);
     if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
-    if (minPrice) p.set("minPrice", minPrice);
-    if (maxPrice) p.set("maxPrice", maxPrice);
+    const minP = parsePriceFilterInput(minPriceParam);
+    const maxP = parsePriceFilterInput(maxPriceParam);
+    if (minP != null) p.set("minPrice", String(minP));
+    if (maxP != null) p.set("maxPrice", String(maxP));
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
     if (shopId) p.set("shopId", shopId);
     return p.toString();
-  }, [debouncedQ, condition, minRating, minPrice, maxPrice, featured, onSale, shopId]);
+  }, [debouncedQ, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId]);
 
   useEffect(() => {
     if (visualMode) return;
@@ -312,14 +315,16 @@ export default function SearchPage() {
     if (condition) p.set("condition", condition);
     const mn = Number(minRating);
     if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
-    if (minPrice) p.set("minPrice", minPrice);
-    if (maxPrice) p.set("maxPrice", maxPrice);
+    const minP = parsePriceFilterInput(minPriceParam);
+    const maxP = parsePriceFilterInput(maxPriceParam);
+    if (minP != null) p.set("minPrice", String(minP));
+    if (maxP != null) p.set("maxPrice", String(maxP));
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
     if (shopId) p.set("shopId", shopId);
     p.set("take", String(PAGE_SIZE));
     return p.toString();
-  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice, featured, onSale, shopId]);
+  }, [q, categoryId, sort, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId]);
 
   useEffect(() => {
     if (!visualMode) return;
@@ -403,15 +408,15 @@ export default function SearchPage() {
   const visualFiltered = useMemo(() => {
     if (!visualMode) return null;
     const term = q.trim().toLowerCase();
-    const minN = Number(minPrice);
-    const maxN = Number(maxPrice);
+    const minN = parsePriceFilterInput(minPriceParam);
+    const maxN = parsePriceFilterInput(maxPriceParam);
     const ratingN = Number(minRating);
     const items = visualRaw
       .filter((p) => {
         if (term && !p.name.toLowerCase().includes(term)) return false;
         const priceN = Number(p.displayPrice ?? p.promoPrice ?? p.price ?? 0);
-        if (Number.isFinite(minN) && minPrice !== "" && priceN < minN) return false;
-        if (Number.isFinite(maxN) && maxPrice !== "" && priceN > maxN) return false;
+        if (minN != null && priceN < minN) return false;
+        if (maxN != null && priceN > maxN) return false;
         if (Number.isFinite(ratingN) && ratingN >= 1 && Number(p.averageRating ?? 0) < ratingN) return false;
         if (condition && (p.condition ?? "") !== condition) return false;
         if (featured && !p.isFeatured) return false;
@@ -432,7 +437,18 @@ export default function SearchPage() {
         return 0;
       });
     return { items, total: items.length };
-  }, [visualMode, visualRaw, q, minPrice, maxPrice, minRating, condition, sort, featured, onSale]);
+  }, [
+    visualMode,
+    visualRaw,
+    q,
+    minPriceParam,
+    maxPriceParam,
+    minRating,
+    condition,
+    sort,
+    featured,
+    onSale,
+  ]);
 
   const effectiveData = visualMode ? visualFiltered ?? { items: [], total: 0 } : data;
 
@@ -454,8 +470,13 @@ export default function SearchPage() {
     if (onSale) out.push({ label: "Em promoção", patch: { onSale: null } });
     if (condition) out.push({ label: conditionShortLabel(condition), patch: { condition: null } });
     if (minRating) out.push({ label: `${minRating}+ estrelas`, patch: { minRating: null } });
-    if (minPrice || maxPrice) {
-      const bit = [minPrice ? `≥ ${minPrice}` : null, maxPrice ? `≤ ${maxPrice}` : null]
+    const minParsedChip = parsePriceFilterInput(minPriceParam);
+    const maxParsedChip = parsePriceFilterInput(maxPriceParam);
+    if (minParsedChip != null || maxParsedChip != null) {
+      const bit = [
+        minParsedChip != null ? `≥ ${minParsedChip.toLocaleString("pt-AO")}` : null,
+        maxParsedChip != null ? `≤ ${maxParsedChip.toLocaleString("pt-AO")}` : null,
+      ]
         .filter(Boolean)
         .join(" · ");
       out.push({ label: `Preço ${bit} Kz`, patch: { minPrice: null, maxPrice: null } });
@@ -473,8 +494,8 @@ export default function SearchPage() {
     onSale,
     condition,
     minRating,
-    minPrice,
-    maxPrice,
+    minPriceParam,
+    maxPriceParam,
     shopId,
     shopLabel,
     sort,
@@ -489,23 +510,16 @@ export default function SearchPage() {
 
   function applyPrice() {
     const n = new URLSearchParams(params);
-    const minN = minPrice ? Number(minPrice) : undefined;
-    const maxN = maxPrice ? Number(maxPrice) : undefined;
-    const safeMin =
-      minN != null && Number.isFinite(minN) && minN >= 0
-        ? maxN != null && Number.isFinite(maxN) && maxN >= 0 && minN > maxN
-          ? maxN
-          : minN
-        : undefined;
-    const safeMax =
-      maxN != null && Number.isFinite(maxN) && maxN >= 0
-        ? minN != null && Number.isFinite(minN) && minN >= 0 && maxN < minN
-          ? minN
-          : maxN
-        : undefined;
-    if (safeMin != null) n.set("minPrice", String(safeMin));
+    let minN = parsePriceFilterInput(minPrice);
+    let maxN = parsePriceFilterInput(maxPrice);
+    if (minN != null && maxN != null && minN > maxN) {
+      const t = minN;
+      minN = maxN;
+      maxN = t;
+    }
+    if (minN != null) n.set("minPrice", String(minN));
     else n.delete("minPrice");
-    if (safeMax != null) n.set("maxPrice", String(safeMax));
+    if (maxN != null) n.set("maxPrice", String(maxN));
     else n.delete("maxPrice");
     setParams(n);
   }
@@ -630,12 +644,18 @@ export default function SearchPage() {
           </div>
           <div className="ae-filters__group">
             <strong>Preço (Kz)</strong>
+            <p className="ae-filters__facet-hint ae-muted">
+              Aceita valores como <span className="ae-admin-mono">5000</span>,{" "}
+              <span className="ae-admin-mono">185 000</span> ou <span className="ae-admin-mono">185.000</span>. Clique em{" "}
+              <strong>Aplicar intervalo</strong> para filtrar.
+            </p>
             <div className="ae-filters__price-row">
               <input
                 className="ae-filters__input"
-                type="number"
-                inputMode="numeric"
-                placeholder="Mín."
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="Mín. (ex.: 5 000)"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
                 onKeyDown={(e) => {
@@ -647,8 +667,9 @@ export default function SearchPage() {
               />
               <input
                 className="ae-filters__input"
-                type="number"
-                inputMode="numeric"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
                 placeholder="Máx."
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseQueryPriceParam } from "../utils/queryPrice.js";
 
 const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
 const absoluteHttpUrl = z.string().url().refine((v) => /^https?:\/\//i.test(v), {
@@ -148,11 +149,16 @@ export const updateProductSchema = createProductShape
     }
   });
 
+function preprocessOptionalQueryPrice(v: unknown): unknown {
+  const n = parseQueryPriceParam(v);
+  return n === undefined ? undefined : n;
+}
+
 export const productListQuerySchema = z.object({
   q: z.string().optional(),
   categoryId: z.string().optional(),
-  minPrice: z.coerce.number().optional(),
-  maxPrice: z.coerce.number().optional(),
+  minPrice: z.preprocess(preprocessOptionalQueryPrice, z.number().nonnegative().max(1e15).optional()),
+  maxPrice: z.preprocess(preprocessOptionalQueryPrice, z.number().nonnegative().max(1e15).optional()),
   minRating: z.coerce.number().min(1).max(5).optional(),
   featured: z.enum(["true", "false"]).optional(),
   /** Só artigos com `promoPrice` activo (abaixo do preço listado). */
