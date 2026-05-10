@@ -6223,6 +6223,17 @@ a:hover {
   width: 100%;
   min-width: 0;
 }
+@media (min-width: 900px) {
+  .ae-cart-lines-wrap {
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    padding-bottom: 2px;
+  }
+  .ae-cart-lines {
+    min-width: 922px;
+  }
+}
 .ae-cart-lines {
   border: 1px solid rgb(226 232 240 / 0.98);
   border-radius: var(--ae-radius-md);
@@ -6239,7 +6250,7 @@ a:hover {
 @media (min-width: 900px) {
   .ae-cart-lines__head {
     display: grid;
-    grid-template-columns: 152px minmax(220px, 1fr) 112px 160px 120px 64px;
+    grid-template-columns: 152px minmax(180px, 1fr) 110px 158px 184px 54px;
     gap: 14px 16px;
     align-items: center;
     padding: 11px 20px;
@@ -6297,7 +6308,7 @@ a:hover {
 }
 @media (min-width: 900px) {
   .ae-cart-line__grid {
-    grid-template-columns: 152px minmax(220px, 1fr) 112px 160px 120px 64px;
+    grid-template-columns: 152px minmax(180px, 1fr) 110px 158px 184px 54px;
     grid-template-areas: "media detail unit qty sub actions";
     align-items: start;
     padding: 20px 20px;
@@ -6477,15 +6488,21 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 6px;
+  justify-content: space-between;
+  gap: 8px 14px;
 }
-.ae-cart-line__ship-dot {
-  color: rgb(203 213 225);
-  font-weight: 400;
+.ae-cart-line__ship-route {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
 }
 .ae-cart-line__ship-frete {
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
   font-weight: 650;
   color: #0f172a;
+  white-space: nowrap;
 }
 .ae-cart-line__ship-meta {
   margin-top: 6px;
@@ -6536,6 +6553,7 @@ a:hover {
     border-top: none;
     text-align: right;
     justify-self: stretch;
+    min-width: 0;
   }
   .ae-cart-line__qty {
     justify-self: center;
@@ -6574,14 +6592,18 @@ a:hover {
 .ae-cart-line__sub-note {
   margin-top: 6px;
   font-size: 11px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: rgb(148 163 184);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 @media (min-width: 900px) {
   .ae-cart-line__sub-note {
-    max-width: 14rem;
+    width: 100%;
+    max-width: none;
     margin-left: auto;
     text-align: right;
+    hyphens: auto;
   }
 }
 

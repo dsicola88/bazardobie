@@ -352,13 +352,12 @@ export default function CartPage() {
                           ) : null}
                           <div className="ae-cart-line__ship">
                             <div className="ae-cart-line__ship-line">
-                              {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
-                                ? item.productDeliveryOption.logisticsPartner
-                                  ? `Envio plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
-                                  : "Envio operado pela plataforma"
-                                : "Envio pela loja parceira"}
-                              <span className="ae-cart-line__ship-dot" aria-hidden>
-                                ·
+                              <span className="ae-cart-line__ship-route">
+                                {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
+                                  ? item.productDeliveryOption.logisticsPartner
+                                    ? `Envio plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
+                                    : "Envio operado pela plataforma"
+                                  : "Envio pela loja parceira"}
                               </span>
                               <span className="ae-cart-line__ship-frete">{formatFreteKz(item.productDeliveryOption.custoEntrega)}</span>
                             </div>
@@ -443,6 +442,11 @@ export default function CartPage() {
               <span>Total estimado</span>
               <span className="ae-cart-kz">{formatKz(totals.grandTotal)}</span>
             </div>
+            <ul className="ae-cart-summary__trust">
+              <li>Checkout com ligação segura (HTTPS)</li>
+              <li>Pagamentos conforme o método escolhido no passo seguinte</li>
+              <li>Acompanhamento da encomenda na sua conta</li>
+            </ul>
             <p className="ae-cart-summary__note ae-muted">
               Valores em Kz. Impostos e tarifas finais podem depender da morada e método de pagamento — confirmados no passo seguinte.
             </p>
