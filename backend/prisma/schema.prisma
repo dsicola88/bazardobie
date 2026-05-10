@@ -775,7 +775,8 @@ model Review {
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   helpfulMarks ReviewHelpful[]
 
-  @@unique([userId, productId, orderId])
+  /// Uma opinião por comprador e produto (em qualquer encomenda entregue).
+  @@unique([userId, productId])
   @@index([productId])
 }
 

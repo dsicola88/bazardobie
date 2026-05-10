@@ -7,12 +7,16 @@ export type BuyerOrdersTab =
   | "preparacao"
   | "transito"
   | "entregue"
+  | "concluidos"
   | "cancelado";
 
 export type OrderForBuyerTab = {
   status: string;
   paymentMethod: string;
   gatewayPayStatus?: string;
+  items?: { productId: string }[];
+  /** Produtos desta encomenda que o comprador já avaliou (máx. uma avaliação por produto em toda a conta). */
+  buyerReviewedProductIds?: string[];
 };
 
 export const BUYER_ORDER_TAB_LABELS: Record<BuyerOrdersTab, string> = {
@@ -21,7 +25,8 @@ export const BUYER_ORDER_TAB_LABELS: Record<BuyerOrdersTab, string> = {
   espera_loja: "Aguardar loja",
   preparacao: "Confirmado · preparação",
   transito: "Em trânsito",
-  entregue: "Entregues",
+  entregue: "Entregues · avaliar",
+  concluidos: "Concluídas",
   cancelado: "Canceladas",
 };
 
@@ -30,6 +35,19 @@ export function orderNeedsOnlinePayment(o: OrderForBuyerTab): boolean {
   if (o.paymentMethod !== "PAGAMENTO_ONLINE") return false;
   const g = o.gatewayPayStatus ?? "";
   return g === "AGUARDANDO_PAGAMENTO" || g === "PROCESSANDO" || g === "FALHOU";
+}
+
+/** Encomenda entregue e com opinião registada em todos os artigos listados. */
+export function orderDeliveredFullyReviewed(o: OrderForBuyerTab): boolean {
+  if (o.status !== "ENTREGUE") return false;
+  const lines = o.items ?? [];
+  if (lines.length === 0) return false;
+  const reviewed = new Set(o.buyerReviewedProductIds ?? []);
+  return lines.every((it) => reviewed.has(it.productId));
+}
+
+export function buyerHasReviewedProduct(o: OrderForBuyerTab, productId: string): boolean {
+  return Boolean(o.buyerReviewedProductIds?.includes(productId));
 }
 
 export function orderMatchesBuyerTab(o: OrderForBuyerTab, tab: BuyerOrdersTab): boolean {
@@ -47,8 +65,10 @@ export function orderMatchesBuyerTab(o: OrderForBuyerTab, tab: BuyerOrdersTab): 
       return o.status === "CONFIRMADO" || o.status === "EM_PREPARACAO";
     case "transito":
       return o.status === "EM_ENTREGA";
+    case "concluidos":
+      return orderDeliveredFullyReviewed(o);
     case "entregue":
-      return o.status === "ENTREGUE";
+      return o.status === "ENTREGUE" && !orderDeliveredFullyReviewed(o);
     default:
       return true;
   }
@@ -73,6 +93,7 @@ export const BUYER_ORDER_TABS_FLOW: BuyerOrdersTab[] = [
   "preparacao",
   "transito",
   "entregue",
+  "concluidos",
   "cancelado",
 ];
 
@@ -93,6 +114,8 @@ export function primaryBuyerTabForOrder(o: OrderForBuyerTab): BuyerOrdersTab {
   if (o.status === "PENDENTE") return "espera_loja";
   if (o.status === "CONFIRMADO" || o.status === "EM_PREPARACAO") return "preparacao";
   if (o.status === "EM_ENTREGA") return "transito";
-  if (o.status === "ENTREGUE") return "entregue";
+  if (o.status === "ENTREGUE") {
+    return orderDeliveredFullyReviewed(o) ? "concluidos" : "entregue";
+  }
   return "todos";
 }

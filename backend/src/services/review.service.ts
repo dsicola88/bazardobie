@@ -64,6 +64,12 @@ export const reviewService = {
       throw new HttpError(400, "Dados do pedido inconsistentes — avaliação rejeitada.");
     }
 
+    const dup = await prisma.review.findUnique({
+      where: { userId_productId: { userId, productId: input.productId } },
+      select: { id: true },
+    });
+    if (dup) throw new HttpError(409, "Já avaliou este produto. Cada artigo só pode receber uma avaliação sua.");
+
     const overall = input.rating;
     const rq = input.ratingQuality ?? overall;
     const rs = input.ratingSellerCommunication ?? overall;
@@ -102,12 +108,12 @@ export const reviewService = {
       });
     } catch (e: unknown) {
       const code = typeof e === "object" && e && "code" in e ? (e as { code?: string }).code : undefined;
-      if (code === "P2002") throw new HttpError(409, "Já avaliou este produto neste pedido");
+      if (code === "P2002") throw new HttpError(409, "Já avaliou este produto.");
       throw e;
     }
 
-    const created = await prisma.review.findFirst({
-      where: { userId, productId: input.productId, orderId: input.orderId },
+    const created = await prisma.review.findUnique({
+      where: { userId_productId: { userId, productId: input.productId } },
       include: reviewPublicInclude,
     });
     if (!created) throw new HttpError(500, "Falha ao carregar avaliação criada");

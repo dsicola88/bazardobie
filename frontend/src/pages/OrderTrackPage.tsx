@@ -7,7 +7,9 @@ import { ReviewOrderModal } from "../components/ReviewOrderModal.js";
 import { OrderChatPanel } from "../components/OrderChatPanel.js";
 import {
   BUYER_ORDER_TAB_LABELS,
+  buyerHasReviewedProduct,
   etiquetaEstadoPedidoCliente,
+  orderDeliveredFullyReviewed,
   orderNeedsOnlinePayment,
   primaryBuyerTabForOrder,
 } from "../utils/buyerOrderFilters.js";
@@ -61,6 +63,7 @@ type TrackOrder = {
   disputes?: { id: string; status: string; reason: string; createdAt: string }[];
   ledgerEntries?: { kind: string; amount: string; note: string | null; createdAt: string }[];
   items?: TrackItem[];
+  buyerReviewedProductIds?: string[];
   trackingCarrier?: string | null;
   trackingCode?: string | null;
   trackingUrl?: string | null;
@@ -230,7 +233,12 @@ export default function OrderTrackPage() {
         <span className="ae-on">Seguimento</span>
       </div>
       <h1 className="ae-checkout__title" style={{ marginBottom: 12 }}>
-        Encomenda · {etiquetaEstadoPedidoCliente(row.status)}
+        Encomenda ·{" "}
+        {row.status === "ENTREGUE" && orderDeliveredFullyReviewed(row) ? (
+          <span className="ae-order-buyer-status--done">Entregue · avaliações concluídas</span>
+        ) : (
+          etiquetaEstadoPedidoCliente(row.status)
+        )}
       </h1>
 
       <div className="page-panel" style={{ marginBottom: 14 }}>
@@ -294,9 +302,11 @@ export default function OrderTrackPage() {
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
             {row.items.map((it, idx) => {
               const vSub = orderItemVariantSubtitle(it);
+              const reviewed = buyerHasReviewedProduct(row, it.productId);
               return (
               <li
                 key={`${it.productId}-${idx}`}
+                className={reviewed ? "ae-order-items__line--reviewed" : undefined}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -326,19 +336,23 @@ export default function OrderTrackPage() {
                   ) : null}
                 </div>
                 {row.status === "ENTREGUE" ? (
-                  <button
-                    type="button"
-                    className="ae-tracking__cta"
-                    onClick={() =>
-                      setReviewModal({
-                        orderId: row.id,
-                        productId: it.productId,
-                        productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
-                      })
-                    }
-                  >
-                    Avaliar com fotos
-                  </button>
+                  reviewed ? (
+                    <span className="ae-order-item-review-badge">Entregue · avaliado</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ae-tracking__cta"
+                      onClick={() =>
+                        setReviewModal({
+                          orderId: row.id,
+                          productId: it.productId,
+                          productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
+                        })
+                      }
+                    >
+                      Avaliar com fotos
+                    </button>
+                  )
                 ) : null}
               </li>
               );

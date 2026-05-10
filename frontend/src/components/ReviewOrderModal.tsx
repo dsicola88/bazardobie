@@ -129,8 +129,9 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
           {productName}
         </p>
         <p className="ae-muted" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
-          Só pode publicar após a encomenda estar <strong>entregue</strong>. A opinião fica ligada ao seu pedido e conta —
-          é tratada como <strong>compra verificada</strong> e contribui para a classificação visível na página do artigo.
+          Só pode publicar após a encomenda estar <strong>entregue</strong>. Cada produto só pode ser avaliado{" "}
+          <strong>uma vez</strong> por conta — a opinião fica ligada a esta compra como{" "}
+          <strong>compra verificada</strong> e conta para a classificação na página do artigo.
         </p>
         <form className="form-stack" onSubmit={submit}>
           <label>Classificação geral</label>

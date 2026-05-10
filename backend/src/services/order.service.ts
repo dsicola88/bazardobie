@@ -31,6 +31,24 @@ import { enqueueOrderConfirmationEmail } from "../emails/orderConfirmed.email.js
 
 type Checkout = z.infer<typeof checkoutSchema>;
 
+type OrderLikeWithItems = {
+  items: { productId: string }[];
+};
+
+function buyerReviewedIdsForOrder(order: OrderLikeWithItems, reviewedSet: Set<string>): string[] {
+  const pids = [...new Set(order.items.map((i) => i.productId))];
+  return pids.filter((pid) => reviewedSet.has(pid));
+}
+
+async function reviewedProductIdsForUser(userId: string, productIds: string[]): Promise<Set<string>> {
+  if (productIds.length === 0) return new Set();
+  const rows = await prisma.review.findMany({
+    where: { userId, productId: { in: productIds } },
+    select: { productId: true },
+  });
+  return new Set(rows.map((r) => r.productId));
+}
+
 function groupCartByShop<T extends { product: { shopId: string } }>(items: T[]) {
   const map = new Map<string, T[]>();
   for (const it of items) {
@@ -597,8 +615,14 @@ export const orderService = {
       }),
       prisma.order.count({ where }),
     ]);
+    const mapped = items.map((o) => mapOrderWithItemsMedia(o));
+    const allProductIds = [...new Set(mapped.flatMap((o) => o.items.map((i) => i.productId)))];
+    const reviewedSet = await reviewedProductIdsForUser(userId, allProductIds);
     return {
-      items: items.map((o) => mapOrderWithItemsMedia(o)),
+      items: mapped.map((o) => ({
+        ...o,
+        buyerReviewedProductIds: buyerReviewedIdsForOrder(o, reviewedSet),
+      })),
       total,
       skip,
       take,
@@ -626,7 +650,13 @@ export const orderService = {
       },
     });
     if (!order) throw new HttpError(404, "Pedido não encontrado");
-    return mapOrderWithItemsMedia(order);
+    const mapped = mapOrderWithItemsMedia(order);
+    const orderProductIds = [...new Set(mapped.items.map((i) => i.productId))];
+    const reviewedSet = await reviewedProductIdsForUser(userId, orderProductIds);
+    return {
+      ...mapped,
+      buyerReviewedProductIds: buyerReviewedIdsForOrder(mapped, reviewedSet),
+    };
   },
 
   async sellerOrders(vendorUserId: string, skip = 0, take = 20, q?: string) {

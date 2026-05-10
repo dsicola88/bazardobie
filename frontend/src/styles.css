@@ -6244,6 +6244,30 @@ a:hover {
   border-bottom: none;
 }
 
+.ae-order-items__line--reviewed {
+  padding-left: 10px;
+  margin-left: -10px;
+  border-left: 3px solid #0d9488;
+  border-radius: 4px 0 0 4px;
+}
+
+.ae-order-item-review-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f766e;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(13, 148, 136, 0.12);
+  border: 1px solid rgba(13, 148, 136, 0.35);
+}
+
+.ae-order-buyer-status--done {
+  display: inline-block;
+  font-weight: 700;
+  color: #0f766e !important;
+}
+
 .ae-buyer-orders-tabs {
   margin-bottom: 10px;
   border-bottom: 1px solid var(--ae-line);

@@ -9,7 +9,9 @@ import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
 import {
   BUYER_ORDER_TAB_LABELS,
   BUYER_ORDER_TABS_FLOW,
+  buyerHasReviewedProduct,
   etiquetaEstadoPedidoCliente,
+  orderDeliveredFullyReviewed,
   orderMatchesBuyerTab,
   parseBuyerOrdersTabParam,
   type BuyerOrdersTab,
@@ -43,6 +45,7 @@ type Order = {
   paymentProofUrl?: string | null;
   gatewayPayStatus?: string;
   items?: OrderItem[];
+  buyerReviewedProductIds?: string[];
   trackingCarrier?: string | null;
   trackingCode?: string | null;
   trackingUrl?: string | null;
@@ -230,7 +233,9 @@ export default function OrdersPage() {
         </div>
       </nav>
       <p className="ae-muted" style={{ fontSize: 12, margin: "-6px 0 14px" }}>
-        Fluxo: pagamento → confirmação da loja → preparação → trânsito → entregue. Depois de «Entregue», pode avaliar cada artigo com fotos.
+        Fluxo: pagamento → confirmação da loja → preparação → trânsito → entregue. Depois de «Entregue», pode avaliar cada artigo
+        uma vez (a mesma referência de produto não admite segunda avaliação). Quando todos os artigos tiverem opinião, a encomenda
+        aparece em «Concluídas» com estado a verde.
       </p>
       <p className="ae-muted" style={{ fontSize: 12, margin: "-8px 0 14px" }}>
         {ordersTotal > list.length ? (
@@ -260,7 +265,9 @@ export default function OrdersPage() {
           <li className="page-panel ae-buyer-orders-empty">
             <strong>Nenhuma encomenda neste separador.</strong>
             <p className="ae-muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
-              Use «Todas» para ver o histórico completo ou «À pagar» se finalizou com pagamento online.
+              {ordersTab === "concluidos"
+                ? "As encomendas entregues só aparecem aqui depois de avaliar todos os produtos dessa encomenda (cada produto: uma avaliação por conta)."
+                : "Use «Todas» para ver o histórico completo ou «À pagar» se finalizou com pagamento online."}
             </p>
           </li>
         ) : null}
@@ -276,7 +283,16 @@ export default function OrdersPage() {
               <div style={{ textAlign: "right" as const }}>
                 <div>{Number(o.grandTotal).toFixed(0)} Kz</div>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
-                  {etiquetaEstadoPedidoCliente(o.status)}
+                  <span
+                    className={
+                      o.status === "ENTREGUE" && orderDeliveredFullyReviewed(o)
+                        ? "ae-order-buyer-status ae-order-buyer-status--done"
+                        : undefined
+                    }
+                  >
+                    {etiquetaEstadoPedidoCliente(o.status)}
+                    {o.status === "ENTREGUE" && orderDeliveredFullyReviewed(o) ? " · processada" : ""}
+                  </span>
                 </div>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
                   Pagamento: {etiquetaPagamento(o.paymentMethod)}
@@ -331,8 +347,12 @@ export default function OrdersPage() {
                 <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                   {o.items.map((it, idx) => {
                     const vSub = orderItemVariantSubtitle(it);
+                    const reviewed = buyerHasReviewedProduct(o, it.productId);
                     return (
-                    <li key={`${it.productId}-${idx}`} className="ae-order-items__line">
+                    <li
+                      key={`${it.productId}-${idx}`}
+                      className={`ae-order-items__line${reviewed ? " ae-order-items__line--reviewed" : ""}`}
+                    >
                       <div>
                         <div>
                           <Link to={`/product/${it.productId}`} style={{ fontWeight: 600 }}>
@@ -347,19 +367,23 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
                       {o.status === "ENTREGUE" ? (
-                        <button
-                          type="button"
-                          className="ae-tracking__cta"
-                          onClick={() =>
-                            setReviewModal({
-                              orderId: o.id,
-                              productId: it.productId,
-                              productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
-                            })
-                          }
-                        >
-                          Avaliar
-                        </button>
+                        reviewed ? (
+                          <span className="ae-order-item-review-badge">Entregue · avaliado</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ae-tracking__cta"
+                            onClick={() =>
+                              setReviewModal({
+                                orderId: o.id,
+                                productId: it.productId,
+                                productName: orderItemDisplayTitle(it.productNameSnapshot, vSub),
+                              })
+                            }
+                          >
+                            Avaliar
+                          </button>
+                        )
                       ) : null}
                     </li>
                     );
