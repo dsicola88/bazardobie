@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
+import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import type { ProductCondition } from "../utils/productCondition.js";
@@ -10,7 +11,7 @@ function allowSellerFromContent(raw: string | undefined): boolean {
   return v === "true" || v === "1" || v === "sim" || v === "yes";
 }
 
-type Cat = { id: string; name: string; parentId: string | null };
+type Cat = PublicCategory;
 type ShopMe = { isApproved: boolean; province: string; city: string };
 
 type VarForm = {
@@ -137,9 +138,7 @@ export default function VendorProductEditor() {
   const catOptions = useMemo(() => flattenCats(cats), [cats]);
 
   useEffect(() => {
-    void apiFetch<Cat[]>("/categories")
-      .then(setCats)
-      .catch(() => setCats([]));
+    void getPublicCategories().then(setCats);
   }, []);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { apiFetch, apiUrl, cartSessionHeaders, ensureCartSession } from "../api.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { buildSearchPath } from "../buildSearchPath.js";
+import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { NotificationsBell } from "./NotificationsBell.js";
 import type { ProductCardData } from "./ProductCard.js";
 import { resolveMediaUrl } from "../utils/media.js";
@@ -31,7 +32,7 @@ function promoIntervalActive(now: number, startPrimary: string, endPrimary: stri
   return true;
 }
 
-type Category = { id: string; name: string; slug: string; parentId: string | null };
+type Category = PublicCategory;
 type SearchSuggestProduct = { id: string; name: string };
 
 export function Header() {
@@ -59,9 +60,7 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    void apiFetch<Category[]>("/categories")
-      .then(setCats)
-      .catch(() => setCats([]));
+    void getPublicCategories().then(setCats);
   }, []);
 
   useEffect(() => {

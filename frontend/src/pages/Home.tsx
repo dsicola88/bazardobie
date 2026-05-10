@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, withCartSession } from "../api.js";
+import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
@@ -11,7 +12,7 @@ import { useFlashDealCountdown } from "../home/useFlashDealCountdown.js";
 import { HomeGroupShowcase, resolveHomeGroupCta, type HomeGroupPublicBlock } from "../home/HomeGroupShowcase.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
-type Category = { id: string; name: string; imageUrl?: string | null; parentId: string | null };
+type Category = PublicCategory;
 type MegaProduct = { id: string; name: string; images?: { url: string }[] };
 type HomeGroupBlock = {
   slug: string;
@@ -114,42 +115,55 @@ export default function Home() {
   });
 
   useEffect(() => {
-    void apiFetch<Banner[]>("/banners").then(setBanners).catch(() => setBanners([]));
-  }, []);
-  useEffect(() => {
-    void apiFetch<Category[]>("/categories").then(setCats).catch(() => setCats([]));
-  }, []);
-  useEffect(() => {
-    void apiFetch<{ groups: HomeGroupBlock[] }>("/homepage/product-groups")
-      .then((r) =>
-        setHomeGroups(
-          Array.isArray(r.groups) ? r.groups.map((x) => normalizeHomeGroup(x as HomeGroupBlock)) : [],
-        ),
-      )
-      .catch(() => setHomeGroups([]))
-      .finally(() => setHomeGroupsLoaded(true));
-  }, []);
-  useEffect(() => {
-    void apiFetch<{ items: ProductCardData[] }>("/products?featured=true&take=10")
-      .then((r) => setFeatured(r.items))
-      .catch(() => setFeatured([]));
-  }, []);
-  useEffect(() => {
-    void apiFetch<{ items: ProductCardData[] }>("/products?sort=mais_vendidos&take=10")
-      .then((r) => setTop(r.items))
-      .catch(() => setTop([]));
-  }, []);
-  useEffect(() => {
-    void apiFetch<{ items: ProductCardData[] }>("/products?sort=recentes&take=12")
-      .then((r) => setRecent(r.items))
-      .catch(() => setRecent([]));
+    let cancelled = false;
+    void (async () => {
+      const [bannerList, catList, groupsRes, featRes, topRes, recentRes] = await Promise.all([
+        apiFetch<Banner[]>("/banners").catch(() => [] as Banner[]),
+        getPublicCategories().catch(() => [] as PublicCategory[]),
+        apiFetch<{ groups: HomeGroupBlock[] }>("/homepage/product-groups").catch(() => ({
+          groups: [] as HomeGroupBlock[],
+        })),
+        apiFetch<{ items: ProductCardData[] }>("/products?featured=true&take=10").catch(() => ({ items: [] })),
+        apiFetch<{ items: ProductCardData[] }>("/products?sort=mais_vendidos&take=10").catch(() => ({ items: [] })),
+        apiFetch<{ items: ProductCardData[] }>("/products?sort=recentes&take=12").catch(() => ({ items: [] })),
+      ]);
+
+      if (cancelled) return;
+
+      setBanners(bannerList);
+      setCats(catList);
+      setHomeGroups(
+        Array.isArray(groupsRes.groups)
+          ? groupsRes.groups.map((x) => normalizeHomeGroup(x as HomeGroupBlock))
+          : [],
+      );
+      setHomeGroupsLoaded(true);
+      setFeatured(featRes.items ?? []);
+      setTop(topRes.items ?? []);
+      setRecent(recentRes.items ?? []);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!flashEnabled) return;
+    if (!flashEnabled) {
+      setFlashDeals([]);
+      return;
+    }
+    let cancelled = false;
     void apiFetch<{ items: ProductCardData[] }>("/products?onSale=true&sort=preco_asc&take=14")
-      .then((r) => setFlashDeals(Array.isArray(r.items) ? r.items : []))
-      .catch(() => setFlashDeals([]));
+      .then((r) => {
+        if (!cancelled) setFlashDeals(Array.isArray(r.items) ? r.items : []);
+      })
+      .catch(() => {
+        if (!cancelled) setFlashDeals([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [flashEnabled]);
 
   useEffect(() => {

@@ -3,9 +3,9 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
-import { useSeo } from "../seo/useSeo.js";
+import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 
-type Category = { id: string; name: string; slug: string; parentId: string | null };
+type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
 
 const sorts: { k: string; label: string }[] = [
@@ -66,7 +66,7 @@ export default function SearchPage() {
   }, [minPriceParam, maxPriceParam]);
 
   useEffect(() => {
-    void apiFetch<Category[]>("/categories").then(setCats).catch(() => setCats([]));
+    void getPublicCategories().then(setCats);
   }, []);
 
   useEffect(() => {
