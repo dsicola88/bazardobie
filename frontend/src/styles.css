@@ -9531,3 +9531,26 @@ a:hover {
   border-color: rgba(230, 46, 4, 0.35);
   color: var(--ae-deep);
 }
+
+/* Cartões da lista de notificações */
+.ae-notif-card {
+  border-radius: 10px;
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+.ae-notif-card--tone-default:not(.ae-notif-card--read) {
+  border-left-color: var(--ae-deep);
+}
+.ae-notif-card--tone-positive:not(.ae-notif-card--read) {
+  border-left-color: #0d9488;
+}
+.ae-notif-card--tone-progress:not(.ae-notif-card--read) {
+  border-left-color: #ca8a04;
+}
+.ae-notif-card--tone-negative:not(.ae-notif-card--read) {
+  border-left-color: #b91c1c;
+}
+.ae-notif-card--read {
+  border-left-color: #d5d9e0 !important;
+  opacity: 0.92;
+}

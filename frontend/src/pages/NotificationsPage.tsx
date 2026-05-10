@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { presentNotificationRow, type NotificationVisualVariant } from "../utils/orderNotificationDisplay.js";
 
 type NotificationRow = {
   id: string;
@@ -25,6 +26,21 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+function notifArticleClass(read: boolean, variant: NotificationVisualVariant): string {
+  const base = "ae-panel ae-notif-card";
+  if (read) return `${base} ae-notif-card--read`;
+  switch (variant) {
+    case "positive":
+      return `${base} ae-notif-card--tone-positive`;
+    case "negative":
+      return `${base} ae-notif-card--tone-negative`;
+    case "progress":
+      return `${base} ae-notif-card--tone-progress`;
+    default:
+      return `${base} ae-notif-card--tone-default`;
+  }
+}
+
 function OrderStatusExtras({ payload }: { payload: unknown }) {
   if (!isRecord(payload) || payload.kind !== "ORDER_STATUS") return null;
   const p = payload as OrderStatusPayload;
@@ -42,11 +58,6 @@ function OrderStatusExtras({ payload }: { payload: unknown }) {
           </span>
         ) : null}
       </div>
-      {typeof p.primaryHref === "string" && p.primaryHref ? (
-        <Link to={p.primaryHref} className="ae-tracking__cta" style={{ marginTop: 10, display: "inline-block" }}>
-          Ver encomenda
-        </Link>
-      ) : null}
     </div>
   );
 }
@@ -70,6 +81,18 @@ function ChatExtras({ payload }: { payload: unknown }) {
     <div style={{ marginTop: 10 }}>
       <Link to={href} className="ae-tracking__cta">
         Abrir chat da encomenda
+      </Link>
+    </div>
+  ) : null;
+}
+
+function OrderStatusPrimaryLink({ payload }: { payload: unknown }) {
+  if (!isRecord(payload) || payload.kind !== "ORDER_STATUS") return null;
+  const href = typeof payload.primaryHref === "string" ? payload.primaryHref : "";
+  return href ? (
+    <div style={{ marginTop: 10 }}>
+      <Link to={href} className="ae-tracking__cta">
+        Ver encomenda
       </Link>
     </div>
   ) : null;
@@ -150,23 +173,33 @@ export default function NotificationsPage() {
       ) : null}
 
       <div style={{ display: "grid", gap: 10 }}>
-        {rows.map((n) => (
-          <article key={n.id} className="ae-panel" style={{ borderLeft: n.read ? "4px solid #d5d9e0" : "4px solid var(--ae-deep)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-              <strong>{n.title}</strong>
-              <span className="ae-muted" style={{ fontSize: 12 }}>{new Date(n.createdAt).toLocaleString("pt-AO")}</span>
-            </div>
-            <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{n.message}</p>
-            <OrderStatusExtras payload={n.payload} />
-            <TrackingExtras payload={n.payload} />
-            <ChatExtras payload={n.payload} />
-            {!n.read ? (
-              <button type="button" className="ae-tracking__cta" style={{ marginTop: 8 }} onClick={() => void markRead(n.id)}>
-                Marcar como lida
-              </button>
-            ) : null}
-          </article>
-        ))}
+        {rows.map((n) => {
+          const presented = presentNotificationRow({
+            title: n.title,
+            message: n.message,
+            payload: n.payload,
+          });
+          return (
+            <article key={n.id} className={notifArticleClass(n.read, presented.visualVariant)}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+                <strong style={{ lineHeight: 1.3 }}>{presented.title}</strong>
+                <span className="ae-muted" style={{ fontSize: 12, flexShrink: 0 }}>
+                  {new Date(n.createdAt).toLocaleString("pt-AO")}
+                </span>
+              </div>
+              <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{presented.message}</p>
+              <OrderStatusPrimaryLink payload={n.payload} />
+              {presented.showOrderStatusExtras ? <OrderStatusExtras payload={n.payload} /> : null}
+              <TrackingExtras payload={n.payload} />
+              <ChatExtras payload={n.payload} />
+              {!n.read ? (
+                <button type="button" className="btn" style={{ marginTop: 10 }} onClick={() => void markRead(n.id)}>
+                  Marcar como lida
+                </button>
+              ) : null}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
