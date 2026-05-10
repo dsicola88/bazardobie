@@ -58,6 +58,8 @@ function padUnit(n: number): string {
   return String(Math.max(0, Math.floor(n))).padStart(2, "0");
 }
 
+type DiscoveryTab = "recent" | "featured" | "top";
+
 export default function Home() {
   const { content } = useSiteContent();
   const { token } = useAuth();
@@ -121,6 +123,7 @@ export default function Home() {
   const flashCountdown = useFlashDealCountdown(flashEnabled ? flashEndAtRaw : undefined);
   const [personalRecent, setPersonalRecent] = useState<ProductCardData[] | null>(null);
   const [personalForYou, setPersonalForYou] = useState<ProductCardData[] | null>(null);
+  const [discoveryTab, setDiscoveryTab] = useState<DiscoveryTab>("recent");
 
   useSeo({
     title: "BAZAR DO BIÉ — Marketplace em Angola",
@@ -264,6 +267,34 @@ export default function Home() {
 
   const hero = banners[bi];
 
+  const discoveryConfig: Record<
+    DiscoveryTab,
+    { title: string; dek: string; primaryCta: { label: string; to: string }; secondaryCta?: { label: string; to: string }; items: ProductCardData[] }
+  > = {
+    recent: {
+      title: "Novidades no catálogo",
+      dek: "Últimas referências públicas na plataforma.",
+      primaryCta: { label: "Ver catálogo completo", to: "/search?sort=recentes" },
+      secondaryCta: { label: "Só promoções", to: "/search?onSale=true&sort=preco_asc" },
+      items: recent,
+    },
+    featured: {
+      title: featuredHeading,
+      dek: "Selecção editorial da equipa e parceiros.",
+      primaryCta: { label: "Ver selecção completa", to: "/search?featured=true" },
+      secondaryCta: { label: "Poupar em promoções", to: "/search?onSale=true" },
+      items: featured,
+    },
+    top: {
+      title: bestsellersHeading,
+      dek: "Referências com maior número de vendas registadas — confiança da comunidade.",
+      primaryCta: { label: "Ranking global", to: "/search?sort=mais_vendidos" },
+      secondaryCta: { label: "Ver novidades", to: "/search?sort=recentes" },
+      items: top,
+    },
+  };
+  const disc = discoveryConfig[discoveryTab];
+
   return (
     <>
       <div className="ae-home-bleed-wrap">
@@ -336,6 +367,39 @@ export default function Home() {
         </nav>
       </section>
 
+      {pulseTags.length > 0 ? (
+        <section className="ae-shell ae-home-pulse" aria-label="Vantagens do marketplace">
+          <ul className="ae-home-pulse__list">
+            {pulseTags.map((tag, i) => (
+              <li key={`${i}-${tag}`}>{tag}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
+
+      <section className="ae-shell ae-trust-shell ae-trust-shell--premium ae-home-trust-early">
+        <div className="ae-trust-strip ae-trust-strip--premium">
+          <div className="ae-trust-strip__item">
+            <strong>{t1.title}</strong>
+            {t1.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t2.title}</strong>
+            {t2.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t3.title}</strong>
+            {t3.body}
+          </div>
+          <div className="ae-trust-strip__item">
+            <strong>{t4.title}</strong>
+            {t4.body}
+          </div>
+        </div>
+      </section>
+
       {personalRecent !== null && personalRecent.length > 0 ? (
         <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-recent-title">
           <header className="ae-section__masthead">
@@ -372,16 +436,6 @@ export default function Home() {
               <ProductCard key={`foryou-${p.id}`} p={p} />
             ))}
           </div>
-        </section>
-      ) : null}
-
-      {pulseTags.length > 0 ? (
-        <section className="ae-shell ae-home-pulse" aria-label="Vantagens do marketplace">
-          <ul className="ae-home-pulse__list">
-            {pulseTags.map((tag, i) => (
-              <li key={`${i}-${tag}`}>{tag}</li>
-            ))}
-          </ul>
         </section>
       ) : null}
 
@@ -586,29 +640,6 @@ export default function Home() {
         </section>
       ) : null}
 
-      <section className="ae-shell ae-trust-shell ae-trust-shell--premium">
-        <div className="ae-trust-strip ae-trust-strip--premium">
-          <div className="ae-trust-strip__item">
-            <strong>{t1.title}</strong>
-            {t1.body}
-          </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t2.title}</strong>
-            {t2.body}
-          </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t3.title}</strong>
-            {t3.body}
-          </div>
-          <div className="ae-trust-strip__item">
-            <strong>{t4.title}</strong>
-            {t4.body}
-          </div>
-        </div>
-      </section>
-
-      {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
-
       {!homeGroupsLoaded ? (
         <section className="ae-section ae-home-group-strip ae-home-group-strip--skeleton-shell" aria-busy="true">
           <div className="ae-home-group-strip__head-skel ae-skel" />
@@ -667,73 +698,68 @@ export default function Home() {
             ),
           )}
 
-      <section className="ae-section ae-section--catalog">
-        <header className="ae-section__masthead">
-          <div className="ae-section__masthead-copy">
-            <h2>Novidades no catálogo</h2>
-            <p className="ae-section__dek">Últimas referências disponíveis na plataforma.</p>
+      {homeGroupsLoaded ? (
+        <section
+          className="ae-shell ae-section ae-section--catalog ae-home-discovery-hub"
+          aria-labelledby="ae-home-discovery-title"
+        >
+          <header className="ae-section__masthead ae-home-discovery-hub__masthead">
+            <div className="ae-section__masthead-copy">
+              <p className="ae-home-discovery-hub__eyebrow" id="ae-home-discovery-eyebrow">
+                Explorar o catálogo
+              </p>
+              <h2 id="ae-home-discovery-title">{disc.title}</h2>
+              <p className="ae-section__dek">{disc.dek}</p>
+            </div>
+            <div className="ae-section__masthead-actions">
+              <Link className="ae-section__cta ae-section__cta--ghost" to={disc.primaryCta.to}>
+                {disc.primaryCta.label}
+              </Link>
+              {disc.secondaryCta ? (
+                <Link className="ae-section__link" to={disc.secondaryCta.to}>
+                  {disc.secondaryCta.label}
+                </Link>
+              ) : null}
+            </div>
+          </header>
+          <div className="ae-home-discovery-tabs" role="tablist" aria-label="Listagem do catálogo">
+            {(
+              [
+                { id: "recent" as const, label: "Novidades" },
+                { id: "featured" as const, label: "Destaque" },
+                { id: "top" as const, label: "Populares" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={discoveryTab === tab.id}
+                id={`ae-discovery-tab-${tab.id}`}
+                aria-controls="ae-home-discovery-panel"
+                className={`ae-home-discovery-tab ${discoveryTab === tab.id ? "ae-home-discovery-tab--active" : ""}`}
+                onClick={() => setDiscoveryTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <div className="ae-section__masthead-actions">
-            <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=recentes">
-              Ver catálogo completo
-            </Link>
-            <Link className="ae-section__link" to="/search?onSale=true&sort=preco_asc">
-              Ver apenas promoções
-            </Link>
+          <div id="ae-home-discovery-panel" role="tabpanel" aria-labelledby={`ae-discovery-tab-${discoveryTab}`}>
+            {disc.items.length > 0 ? (
+              <div className="ae-grid">
+                {disc.items.map((p) => (
+                  <ProductCard key={`${discoveryTab}-${p.id}`} p={p} />
+                ))}
+              </div>
+            ) : (
+              <p className="ae-home-discovery-empty">
+                Sem artigos públicos nesta vista neste momento —{" "}
+                <Link to="/search">abra a pesquisa completa</Link> ou experimente outro separador acima.
+              </p>
+            )}
           </div>
-        </header>
-        <div className="ae-grid">
-          {recent.map((p) => (
-            <ProductCard key={p.id} p={p} />
-          ))}
-        </div>
-      </section>
-
-      <section className="ae-section ae-section--catalog">
-        <header className="ae-section__masthead">
-          <div className="ae-section__masthead-copy">
-            <h2>{featuredHeading}</h2>
-            <p className="ae-section__dek">Recomendações destacadas pela equipa e parceiros.</p>
-          </div>
-          <div className="ae-section__masthead-actions">
-            <Link className="ae-section__cta ae-section__cta--ghost" to="/search?featured=true">
-              Ver selecção completa
-            </Link>
-            <Link className="ae-section__link" to="/search?onSale=true">
-              Poupar em promoções
-            </Link>
-          </div>
-        </header>
-        <div className="ae-grid">
-          {featured.map((p) => (
-            <ProductCard key={p.id} p={p} />
-          ))}
-        </div>
-      </section>
-
-      <section className="ae-section ae-section--catalog">
-        <header className="ae-section__masthead">
-          <div className="ae-section__masthead-copy">
-            <h2>{bestsellersHeading}</h2>
-            <p className="ae-section__dek">
-              Produtos com maior número de vendas registadas na plataforma — referências comprovadas por compradores.
-            </p>
-          </div>
-          <div className="ae-section__masthead-actions">
-            <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
-              Ver ranking global
-            </Link>
-            <Link className="ae-section__link" to="/search?sort=recentes">
-              Ver novidades
-            </Link>
-          </div>
-        </header>
-        <div className="ae-grid">
-          {top.map((p) => (
-            <ProductCard key={p.id} p={p} />
-          ))}
-        </div>
-      </section>
+        </section>
+      ) : null}
     </>
   );
 }

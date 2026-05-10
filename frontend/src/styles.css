@@ -2543,6 +2543,89 @@ a:hover {
   margin-bottom: 4px;
 }
 
+/** Confiança subida na página (ligação às vitrines e ao catálogo). */
+.ae-home-trust-early {
+  margin-top: clamp(8px, 1.8vw, 16px);
+  margin-bottom: clamp(10px, 2vw, 18px);
+}
+
+/** Hub único: Novidades · Destaque · Populares */
+.ae-home-discovery-hub {
+  scroll-margin-top: 88px;
+  margin-top: clamp(16px, 3vw, 26px);
+  margin-bottom: clamp(28px, 4vw, 44px);
+}
+.ae-home-discovery-hub__masthead {
+  align-items: flex-start;
+}
+.ae-home-discovery-hub__eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(148 163 184);
+}
+.ae-home-discovery-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0 0 18px;
+}
+.ae-home-discovery-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: var(--ae-radius-pill);
+  border: 1px solid rgb(203 213 225 / 0.88);
+  background: rgb(255 255 255);
+  font-size: 13px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  color: rgb(71 85 105);
+  cursor: pointer;
+  transition:
+    border-color var(--ae-motion-fast),
+    box-shadow var(--ae-motion-fast),
+    color var(--ae-motion-fast),
+    background var(--ae-motion-fast);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  touch-action: manipulation;
+}
+.ae-home-discovery-tab:hover {
+  border-color: rgb(129 140 248 / 0.48);
+  color: var(--ae-accent-nav);
+}
+.ae-home-discovery-tab--active {
+  background: linear-gradient(135deg, rgb(239 246 255) 0%, rgb(255 255 255) 58%);
+  border-color: rgb(96 143 239 / 0.4);
+  color: rgb(25 62 154);
+  box-shadow: 0 2px 8px rgb(30 64 175 / 0.08);
+}
+.ae-home-discovery-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(96 143 239 / 0.35);
+}
+.ae-home-discovery-empty {
+  margin: 12px 0 4px;
+  padding: 22px 18px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ae-dim);
+  line-height: 1.5;
+  background: rgb(248 250 252);
+  border-radius: var(--ae-radius-md);
+  border: 1px dashed rgb(226 232 240);
+}
+.ae-home-discovery-empty a {
+  font-weight: 650;
+  color: var(--ae-accent-nav);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Vitrines marketing: só imagem + link (grelha, hero+3, carrossel) */
 .ae-home-spotlight {
   scroll-margin-top: 88px;
@@ -2940,6 +3023,9 @@ a:hover {
   transform: scale(1.12);
 }
 @media (max-width: 900px) {
+  .ae-home-cats .ae-home-mega {
+    display: none !important;
+  }
   .ae-home-mega {
     position: static;
     margin-top: 8px;
