@@ -11,6 +11,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { useSeo } from "../seo/useSeo.js";
 import { useFlashDealCountdown } from "../home/useFlashDealCountdown.js";
 import { HomeGroupShowcase, resolveHomeGroupCta, type HomeGroupPublicBlock } from "../home/HomeGroupShowcase.js";
+import { HomeSpotlightBlocks, type HomeSpotlightPublicSection } from "../home/HomeSpotlightBlocks.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = PublicCategory;
@@ -114,6 +115,7 @@ export default function Home() {
   const [top, setTop] = useState<ProductCardData[]>([]);
   const [recent, setRecent] = useState<ProductCardData[]>([]);
   const [homeGroups, setHomeGroups] = useState<HomeGroupPublicBlock[]>([]);
+  const [homeSpotlights, setHomeSpotlights] = useState<HomeSpotlightPublicSection[]>([]);
   const [homeGroupsLoaded, setHomeGroupsLoaded] = useState(false);
   const [flashDeals, setFlashDeals] = useState<ProductCardData[]>([]);
   const flashCountdown = useFlashDealCountdown(flashEnabled ? flashEndAtRaw : undefined);
@@ -141,11 +143,14 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [bannerList, catList, groupsRes, featRes, topRes, recentRes] = await Promise.all([
+      const [bannerList, catList, groupsRes, spotRes, featRes, topRes, recentRes] = await Promise.all([
         apiFetch<Banner[]>("/banners").catch(() => [] as Banner[]),
         getPublicCategories().catch(() => [] as PublicCategory[]),
         apiFetch<{ groups: HomeGroupBlock[] }>("/homepage/product-groups").catch(() => ({
           groups: [] as HomeGroupBlock[],
+        })),
+        apiFetch<{ sections: HomeSpotlightPublicSection[] }>("/homepage/spotlights").catch(() => ({
+          sections: [] as HomeSpotlightPublicSection[],
         })),
         apiFetch<{ items: ProductCardData[] }>("/products?featured=true&take=10").catch(() => ({ items: [] })),
         apiFetch<{ items: ProductCardData[] }>("/products?sort=mais_vendidos&take=10").catch(() => ({ items: [] })),
@@ -161,6 +166,7 @@ export default function Home() {
           ? groupsRes.groups.map((x) => normalizeHomeGroup(x as HomeGroupBlock))
           : [],
       );
+      setHomeSpotlights(Array.isArray(spotRes.sections) ? spotRes.sections : []);
       setHomeGroupsLoaded(true);
       setFeatured(featRes.items ?? []);
       setTop(topRes.items ?? []);
@@ -600,6 +606,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
 
       {!homeGroupsLoaded ? (
         <section className="ae-section ae-home-group-strip ae-home-group-strip--skeleton-shell" aria-busy="true">

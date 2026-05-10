@@ -69,6 +69,9 @@ export default function AdminLayout() {
           <NavLink to="/admin/homepage-groups" className={({ isActive }) => (isActive ? "ae-on" : "")}>
             Grupos e vitrines
           </NavLink>
+          <NavLink to="/admin/home-spotlights" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Vitrines imagem + link
+          </NavLink>
 
           <NavSep>Parceiros e operação</NavSep>
           <NavLink to="/admin/sellers" className={({ isActive }) => (isActive ? "ae-on" : "")}>

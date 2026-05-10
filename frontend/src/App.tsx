@@ -17,7 +17,7 @@ function RequirePlatformAdmin({ children }: { children: ReactNode }) {
 }
 
 const AdminBanners = lazy(() => import("./admin/AdminBanners.js"));
-const AdminHomeGroups = lazy(() => import("./admin/AdminHomeGroups.js"));
+const AdminHomeSpotlights = lazy(() => import("./admin/AdminHomeSpotlights.js"));
 const AdminCredibility = lazy(() => import("./admin/AdminCredibility.js"));
 const AdminCategories = lazy(() => import("./admin/AdminCategories.js"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard.js"));
@@ -148,6 +148,7 @@ export default function App() {
             }
           />
           <Route path="homepage-groups" element={<AdminHomeGroups />} />
+          <Route path="home-spotlights" element={<AdminHomeSpotlights />} />
           <Route path="partner-terms" element={<AdminPartnerTerms />} />
         </Route>
 

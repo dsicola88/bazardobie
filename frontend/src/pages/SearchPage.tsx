@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
+import { SearchPriceRange } from "../components/SearchPriceRange.js";
+import { StarRating } from "../components/StarRating.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useSeo } from "../seo/useSeo.js";
@@ -12,6 +14,55 @@ type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
 
 const PAGE_SIZE = 36;
+
+const DEFAULT_PRICE_CEILING = 50_000_000;
+
+type CatalogFacetPayload = {
+  counts: Record<string, number>;
+  total: number;
+  priceFloor?: number;
+  priceCeiling?: number;
+};
+
+const CONDITION_FILTER_OPTIONS: { value: string; label: string; hint: string }[] = [
+  { value: "", label: "Todas as condições", hint: "Novo, usado e recondicionado" },
+  { value: "NEW", label: "Novo", hint: "Artigos novos, sem uso" },
+  { value: "USED", label: "Usado", hint: "Segunda mão ou com uso anterior" },
+  { value: "REFURBISHED", label: "Recondicionado", hint: "Revisto ou renovado" },
+];
+
+const MIN_RATING_FILTER_OPTIONS: { value: string; showStars: number; title: string; hint: string }[] = [
+  {
+    value: "",
+    showStars: 0,
+    title: "Qualquer avaliação",
+    hint: "Inclui produtos sem avaliações ou com média mais baixa",
+  },
+  {
+    value: "4",
+    showStars: 4,
+    title: "4 estrelas e acima",
+    hint: "Média da comunidade igual ou superior a 4 em 5",
+  },
+  {
+    value: "3",
+    showStars: 3,
+    title: "3 estrelas e acima",
+    hint: "Boa reputação ou melhor no histórico de reviews",
+  },
+  {
+    value: "2",
+    showStars: 2,
+    title: "2 estrelas e acima",
+    hint: "Aceita médias modestas; útil quando há poucos dados",
+  },
+  {
+    value: "1",
+    showStars: 1,
+    title: "1 estrela e acima",
+    hint: "Só artigos com média de reviews ≥ 1 (sem média ficam de fora)",
+  },
+];
 
 const sorts: { k: string; label: string }[] = [
   { k: "recentes", label: "Novidades" },
@@ -60,7 +111,7 @@ type CategoryFacetNavProps = {
   params: URLSearchParams;
   cats: Category[];
   categoryId: string;
-  facet: { counts: Record<string, number>; total: number } | null;
+  facet: CatalogFacetPayload | null;
   facetLoading: boolean;
   visualMode: boolean;
 };
@@ -180,6 +231,8 @@ function CategoryFacetNav({ params, cats, categoryId, facet, facetLoading, visua
 }
 
 export default function SearchPage() {
+  const conditionGroupId = useId();
+  const ratingGroupId = useId();
   const { token } = useAuth();
   const [params, setParams] = useSearchParams();
   const canonicalQuery = useMemo(() => {
@@ -210,7 +263,7 @@ export default function SearchPage() {
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [shopLabel, setShopLabel] = useState<string | null>(null);
   const [debouncedQ, setDebouncedQ] = useState(q);
-  const [facet, setFacet] = useState<{ counts: Record<string, number>; total: number } | null>(null);
+  const [facet, setFacet] = useState<CatalogFacetPayload | null>(null);
   const [facetLoading, setFacetLoading] = useState(false);
 
   const seoTitle = q.trim()
@@ -274,9 +327,16 @@ export default function SearchPage() {
     if (visualMode) return;
     let cancelled = false;
     setFacetLoading(true);
-    void apiFetch<{ counts: Record<string, number>; total: number }>(`/products/facet-categories?${facetQueryKey}`)
+    void apiFetch<CatalogFacetPayload>(`/products/facet-categories?${facetQueryKey}`)
       .then((r) => {
-        if (!cancelled) setFacet({ counts: r.counts ?? {}, total: Number(r.total) || 0 });
+        if (!cancelled)
+          setFacet({
+            counts: r.counts ?? {},
+            total: Number(r.total) || 0,
+            priceFloor: r.priceFloor != null && Number.isFinite(Number(r.priceFloor)) ? Number(r.priceFloor) : undefined,
+            priceCeiling:
+              r.priceCeiling != null && Number.isFinite(Number(r.priceCeiling)) ? Number(r.priceCeiling) : undefined,
+          });
       })
       .catch(() => {
         /* mantém facet anterior em erro de rede */
@@ -469,7 +529,11 @@ export default function SearchPage() {
     if (featured) out.push({ label: "Em destaque", patch: { featured: null } });
     if (onSale) out.push({ label: "Em promoção", patch: { onSale: null } });
     if (condition) out.push({ label: conditionShortLabel(condition), patch: { condition: null } });
-    if (minRating) out.push({ label: `${minRating}+ estrelas`, patch: { minRating: null } });
+    if (minRating)
+      out.push({
+        label: `Avaliação ≥ ${minRating}★`,
+        patch: { minRating: null },
+      });
     const minParsedChip = parsePriceFilterInput(minPriceParam);
     const maxParsedChip = parsePriceFilterInput(maxPriceParam);
     if (minParsedChip != null || maxParsedChip != null) {
@@ -508,20 +572,50 @@ export default function SearchPage() {
     effectiveData.items.length > 0 &&
     effectiveData.items.length < effectiveData.total;
 
+  const [priceFloorResolved, priceCeilingResolved] = useMemo(() => {
+    let pf =
+      facet?.priceFloor != null && Number.isFinite(facet.priceFloor) ? Math.max(0, facet.priceFloor) : 0;
+    let pt =
+      facet?.priceCeiling != null && Number.isFinite(facet.priceCeiling)
+        ? facet.priceCeiling
+        : DEFAULT_PRICE_CEILING;
+    if (pt < pf) [pf, pt] = [pt, pf];
+    return [pf, pt] as const;
+  }, [facet?.priceFloor, facet?.priceCeiling]);
+
+  const commitNumericPricesToUrl = useCallback(
+    (rawMin?: number | null, rawMax?: number | null) => {
+      const n = new URLSearchParams(params);
+      let lo = rawMin === undefined || rawMin === null ? undefined : rawMin;
+      let hi = rawMax === undefined || rawMax === null ? undefined : rawMax;
+
+      let pf =
+        facet?.priceFloor != null && Number.isFinite(facet.priceFloor) ? Math.max(0, facet.priceFloor) : 0;
+      let pt =
+        facet?.priceCeiling != null && Number.isFinite(facet.priceCeiling)
+          ? facet.priceCeiling
+          : DEFAULT_PRICE_CEILING;
+      if (pt < pf) [pf, pt] = [pt, pf];
+
+      if (lo != null && hi != null && lo > hi) [lo, hi] = [hi, lo];
+
+      const span = Math.max(pt - pf, 1);
+      const eps = Math.max(span * 0.0005, 1);
+
+      if (lo != null && lo <= pf + eps) lo = undefined;
+      if (hi != null && hi >= pt - eps) hi = undefined;
+
+      if (lo != null) n.set("minPrice", String(Math.round(lo)));
+      else n.delete("minPrice");
+      if (hi != null) n.set("maxPrice", String(Math.round(hi)));
+      else n.delete("maxPrice");
+      setParams(n);
+    },
+    [params, setParams, facet?.priceFloor, facet?.priceCeiling],
+  );
+
   function applyPrice() {
-    const n = new URLSearchParams(params);
-    let minN = parsePriceFilterInput(minPrice);
-    let maxN = parsePriceFilterInput(maxPrice);
-    if (minN != null && maxN != null && minN > maxN) {
-      const t = minN;
-      minN = maxN;
-      maxN = t;
-    }
-    if (minN != null) n.set("minPrice", String(minN));
-    else n.delete("minPrice");
-    if (maxN != null) n.set("maxPrice", String(maxN));
-    else n.delete("maxPrice");
-    setParams(n);
+    commitNumericPricesToUrl(parsePriceFilterInput(minPrice), parsePriceFilterInput(maxPrice));
   }
 
   function clearFiltersKeepQuery() {
@@ -602,88 +696,108 @@ export default function SearchPage() {
           </div>
           <div className="ae-filters__group">
             <strong>Condição do artigo</strong>
-            <select
-              className="ae-filters__select"
-              aria-label="Filtrar por condição do artigo"
-              value={condition}
-              onChange={(e) => {
-                const v = e.target.value;
-                const n = new URLSearchParams(params);
-                if (v) n.set("condition", v);
-                else n.delete("condition");
-                setParams(n);
-              }}
-            >
-              <option value="">Qualquer</option>
-              <option value="NEW">Novo</option>
-              <option value="USED">Usado</option>
-              <option value="REFURBISHED">Recondicionado</option>
-            </select>
+            <p className="ae-filters__facet-hint ae-muted">
+              Escolha como quer limitar os resultados: novo, usado ou recondicionado (tal como o vendedor indicou no anúncio).
+            </p>
+            <fieldset className="ae-filters__fieldset">
+              <legend className="sr-only">Condição do artigo</legend>
+              <div className="ae-filters__radio-grid" role="presentation">
+                {CONDITION_FILTER_OPTIONS.map((opt) => {
+                  const selected = condition === opt.value;
+                  return (
+                    <label
+                      key={opt.value || "any"}
+                      className={`ae-filters__radio-row${selected ? " ae-filters__radio-row--checked" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name={`ae-search-condition-${conditionGroupId}`}
+                        checked={selected}
+                        onChange={() => {
+                          const n = new URLSearchParams(params);
+                          if (opt.value) n.set("condition", opt.value);
+                          else n.delete("condition");
+                          setParams(n);
+                        }}
+                      />
+                      <span>
+                        <span className="ae-filters__radio-main">{opt.label}</span>
+                        <span className="ae-filters__radio-hint">{opt.hint}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
           <div className="ae-filters__group">
             <strong>Avaliação mínima</strong>
-            <select
-              className="ae-filters__select"
-              aria-label="Filtrar por avaliação mínima"
-              value={minRating}
-              onChange={(e) => {
-                const v = e.target.value;
-                const n = new URLSearchParams(params);
-                if (v) n.set("minRating", v);
-                else n.delete("minRating");
-                setParams(n);
-              }}
-            >
-              <option value="">Qualquer</option>
-              {[4, 3, 2, 1].map((n) => (
-                <option key={n} value={String(n)}>
-                  {n}+ estrelas
-                </option>
-              ))}
-            </select>
+            <p className="ae-filters__facet-hint ae-muted">
+              Como nos grandes marketplaces: escolha o número de estrelas mínimo da média pública do produto (reviews homologadas).
+            </p>
+            <fieldset className="ae-filters__fieldset">
+              <legend className="sr-only">Avaliação mínima dos produtos</legend>
+              <div className="ae-filters__radio-grid" role="presentation">
+                {MIN_RATING_FILTER_OPTIONS.map((opt) => {
+                  const selected = minRating === opt.value;
+                  return (
+                    <label
+                      key={opt.value || "rating-any"}
+                      className={`ae-filters__radio-row ae-filters__radio-row--rating${selected ? " ae-filters__radio-row--checked" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name={`ae-search-rating-${ratingGroupId}`}
+                        checked={selected}
+                        aria-label={
+                          opt.value === ""
+                            ? opt.title
+                            : `${opt.title} — média de avaliações igual ou superior a ${opt.value} em cinco`
+                        }
+                        onChange={() => {
+                          const n = new URLSearchParams(params);
+                          if (opt.value) n.set("minRating", opt.value);
+                          else n.delete("minRating");
+                          setParams(n);
+                        }}
+                      />
+                      <span className="ae-filters__rating-radio-body">
+                        {opt.showStars > 0 ? (
+                          <span className="ae-filters__rating-strip">
+                            <StarRating value={opt.showStars} size="sm" tone="gold" className="ae-filters__rating-strip-visual" />
+                            <span className="ae-filters__radio-main">{opt.title}</span>
+                          </span>
+                        ) : (
+                          <span className="ae-filters__radio-main">{opt.title}</span>
+                        )}
+                        <span className="ae-filters__radio-hint">{opt.hint}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
-          <div className="ae-filters__group">
+          <div className="ae-filters__group ae-filters__group--price">
             <strong>Preço (Kz)</strong>
             <p className="ae-filters__facet-hint ae-muted">
-              Aceita valores como <span className="ae-admin-mono">5000</span>,{" "}
-              <span className="ae-admin-mono">185 000</span> ou <span className="ae-admin-mono">185.000</span>. Clique em{" "}
-              <strong>Aplicar intervalo</strong> para filtrar.
+              Barra dupla como nos grandes sites: os extremos vêm dos artigos que já correspondem aos outros filtros
+              (ainda sem este intervalo de preço nem por categoria).
+              {visualMode ? " Na pesquisa por imagem, o controlo de preço pode ficar limitado." : ""}
             </p>
-            <div className="ae-filters__price-row">
-              <input
-                className="ae-filters__input"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="Mín. (ex.: 5 000)"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    applyPrice();
-                  }
-                }}
-              />
-              <input
-                className="ae-filters__input"
-                type="text"
-                inputMode="decimal"
-                autoComplete="off"
-                placeholder="Máx."
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    applyPrice();
-                  }
-                }}
-              />
-            </div>
-            <button type="button" className="btn btn-primary ae-filters__apply" onClick={applyPrice}>
-              Aplicar intervalo
-            </button>
+            <SearchPriceRange
+              disabled={visualMode}
+              floor={priceFloorResolved}
+              ceiling={priceCeilingResolved}
+              minPriceParam={minPriceParam}
+              maxPriceParam={maxPriceParam}
+              minDraft={minPrice}
+              maxDraft={maxPrice}
+              onMinDraftChange={setMinPrice}
+              onMaxDraftChange={setMaxPrice}
+              onApplyTextInputs={applyPrice}
+              commitSliderRange={(lo, hi) => commitNumericPricesToUrl(lo, hi)}
+            />
           </div>
         </div>
       </aside>

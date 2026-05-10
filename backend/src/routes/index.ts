@@ -21,6 +21,7 @@ import { logisticsController } from "../controllers/logistics.controller.js";
 import { logisticsPartnerController } from "../controllers/logisticsPartner.controller.js";
 import { freightController } from "../controllers/freight.controller.js";
 import { homepageGroupController } from "../controllers/homepageGroup.controller.js";
+import { homeSpotlightController } from "../controllers/homeSpotlight.controller.js";
 import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
 import { chatController } from "../controllers/chat.controller.js";
 import { personalizationController } from "../controllers/personalization.controller.js";
@@ -65,6 +66,7 @@ r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authControll
 r.get("/categories", catalogController.categories);
 r.get("/categories/suggest", catalogController.suggestCategories);
 r.get("/homepage/product-groups", homepageGroupController.listPublic);
+r.get("/homepage/spotlights", homeSpotlightController.listPublic);
 r.get("/banners", catalogController.banners);
 r.get("/site-content", siteSettingsController.publicBundle);
 r.get("/freight/meta", freightController.meta);
@@ -284,6 +286,15 @@ admin.delete(
   "/homepage-groups/:slug/products/:productId",
   homepageGroupController.adminRemoveProduct
 );
+
+admin.post("/home-spotlights", requirePlatformAdmin, homeSpotlightController.adminCreateSection);
+admin.get("/home-spotlights", homeSpotlightController.adminList);
+admin.patch("/home-spotlights/tiles/:tileId", homeSpotlightController.adminPatchTile);
+admin.delete("/home-spotlights/tiles/:tileId", homeSpotlightController.adminDeleteTile);
+admin.get("/home-spotlights/:slug/tiles", homeSpotlightController.adminListTiles);
+admin.post("/home-spotlights/:slug/tiles", homeSpotlightController.adminAddTile);
+admin.patch("/home-spotlights/:slug", homeSpotlightController.adminPatchSection);
+admin.delete("/home-spotlights/:slug", requirePlatformAdmin, homeSpotlightController.adminDeleteSection);
 
 admin.get("/shipping/geo/municipalities", requirePlatformAdmin, shippingGeoController.municipalitiesAdmin);
 admin.get("/shipping/geo/communes", requirePlatformAdmin, shippingGeoController.communesAdmin);

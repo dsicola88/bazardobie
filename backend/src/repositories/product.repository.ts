@@ -166,6 +166,16 @@ export function productRepo() {
     /** Agrega contagens por `categoryId` com os mesmos filtros da vitrina (sem filtro de categoria). */
     facetCategoryAggregation(filters: Omit<ProductListFilters, "categoryId">) {
       const where = buildWhere(filters as ProductListFilters);
+      const extentFilters: ProductListFilters = {
+        q: filters.q,
+        condition: filters.condition,
+        minRating: filters.minRating,
+        featuredOnly: filters.featuredOnly,
+        onSaleOnly: filters.onSaleOnly,
+        shopId: filters.shopId,
+        requirePlatformDelivery: filters.requirePlatformDelivery,
+      };
+      const whereExtent = buildWhere(extentFilters);
       return Promise.all([
         prisma.product.groupBy({
           by: ["categoryId"],
@@ -173,12 +183,30 @@ export function productRepo() {
           _count: { _all: true },
         }),
         prisma.product.count({ where }),
-      ]).then(([groups, total]) => {
+        prisma.product.aggregate({
+          where: whereExtent,
+          _min: { displayPrice: true },
+          _max: { displayPrice: true },
+        }),
+      ]).then(([groups, total, agg]) => {
         const counts: Record<string, number> = {};
         for (const g of groups) {
           if (g.categoryId != null) counts[g.categoryId] = g._count._all;
         }
-        return { counts, total };
+        let priceFloor = agg._min.displayPrice != null ? Number(agg._min.displayPrice) : undefined;
+        let priceCeiling = agg._max.displayPrice != null ? Number(agg._max.displayPrice) : undefined;
+        if (
+          priceFloor != null &&
+          priceCeiling != null &&
+          Number.isFinite(priceFloor) &&
+          Number.isFinite(priceCeiling) &&
+          priceCeiling < priceFloor
+        ) {
+          const t = priceFloor;
+          priceFloor = priceCeiling;
+          priceCeiling = t;
+        }
+        return { counts, total, priceFloor, priceCeiling };
       });
     },
     suggestPublic(q: string, take: number) {

@@ -457,6 +457,50 @@ model HomeProductGroupMember {
   @@index([groupId, sortOrder])
 }
 
+/// Layout de vitrine só com imagens e links (marketing, estilo marketplace).
+enum HomeSpotlightLayout {
+  GRID_2X2
+  HERO_THREE
+  ROW_SCROLL
+}
+
+model HomeSpotlightSection {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  title       String
+  subtitle    String?
+  layout      HomeSpotlightLayout @default(GRID_2X2)
+  sortOrder   Int                 @default(0)
+  active      Boolean             @default(true)
+  /// Cor de fundo opcional dos cartões (hex ou CSS curto).
+  cardAccent  String?
+  ctaLabel    String?
+  ctaHref     String?
+  /// Limite de cartões expostos na API pública (1–24).
+  maxTiles    Int                 @default(12)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  tiles HomeSpotlightTile[]
+
+  @@index([active, sortOrder])
+}
+
+model HomeSpotlightTile {
+  id        String @id @default(cuid())
+  sectionId String
+  sortOrder Int    @default(0)
+  imageUrl  String
+  label     String?
+  href      String
+  /// Faixa inferior opcional por cartão (hex / rgba).
+  captionBg String?
+
+  section HomeSpotlightSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId, sortOrder])
+}
+
 model ProductImage {
   id        String   @id @default(cuid())
   productId String
