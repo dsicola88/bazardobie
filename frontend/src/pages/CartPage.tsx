@@ -266,153 +266,166 @@ export default function CartPage() {
       ) : cart.items.length === 0 ? null : (
         <div className="ae-cart-layout">
           <div className="ae-cart-main">
-            <div className="ae-table-cart-wrap">
-              <table className="ae-table-cart">
-                <thead>
-                  <tr>
-                    <th>Artigo</th>
-                    <th>Expedição</th>
-                    <th className="ae-table-cart__num">Preço unit.</th>
-                    <th className="ae-table-cart__qty">Qtd.</th>
-                    <th className="ae-table-cart__num">Subtotal</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.items.map((item) => {
-                    const unit = cartLineUnitPrice(item);
-                    const lineSub = unit * item.quantity;
-                    return (
-                  <tr key={item.id}>
-                    <td>
-                      <div className="ae-table-cart__product ae-table-cart__product--gallery">
-                        <div className="ae-table-cart__thumb-col" aria-label="Miniaturas do produto">
-                          {baselineThumbRaws(item)
-                            .slice(0, 6)
-                            .map((raw) => {
-                              const active = heroRawForCartLine(item) === raw;
-                              return (
-                                <button
-                                  key={raw}
-                                  type="button"
-                                  title="Amplia ao centro · clique"
-                                  className={`ae-table-cart__side-thumb ${active ? "ae-on" : ""}`}
-                                  onClick={() =>
-                                    setCartHeroRawByLineId((prev) =>
-                                      prev[item.id] === raw ? prev : { ...prev, [item.id]: raw }
-                                    )
-                                  }
-                                >
-                                  <img src={resolveMediaUrl(raw)} alt="" loading="lazy" decoding="async" />
-                                </button>
-                              );
-                            })}
+            <div className="ae-cart-lines-wrap">
+              <div className="ae-cart-lines">
+                <div className="ae-cart-lines__head" aria-hidden="true">
+                  <span className="ae-cart-lines__h-blank" />
+                  <span>Artigo</span>
+                  <span className="ae-cart-lines__h-num">Preço unitário</span>
+                  <span className="ae-cart-lines__h-qty">Qtd.</span>
+                  <span className="ae-cart-lines__h-num">Subtotal</span>
+                  <span className="ae-cart-lines__h-blank" />
+                </div>
+                {cart.items.map((item) => {
+                  const unit = cartLineUnitPrice(item);
+                  const lineSub = unit * item.quantity;
+                  const condKeyRaw = (item.product.condition ?? "NEW").toLowerCase();
+                  const condKey = ["new", "used", "refurbished"].includes(condKeyRaw) ? condKeyRaw : "new";
+                  const maxStock = item.variant ? item.variant.stock : item.product.stock;
+                  const prodHref = item.variant?.id
+                    ? `/product/${item.product.id}?variant=${item.variant.id}`
+                    : `/product/${item.product.id}`;
+                  return (
+                    <article key={item.id} className="ae-cart-line">
+                      <div className="ae-cart-line__grid">
+                        <div className="ae-cart-line__media">
+                          <div className="ae-cart-line__thumb-stack" aria-label="Miniaturas">
+                            {baselineThumbRaws(item)
+                              .slice(0, 5)
+                              .map((raw) => {
+                                const active = heroRawForCartLine(item) === raw;
+                                return (
+                                  <button
+                                    key={raw}
+                                    type="button"
+                                    title="Seleccionar imagem principal"
+                                    className={`ae-cart-line__side-thumb ${active ? "ae-on" : ""}`}
+                                    onClick={() =>
+                                      setCartHeroRawByLineId((prev) =>
+                                        prev[item.id] === raw ? prev : { ...prev, [item.id]: raw },
+                                      )
+                                    }
+                                  >
+                                    <img src={resolveMediaUrl(raw)} alt="" loading="lazy" decoding="async" />
+                                  </button>
+                                );
+                              })}
+                          </div>
+                          <div className="ae-cart-line__hero">
+                            {cartThumbUrl(item) ? (
+                              <CartThumbWithZoom
+                                thumbUrl={cartThumbUrl(item)!}
+                                to={prodHref}
+                                onImgError={() =>
+                                  setThumbTryIndexByItemId((prev) => {
+                                    const options = cartThumbCandidates(item);
+                                    const current = prev[item.id] ?? 0;
+                                    const nextIdx =
+                                      options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
+                                    if (nextIdx === current) return prev;
+                                    return { ...prev, [item.id]: nextIdx };
+                                  })
+                                }
+                              />
+                            ) : (
+                              <Link to={prodHref}>
+                                <div className="ae-cart-line__ph" aria-hidden />
+                              </Link>
+                            )}
+                          </div>
                         </div>
-                        <div className="ae-table-cart__hero-wrap">
-                          {cartThumbUrl(item) ? (
-                            <CartThumbWithZoom
-                              thumbUrl={cartThumbUrl(item)!}
-                              to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}
-                              onImgError={() =>
-                                setThumbTryIndexByItemId((prev) => {
-                                  const options = cartThumbCandidates(item);
-                                  const current = prev[item.id] ?? 0;
-                                  const nextIdx = options.length <= 1 ? current : Math.min(current + 1, options.length - 1);
-                                  if (nextIdx === current) return prev;
-                                  return { ...prev, [item.id]: nextIdx };
-                                })
-                              }
-                            />
-                          ) : (
-                            <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`}>
-                              <div className="ae-table-cart__product-ph" aria-hidden />
-                            </Link>
-                          )}
-                        </div>
-                        <div className="ae-table-cart__meta">
-                          <Link to={item.variant?.id ? `/product/${item.product.id}?variant=${item.variant.id}` : `/product/${item.product.id}`} style={{ fontWeight: 600 }}>
+
+                        <div className="ae-cart-line__detail">
+                          <Link to={prodHref} className="ae-cart-line__title">
                             {item.product.name}
                           </Link>
-                          <div className="ae-muted" style={{ fontSize: 12 }}>
-                            {productConditionLabel(item.product.condition)}
+                          <div className="ae-cart-line__title-meta">
+                            <span className={`ae-cart-line__cond ae-cart-line__cond--${condKey}`}>
+                              {productConditionLabel(item.product.condition)}
+                            </span>
                           </div>
                           {item.variant ? (
-                            <div className="ae-table-cart__variant">
-                              <span className="ae-table-cart__variant-kicker">Variante</span>
-                              <span className="ae-table-cart__variant-label">{cartVariantLine(item.variant)}</span>
+                            <div className="ae-cart-line__variant">
+                              <span className="ae-cart-line__variant-kicker">Variante</span>
+                              <span className="ae-cart-line__variant-val">{cartVariantLine(item.variant)}</span>
                             </div>
                           ) : null}
+                          <div className="ae-cart-line__ship">
+                            <div className="ae-cart-line__ship-line">
+                              {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
+                                ? item.productDeliveryOption.logisticsPartner
+                                  ? `Envio plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
+                                  : "Envio operado pela plataforma"
+                                : "Envio pela loja parceira"}
+                              <span className="ae-cart-line__ship-dot" aria-hidden>
+                                ·
+                              </span>
+                              <span className="ae-cart-line__ship-frete">{formatFreteKz(item.productDeliveryOption.custoEntrega)}</span>
+                            </div>
+                            <div className="ae-cart-line__ship-meta">
+                              <strong>Prazo:</strong> {formatBusinessDaysPt(item.productDeliveryOption.prazoEstimado)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="ae-cart-line__unit">
+                          <span className="ae-cart-line__mob-label">Preço unitário</span>
+                          <span className="ae-cart-kz ae-cart-line__price-num">{formatKz(unit)}</span>
+                        </div>
+
+                        <div className="ae-cart-line__qty">
+                          <span className="ae-cart-line__mob-label">Quantidade</span>
+                          <div className="ae-qty-stepper">
+                            <button
+                              type="button"
+                              className="ae-qty-stepper__btn"
+                              aria-label="Diminuir quantidade"
+                              disabled={busyItemId === item.id || item.quantity <= 1}
+                              onClick={() => void changeQty(item, item.quantity - 1)}
+                            >
+                              −
+                            </button>
+                            <input
+                              className="ae-qty-stepper__input"
+                              type="number"
+                              min={1}
+                              max={maxStock}
+                              value={item.quantity}
+                              disabled={busyItemId === item.id}
+                              onChange={(e) => void changeQty(item, Number(e.target.value) || 1)}
+                              aria-label={`Quantidade de ${item.product.name}`}
+                            />
+                            <button
+                              type="button"
+                              className="ae-qty-stepper__btn"
+                              aria-label="Aumentar quantidade"
+                              disabled={busyItemId === item.id || item.quantity >= maxStock}
+                              onClick={() => void changeQty(item, item.quantity + 1)}
+                            >
+                              +
+                            </button>
+                          </div>
+                          <div className="ae-cart-line__stock">
+                            Stock disponível: <strong>{maxStock}</strong>
+                          </div>
+                        </div>
+
+                        <div className="ae-cart-line__sub">
+                          <span className="ae-cart-line__mob-label">Subtotal</span>
+                          <span className="ae-cart-kz ae-cart-kz--strong ae-cart-line__price-num">{formatKz(lineSub)}</span>
+                          <div className="ae-cart-line__sub-note">Inclui portes desta linha no total do pedido.</div>
+                        </div>
+
+                        <div className="ae-cart-line__actions">
+                          <button type="button" className="ae-cart-line__remove" onClick={() => void remove(item.id)}>
+                            Eliminar
+                          </button>
                         </div>
                       </div>
-                    </td>
-                    <td className="ae-table-cart__ship">
-                      <div style={{ fontSize: 13 }}>
-                        {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
-                          ? item.productDeliveryOption.logisticsPartner
-                            ? `Plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
-                            : "Plataforma (BAZAR DO BIÉ)"
-                          : "Loja parceira"}{" "}
-                        · {formatFreteKz(item.productDeliveryOption.custoEntrega)}
-                      </div>
-                      <div className="ae-muted" style={{ fontSize: 12 }}>
-                        Prazo: {formatBusinessDaysPt(item.productDeliveryOption.prazoEstimado)}
-                      </div>
-                    </td>
-                    <td className="ae-table-cart__num">
-                      <span className="ae-cart-kz">{formatKz(unit)}</span>
-                    </td>
-                    <td className="ae-table-cart__qty">
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          type="button"
-                          className="ae-mini-btn"
-                          disabled={busyItemId === item.id || item.quantity <= 1}
-                          onClick={() => void changeQty(item, item.quantity - 1)}
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min={1}
-                          max={item.variant ? item.variant.stock : item.product.stock}
-                          value={item.quantity}
-                          disabled={busyItemId === item.id}
-                          onChange={(e) => void changeQty(item, Number(e.target.value) || 1)}
-                          style={{ width: 68, textAlign: "center" }}
-                          aria-label={`Quantidade de ${item.product.name}`}
-                        />
-                        <button
-                          type="button"
-                          className="ae-mini-btn"
-                          disabled={
-                            busyItemId === item.id ||
-                            item.quantity >= (item.variant ? item.variant.stock : item.product.stock)
-                          }
-                          onClick={() => void changeQty(item, item.quantity + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="ae-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                        Stock: {item.variant ? item.variant.stock : item.product.stock}
-                      </div>
-                    </td>
-                    <td className="ae-table-cart__num">
-                      <span className="ae-cart-kz ae-cart-kz--strong">{formatKz(lineSub)}</span>
-                      <div className="ae-muted" style={{ fontSize: 11, marginTop: 4 }}>
-                        + portes na linha
-                      </div>
-                    </td>
-                    <td>
-                      <button type="button" className="ae-link-remove" onClick={() => void remove(item.id)}>
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                );
+                    </article>
+                  );
                 })}
-                </tbody>
-              </table>
+              </div>
             </div>
           </div>
 
