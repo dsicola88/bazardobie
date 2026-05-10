@@ -17,6 +17,11 @@ const dashboardQuerySchema = z.object({
 });
 
 export const shopController = {
+  publicSobre: asyncHandler(async (req, res) => {
+    const payload = await shopService.getPublicSobre(req.params.id);
+    res.json(payload);
+  }),
+
   create: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");

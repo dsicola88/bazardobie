@@ -306,7 +306,7 @@ export default function OrdersPage() {
               </div>
             ) : null}
 
-            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }} className="ae-order-card__actions">
               <Link to={`/orders/${encodeURIComponent(o.id)}/seguir`} className="btn btn-ghost">
                 Seguir encomenda
               </Link>

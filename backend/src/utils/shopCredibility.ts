@@ -35,10 +35,8 @@ function chipsFromShop(shop: Shop): string[] {
 export function credibilidadeComprador(shop: Shop): CredibilidadePublicaDto {
   const n2 = !!shop.tier2ApprovedAt;
   const n3 = !!shop.tier3ApprovedAt;
-  const fachada =
-    n2 && shop.storePhotoUrl && String(shop.storePhotoUrl).trim().startsWith("http")
-      ? String(shop.storePhotoUrl).trim()
-      : null;
+  const rawStore = shop.storePhotoUrl?.trim();
+  const fachada = n2 && rawStore ? publicMediaUrl(rawStore) : null;
 
   return {
     nivel: n3 ? 3 : n2 ? 2 : 1,

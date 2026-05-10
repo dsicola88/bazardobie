@@ -62,7 +62,7 @@ export default function NotificationsPage() {
 
   return (
     <div style={{ maxWidth: 840 }}>
-      <div className="ae-v-head">
+      <div className="ae-v-head ae-buyer-notifications-head">
         <div>
           <h1 className="ae-v-title">Notificações</h1>
           <p className="ae-muted" style={{ margin: "4px 0 0" }}>

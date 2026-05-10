@@ -11,7 +11,10 @@ function NavSep({ children }: { children: ReactNode }) {
 export default function AdminLayout() {
   const { user, loading } = useAuth();
   const { content } = useSiteContent();
-  const [sideCollapsed, setSideCollapsed] = useState(false);
+  /** Telefóvel: menu lateral começa recolhido para o conteúdo útil aparecer primeiro. */
+  const [sideCollapsed, setSideCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 900px)").matches : false,
+  );
   const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
   const helpChannelSafe = !helpChannel
     ? ""

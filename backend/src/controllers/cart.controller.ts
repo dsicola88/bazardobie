@@ -1,4 +1,5 @@
 import { cartService } from "../services/cart.service.js";
+import { personalizationService } from "../services/personalization.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { addCartItemSchema, patchCartItemSchema } from "../validators/cart.validators.js";
 import { cartSession } from "../middlewares/optionalAuth.js";
@@ -19,6 +20,7 @@ export const cartController = {
       return;
     }
     const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId : undefined;
+    await personalizationService.mergeGuestSessionToUser(sessionId, userId);
     const cart = await cartService.mergeGuestIntoUser(sessionId, userId);
     res.json(mapCartMediaForApi(cart));
   }),

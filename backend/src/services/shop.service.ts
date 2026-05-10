@@ -9,6 +9,7 @@ import type {
 } from "../validators/shop.validators.js";
 import { prisma } from "../lib/prisma.js";
 import { calcularSearchRankBoost, lojaPaginaPublica } from "../utils/shopCredibility.js";
+import { sinaisConfiancaPublicos } from "../utils/shopPublicSobre.js";
 import { notificationService } from "./notification.service.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
 
@@ -20,6 +21,49 @@ type CredAdminInput = z.infer<typeof shopCredibilityAdminSchema>;
 function emptToUndef(url?: string): string | undefined {
   const t = url?.trim();
   return t ? t : undefined;
+}
+
+/** Taxa de resposta no chat: pedidos em que o comprador escreveu primeiro vs. resposta do vendedor em ≤24h. */
+async function amostraTaxaRespostaChat(
+  shopId: string,
+  sellerUserId: string
+): Promise<{ percent: number | null; base: number }> {
+  const rows = await prisma.$queryRaw<{ denom: bigint; num: bigint }[]>`
+    WITH so AS (
+      SELECT o.id AS "orderId", o."userId" AS buyer_id
+      FROM "Order" o
+      INNER JOIN "OrderItem" oi ON oi."orderId" = o.id AND oi."shopId" = ${shopId}
+      WHERE o."status" <> 'CANCELADO'::"OrderStatus"
+        AND o."createdAt" >= NOW() - INTERVAL '180 days'
+      GROUP BY o.id, o."userId"
+    ),
+    fbm AS (
+      SELECT m."orderId", MIN(m."createdAt") AS first_buyer_at
+      FROM "OrderChatMessage" m
+      INNER JOIN so ON so."orderId" = m."orderId"
+      WHERE m."senderId" = so.buyer_id
+      GROUP BY m."orderId"
+    )
+    SELECT
+      COALESCE((SELECT COUNT(*)::bigint FROM fbm), 0::bigint) AS denom,
+      COALESCE((
+        SELECT COUNT(*)::bigint FROM fbm f
+        WHERE EXISTS (
+          SELECT 1 FROM "OrderChatMessage" m2
+          WHERE m2."orderId" = f."orderId"
+            AND m2."senderId" = ${sellerUserId}
+            AND m2."createdAt" >= f.first_buyer_at
+            AND m2."createdAt" <= f.first_buyer_at + INTERVAL '24 hours'
+        )
+      ), 0::bigint) AS num
+  `;
+  const row = rows[0];
+  const denom = Number(row?.denom ?? 0);
+  const num = Number(row?.num ?? 0);
+  if (denom < 3) return { percent: null, base: denom };
+  const raw = (100 * num) / denom;
+  const percent = Math.min(100, Math.max(0, Math.round(raw)));
+  return { percent, base: denom };
 }
 
 async function resolveShopMunicipality(municipalityId: string) {
@@ -273,6 +317,95 @@ export const shopService = {
     const shop = await repo.findById(id);
     if (!shop?.isApproved || !shop.tier1CompletedAt) throw new HttpError(404, "Loja não encontrada");
     return lojaPaginaPublica(shop);
+  },
+
+  /** Perfil «Sobre a loja» para compradores — métricas e checklist; sem documentos sensíveis. */
+  async getPublicSobre(id: string) {
+    const repo = shopRepo();
+    const shop = await repo.findById(id);
+    if (!shop?.isApproved || !shop.tier1CompletedAt) throw new HttpError(404, "Loja não encontrada");
+
+    const shopId = shop.id;
+    const sellerUserId = shop.userId;
+
+    const [
+      pedidosEntregues,
+      unidadesEntreguesAgg,
+      revAvg,
+      totalAvaliacoes,
+      produtosActivos,
+      soldCatalog,
+      lastOrder,
+      lastProduct,
+      taxaResposta,
+    ] = await Promise.all([
+      prisma.order.count({
+        where: { status: "ENTREGUE", items: { some: { shopId } } },
+      }),
+      prisma.orderItem.aggregate({
+        where: { shopId, order: { status: "ENTREGUE" } },
+        _sum: { quantity: true },
+      }),
+      prisma.review.aggregate({
+        where: { product: { shopId } },
+        _avg: { rating: true },
+      }),
+      prisma.review.count({ where: { product: { shopId } } }),
+      prisma.product.count({
+        where: { shopId, isActive: true, moderationStatus: "APPROVED" },
+      }),
+      prisma.product.aggregate({
+        where: { shopId },
+        _sum: { soldCount: true },
+      }),
+      prisma.order.findFirst({
+        where: { items: { some: { shopId } } },
+        orderBy: { updatedAt: "desc" },
+        select: { updatedAt: true },
+      }),
+      prisma.product.findFirst({
+        where: { shopId },
+        orderBy: { updatedAt: "desc" },
+        select: { updatedAt: true },
+      }),
+      amostraTaxaRespostaChat(shopId, sellerUserId),
+    ]);
+
+    const unidadesEntregues = Number(unidadesEntreguesAgg._sum.quantity ?? 0);
+    const lastActivity = new Date(
+      Math.max(
+        shop.updatedAt.getTime(),
+        lastOrder?.updatedAt.getTime() ?? 0,
+        lastProduct?.updatedAt.getTime() ?? 0,
+      ),
+    );
+
+    const loja = lojaPaginaPublica(shop);
+    const cred = loja.credibilidade;
+
+    return {
+      loja,
+      sinais: sinaisConfiancaPublicos(shop),
+      metricas: {
+        pedidosEntregues,
+        entregasUnidades: unidadesEntregues,
+        taxaRespostaPercent: taxaResposta.percent,
+        taxaRespostaBaseConversas: taxaResposta.base,
+        avaliacaoMedia:
+          revAvg._avg.rating != null ? Math.round(Number(revAvg._avg.rating) * 10) / 10 : null,
+        totalAvaliacoes,
+        produtosActivos,
+        vendasRegistadasCatalogo: soldCatalog._sum.soldCount ?? 0,
+        ultimaActividadeEm: lastActivity.toISOString(),
+      },
+      resumoReputacao: {
+        seloVerificado: cred.seloVerificado,
+        seloPremium: cred.seloPremium,
+        nivelConfianca: cred.nivel,
+        textoChips: cred.garantiasAoComprador.textoChips,
+        fachadaParceiraUrl: cred.garantiasAoComprador.fachadaParceiraUrl,
+      },
+    };
   },
 
   async listApproved(skip = 0, take = 50) {

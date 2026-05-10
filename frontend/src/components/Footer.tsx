@@ -26,6 +26,7 @@ export function Footer() {
         <div>
           <div className="ae-footer__h">Parceiros</div>
           <Link to="/quero-vender">Programa de parceiros</Link>
+          <Link to="/termos-parceiros">Termos do parceiro</Link>
           <Link to="/vendor">Área comercial (parceiros)</Link>
           <Link to="/vendor/products">Catálogo</Link>
           <Link to="/vendor/orders">Encomendas</Link>

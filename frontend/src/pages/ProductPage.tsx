@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { apiFetch, cartSessionHeaders } from "../api.js";
+import { apiFetch, cartSessionHeaders, withCartSession } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { FavoriteToggle } from "../components/FavoriteToggle.js";
 import { ProductReportModal } from "../components/ProductReportModal.js";
+import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
@@ -162,6 +163,31 @@ export default function ProductPage() {
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Referência indisponível."));
   }, [id]);
+
+  const viewTrackedKey = useRef<string | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<ProductCardData[] | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    setRelatedProducts(null);
+    void apiFetch<{ items: ProductCardData[] }>(`/products/${encodeURIComponent(id)}/related?take=16`)
+      .then((r) => setRelatedProducts(Array.isArray(r.items) ? r.items : []))
+      .catch(() => setRelatedProducts([]));
+  }, [id]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    const key = `${product.id}|${token ?? ""}`;
+    if (viewTrackedKey.current === key) return;
+    viewTrackedKey.current = key;
+    void apiFetch<void>("/personalization/views", {
+      ...withCartSession({
+        method: "POST",
+        body: JSON.stringify({ productId: product.id }),
+      }),
+      token: token ?? undefined,
+    }).catch(() => {});
+  }, [product?.id, token]);
 
   /** Selecção inicial de variante + `?variant=` válido (matriz Cor×Tamanho ou lista plana). */
   useEffect(() => {
@@ -498,6 +524,14 @@ export default function ProductPage() {
             {product.shop ? (
               <p className="ae-muted" style={{ fontSize: 12 }}>
                 Loja parceira: <strong>{product.shop.name}</strong>
+                {product.shop.id ? (
+                  <>
+                    {" · "}
+                    <Link to={`/loja/${product.shop.id}/sobre`} className="ae-linkbtn" style={{ fontSize: "inherit" }}>
+                      Sobre a loja
+                    </Link>
+                  </>
+                ) : null}
                 {guarantees?.textoChips?.length ? (
                   <span className="ae-pdp-trust-inline" title={guarantees.textoChips.join(" ")}>
                     {" "}
@@ -797,6 +831,24 @@ export default function ProductPage() {
           </div>
         ) : null}
       </div>
+
+      {relatedProducts !== null && relatedProducts.length > 0 ? (
+        <section className="ae-shell ae-section ae-section--catalog" style={{ marginTop: 8 }} aria-label="Artigos relacionados">
+          <header className="ae-section__masthead">
+            <div className="ae-section__masthead-copy">
+              <h2>Semelhantes e frequência em encomendas</h2>
+              <p className="ae-section__dek">
+                Sugestões por categoria, loja e por artigos que costumam aparecer juntos nas mesmas encomendas confirmadas.
+              </p>
+            </div>
+          </header>
+          <div className="ae-grid">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} p={p} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

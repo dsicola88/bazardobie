@@ -212,6 +212,20 @@ export default function VendorDashboard() {
         </div>
       ) : null}
 
+      {shopStatus === "ok" ? (
+        <div className="page-panel no-print" style={{ marginBottom: 20, padding: "12px 16px", fontSize: 13 }}>
+          <strong style={{ display: "block", marginBottom: 6 }}>Termos do programa de parceiros</strong>
+          <p className="ae-muted" style={{ margin: "0 0 8px" }}>
+            Com a loja aprovada pode consultar ou imprimir o documento comercial (comissões, envios e obrigações).
+          </p>
+          <Link to="/termos-parceiros">Ler termos</Link>
+          {" · "}
+          <Link to="/termos-parceiros?print=1" target="_blank" rel="noopener noreferrer">
+            Imprimir / PDF
+          </Link>
+        </div>
+      ) : null}
+
       {shopStatus === "ok" && shopMe?.tier1CompletedAt && !shopMe.tier2ApprovedAt ? (
         <div
           className="ae-admin-next"

@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
 
 export default function LogisticsLayout() {
   const { user, loading } = useAuth();
+  const [sideCollapsed, setSideCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 900px)").matches : false,
+  );
 
   if (loading) {
     return (
@@ -19,7 +23,7 @@ export default function LogisticsLayout() {
   if (user.role !== "LOGISTICA") return <Navigate to="/unauthorized" replace />;
 
   return (
-    <div className="ae-vendor-shell ae-admin-shell">
+    <div className={`ae-vendor-shell ae-admin-shell ${sideCollapsed ? "ae-vendor-shell--collapsed" : ""}`}>
       <aside className="ae-vendor-side">
         <div className="ae-v-logo">
           Logística BAZAR DO BIÉ
@@ -41,7 +45,11 @@ export default function LogisticsLayout() {
       </aside>
       <main className="ae-v-main">
         <div className="ae-v-main__topbar">
-          <div className="ae-v-main__topbar-left" aria-hidden />
+          <div className="ae-v-main__topbar-left">
+            <button type="button" className="ae-v-main__toggle" onClick={() => setSideCollapsed((v) => !v)}>
+              {sideCollapsed ? "Expandir menu" : "Encolher menu"}
+            </button>
+          </div>
           <div className="ae-v-main__user">
             <span className="ae-v-main__user-name" title={user.email}>
               {user.name}

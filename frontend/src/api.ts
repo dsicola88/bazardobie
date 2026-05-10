@@ -125,3 +125,14 @@ export function ensureCartSession(): string {
   }
   return sid;
 }
+
+/** Garante sessão anónima e acrescenta `X-Cart-Session` ao pedido (carrinho, personalização). */
+export function withCartSession(init: RequestInit = {}): RequestInit {
+  ensureCartSession();
+  const cart = cartSessionHeaders();
+  const headers = new Headers(init.headers);
+  if (cart && typeof cart === "object" && "X-Cart-Session" in cart) {
+    headers.set("X-Cart-Session", String((cart as { "X-Cart-Session": string })["X-Cart-Session"]));
+  }
+  return { ...init, headers };
+}

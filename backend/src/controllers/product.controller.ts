@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { productService } from "../services/product.service.js";
+import { personalizationService } from "../services/personalization.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import {
   createProductSchema,
@@ -49,6 +50,13 @@ export const productController = {
   get: asyncHandler(async (req, res) => {
     const p = await productService.getPublic(req.params.id);
     res.json(p);
+  }),
+
+  /** Semelhantes + co-ocorrência em encomendas (não canceladas). */
+  related: asyncHandler(async (req, res) => {
+    const take = Math.min(Math.max(Number(req.query.take) || 16, 4), 28);
+    const items = await personalizationService.relatedProductCards(req.params.id, take);
+    res.json({ items });
   }),
 
   search: asyncHandler(async (req, res) => {

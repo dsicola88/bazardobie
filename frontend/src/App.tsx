@@ -42,13 +42,14 @@ const SearchPage = lazy(() => import("./pages/SearchPage.js"));
 const Login = lazy(() => import("./pages/Login.js"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.js"));
 const OAuthDonePage = lazy(() => import("./pages/OAuthDonePage.js"));
-const ProductPage = lazy(() => import("./pages/ProductPage.js"));
+const ShopPublicAboutPage = lazy(() => import("./pages/ShopPublicAboutPage.js"));
 const CartPage = lazy(() => import("./pages/CartPage.js"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage.js"));
 const FavoritesPage = lazy(() => import("./pages/FavoritesPage.js"));
 const OrdersPage = lazy(() => import("./pages/OrdersPage.js"));
 const OrderTrackPage = lazy(() => import("./pages/OrderTrackPage.js"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage.js"));
+const TermsPartnersPage = lazy(() => import("./pages/TermsPartnersPage.js"));
 const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage.js"));
 const VendorLayout = lazy(() => import("./vendor/VendorLayout.js"));
 const VendorCredibility = lazy(() => import("./vendor/VendorCredibility.js"));
@@ -156,7 +157,9 @@ export default function App() {
           <Route path="login" element={<Login />} />
           <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="quero-vender" element={<BecomeVendorPage />} />
+          <Route path="termos-parceiros" element={<TermsPartnersPage />} />
           <Route path="product/:id" element={<ProductPage />} />
+          <Route path="loja/:shopId/sobre" element={<ShopPublicAboutPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="favorites" element={<FavoritesPage />} />
           <Route path="checkout" element={<CheckoutPage />} />

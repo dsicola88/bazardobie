@@ -214,6 +214,25 @@ export default function VendorShopSetup() {
                 : "Pendente — a loja não é pública e não pode criar produtos até a equipa aprovar."}
             </strong>
           </p>
+          {existing.isApproved ? (
+            <div className="ae-panel ae-vendor-terms-archive no-print" style={{ marginTop: 16, marginBottom: 0 }}>
+              <h2 className="ae-v-title" style={{ fontSize: "1rem", marginTop: 0 }}>
+                Termos do programa de parceiros
+              </h2>
+              <p className="ae-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                Com a loja aprovada, pode guardar uma cópia em papel dos termos comerciais (comissão, envios e
+                obrigações) para o seu arquivo.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Link to="/termos-parceiros" className="btn" target="_blank" rel="noopener noreferrer">
+                  Ler termos completos
+                </Link>
+                <Link to="/termos-parceiros?print=1" className="btn btn-primary" target="_blank" rel="noopener noreferrer">
+                  Abrir versão para impressão
+                </Link>
+              </div>
+            </div>
+          ) : null}
           <Link to="/vendor" className="btn btn-primary" style={{ marginTop: 12 }}>
             Voltar ao painel
           </Link>

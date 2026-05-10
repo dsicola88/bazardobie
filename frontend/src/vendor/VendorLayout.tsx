@@ -6,7 +6,10 @@ import { useSiteContent } from "../site/SiteContentContext.js";
 export default function VendorLayout() {
   const { user, loading } = useAuth();
   const { content } = useSiteContent();
-  const [sideCollapsed, setSideCollapsed] = useState(false);
+  /** Em telemóvel o menu lateral começa fechado para o conteúdo (criar produto, encomendas) aparecer de imediato. */
+  const [sideCollapsed, setSideCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 900px)").matches : false,
+  );
   const helpChannel = (content["public.vendor_help_channel_url"] ?? "").trim();
   const helpChannelSafe = !helpChannel
     ? ""

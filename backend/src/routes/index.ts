@@ -22,6 +22,7 @@ import { freightController } from "../controllers/freight.controller.js";
 import { homepageGroupController } from "../controllers/homepageGroup.controller.js";
 import { shippingGeoController } from "../controllers/shippingGeo.controller.js";
 import { chatController } from "../controllers/chat.controller.js";
+import { personalizationController } from "../controllers/personalization.controller.js";
 import { adminAuditLog } from "../middlewares/adminAuditLog.js";
 import { runImageSearchUpload, runUpload } from "../middlewares/upload.js";
 import { notificationService } from "../services/notification.service.js";
@@ -75,11 +76,13 @@ r.get("/shipping/geo/pickup-points", shippingGeoController.pickupPoints);
 r.get("/shipping-carriers", logisticsPartnerController.shippingCarriers);
 
 r.get("/shops", shopController.list);
+r.get("/shops/:id/sobre", shopController.publicSobre);
 r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);
 r.get("/products/suggest", productController.suggest);
 r.post("/products/visual-search", runImageSearchUpload, productController.visualSearch);
+r.get("/products/:id/related", productController.related);
 r.get("/products/:productId/reviews", reviewController.list);
 r.get("/products/:id", productController.get);
 
@@ -88,6 +91,10 @@ r.post("/cart/items", optionalAuth, cartController.add);
 r.patch("/cart/items/:itemId", optionalAuth, cartController.patchItem);
 r.delete("/cart/items/:itemId", optionalAuth, cartController.removeItem);
 r.post("/cart/merge", requireAuth, cartController.merge);
+
+r.post("/personalization/views", ...personalizationController.trackView);
+r.get("/personalization/recent", ...personalizationController.recent);
+r.get("/personalization/for-you", ...personalizationController.forYou);
 
 // Vendedor / loja
 r.post("/vendor/shop", requireAuth, requireRoles("VENDEDOR"), shopController.create);

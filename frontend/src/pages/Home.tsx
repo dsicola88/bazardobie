@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { apiFetch } from "../api.js";
+import { apiFetch, withCartSession } from "../api.js";
+import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { parseTrustCell, parseSiteTruthy, splitPipeTags } from "../site/siteContent.js";
@@ -56,6 +57,7 @@ function padUnit(n: number): string {
 
 export default function Home() {
   const { content } = useSiteContent();
+  const { token } = useAuth();
   const heroFallback = content["public.home_hero_fallback"] ?? "";
   const featuredTitle = (content["public.home_featured_title"] ?? "").trim();
   const bestsellersTitle = (content["public.home_bestsellers_title"] ?? "").trim();
@@ -90,6 +92,8 @@ export default function Home() {
   const [homeGroupsLoaded, setHomeGroupsLoaded] = useState(false);
   const [flashDeals, setFlashDeals] = useState<ProductCardData[]>([]);
   const flashCountdown = useFlashDealCountdown(flashEnabled ? flashEndAtRaw : undefined);
+  const [personalRecent, setPersonalRecent] = useState<ProductCardData[] | null>(null);
+  const [personalForYou, setPersonalForYou] = useState<ProductCardData[] | null>(null);
 
   useSeo({
     title: "BAZAR DO BIÉ — Marketplace em Angola",
@@ -147,6 +151,36 @@ export default function Home() {
       .then((r) => setFlashDeals(Array.isArray(r.items) ? r.items : []))
       .catch(() => setFlashDeals([]));
   }, [flashEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [r, f] = await Promise.all([
+          apiFetch<{ items: ProductCardData[] }>("/personalization/recent?take=12", {
+            ...withCartSession(),
+            token: token ?? undefined,
+          }),
+          apiFetch<{ items: ProductCardData[] }>("/personalization/for-you?take=14", {
+            ...withCartSession(),
+            token: token ?? undefined,
+          }),
+        ]);
+        if (!cancelled) {
+          setPersonalRecent(Array.isArray(r.items) ? r.items : []);
+          setPersonalForYou(Array.isArray(f.items) ? f.items : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setPersonalRecent([]);
+          setPersonalForYou([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (banners.length <= 1) return;
@@ -255,6 +289,45 @@ export default function Home() {
           </Link>
         </nav>
       </section>
+
+      {personalRecent !== null && personalRecent.length > 0 ? (
+        <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-recent-title">
+          <header className="ae-section__masthead">
+            <div className="ae-section__masthead-copy">
+              <h2 id="ae-home-recent-title">Continuar a explorar</h2>
+              <p className="ae-section__dek">Artigos que consultou recentemente neste dispositivo ou na sua conta.</p>
+            </div>
+          </header>
+          <div className="ae-grid">
+            {personalRecent.map((p) => (
+              <ProductCard key={p.id} p={p} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {personalForYou !== null && personalForYou.length > 0 ? (
+        <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-foryou-title">
+          <header className="ae-section__masthead">
+            <div className="ae-section__masthead-copy">
+              <h2 id="ae-home-foryou-title">Recomendado para si</h2>
+              <p className="ae-section__dek">
+                Combina histórico de navegação, favoritos, encomendas na plataforma e padrões reais de compra conjunta.
+              </p>
+            </div>
+            <div className="ae-section__masthead-actions">
+              <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
+                Ver mais populares
+              </Link>
+            </div>
+          </header>
+          <div className="ae-grid">
+            {personalForYou.map((p) => (
+              <ProductCard key={`foryou-${p.id}`} p={p} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {pulseTags.length > 0 ? (
         <section className="ae-shell ae-home-pulse" aria-label="Vantagens do marketplace">

@@ -556,6 +556,55 @@ export const productService = {
     return { items: safe, total, skip, take };
   },
 
+  /**
+   * Vitrinha pública na ordem dos `ids` (ranking já resolvido no caller).
+   * Omite referências inactivas ou sem opção de envio válida na política actual.
+   */
+  async listPublicByIdsOrdered(ids: string[]) {
+    const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
+    const unique = [...new Set(ids.map((x) => x.trim()).filter(Boolean))];
+    if (unique.length === 0) return [];
+    const where: Prisma.ProductWhereInput = {
+      id: { in: unique },
+      isActive: true,
+      moderationStatus: "APPROVED",
+      shop: { isApproved: true, tier1CompletedAt: { not: null } },
+      ...(!allowSeller ? { deliveryOptions: { some: { tipoEntrega: "PLATAFORMA" } } } : {}),
+    };
+    const rows = await prisma.product.findMany({
+      where,
+      include: {
+        shop: true,
+        category: true,
+        images: { orderBy: { sortOrder: "asc" } },
+        deliveryOptions: deliveryOptionsPublicInclude,
+        variants: true,
+        _count: { select: { reviews: true } },
+      },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const ordered: typeof rows = [];
+    for (const id of unique) {
+      const row = byId.get(id);
+      if (row) ordered.push(row);
+    }
+    const out = [];
+    for (const p of ordered) {
+      const deliveryOptions = allowSeller
+        ? p.deliveryOptions
+        : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
+      if (deliveryOptions.length === 0) continue;
+      out.push(
+        mapProductMediaForApi({
+          ...p,
+          deliveryOptions,
+          shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
+        }),
+      );
+    }
+    return out;
+  },
+
   async suggest(q: string, take = 8) {
     const term = q.trim();
     if (term.length < 2) return [];

@@ -107,13 +107,14 @@ export default function VendorOrders() {
         </div>
         <input
           type="search"
+          className="ae-v-head__search"
           placeholder="Filtrar na página actual (referência ou comprador)…"
           value={q}
           onChange={(e) => {
             setPage(0);
             setQ(e.target.value);
           }}
-          style={{ padding: "8px 10px", minWidth: 240, border: "1px solid var(--ae-line)", borderRadius: 4 }}
+          style={{ padding: "8px 10px", border: "1px solid var(--ae-line)", borderRadius: 4 }}
         />
       </header>
 
@@ -209,17 +210,19 @@ export default function VendorOrders() {
                 Em entrega pelo BAZAR DO BIÉ — «Entregue» é marcado pela logística ou admin; depois o comprador confirma conforme o pagamento.
               </p>
             ) : null}
-            <table className="ae-data-table" style={{ border: "none", borderRadius: 0 }}>
-              <tbody>
-                {o.items.map((it, i) => (
-                  <tr key={i}>
-                    <td>{it.productNameSnapshot}</td>
-                    <td style={{ width: 120 }}>× {it.quantity}</td>
-                    <td style={{ width: 120 }}>{formatKz(it.unitPrice)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="ae-table-wrap">
+              <table className="ae-data-table" style={{ border: "none", borderRadius: 0 }}>
+                <tbody>
+                  {o.items.map((it, i) => (
+                    <tr key={i}>
+                      <td>{it.productNameSnapshot}</td>
+                      <td style={{ width: 120 }}>× {it.quantity}</td>
+                      <td style={{ width: 120 }}>{formatKz(it.unitPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div style={{ padding: "14px", borderTop: "1px solid var(--ae-line)" }}>
               <OrderTrackingEditor
                 key={`${o.id}-${o.trackingCode ?? ""}-${o.trackingCarrier ?? ""}-${o.trackingUrl ?? ""}`}

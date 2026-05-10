@@ -24,6 +24,7 @@ export default function SearchPage() {
   const q = params.get("q") ?? "";
   const categoryId = params.get("categoryId") ?? "";
   const sort = params.get("sort") ?? "recentes";
+  const shopId = params.get("shopId") ?? "";
   const condition = params.get("condition") ?? "";
   const minRating = params.get("minRating") ?? "";
   const minPriceParam = params.get("minPrice");
@@ -35,6 +36,7 @@ export default function SearchPage() {
   const [visualRaw, setVisualRaw] = useState<ProductCardData[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [shopLabel, setShopLabel] = useState<string | null>(null);
 
   const seoTitle = q.trim()
     ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
@@ -67,6 +69,24 @@ export default function SearchPage() {
     void apiFetch<Category[]>("/categories").then(setCats).catch(() => setCats([]));
   }, []);
 
+  useEffect(() => {
+    if (!shopId) {
+      setShopLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<{ name: string }>(`/shops/${encodeURIComponent(shopId)}`)
+      .then((s) => {
+        if (!cancelled) setShopLabel(s.name);
+      })
+      .catch(() => {
+        if (!cancelled) setShopLabel(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shopId]);
+
   const qs = useMemo(() => {
     const p = new URLSearchParams();
     if (q.trim()) p.set("q", q.trim());
@@ -79,9 +99,10 @@ export default function SearchPage() {
     if (maxPrice) p.set("maxPrice", maxPrice);
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
+    if (shopId) p.set("shopId", shopId);
     p.set("take", "36");
     return p.toString();
-  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice, featured, onSale]);
+  }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice, featured, onSale, shopId]);
 
   useEffect(() => {
     if (visualMode) {
@@ -319,8 +340,19 @@ export default function SearchPage() {
             {effectiveData?.total ?? "—"} resultado(s)
             {featured ? <span className="ae-toolbar__pill ae-toolbar__pill--accent">Destaque</span> : null}
             {onSale ? <span className="ae-toolbar__pill ae-toolbar__pill--promo">Promoções</span> : null}
+            {shopId ? <span className="ae-toolbar__pill">Uma loja</span> : null}
           </span>
         </div>
+        {shopId ? (
+          <div className="ae-shop-filter-banner page-panel">
+            <p style={{ margin: 0, fontSize: 14 }}>
+              <strong>Catálogo filtrado por loja:</strong> {shopLabel ?? "A carregar…"}{" "}
+              <Link to={`/loja/${encodeURIComponent(shopId)}/sobre`}>Perfil e confiança</Link>
+              {" · "}
+              <Link to={buildSearchPath("/search", params, { shopId: null })}>Remover filtro</Link>
+            </p>
+          </div>
+        ) : null}
         {visualMode ? (
           <p className="ae-catalog-note">Pesquisa por imagem activa. Para nova imagem, use o ícone de câmara na barra de pesquisa.</p>
         ) : null}

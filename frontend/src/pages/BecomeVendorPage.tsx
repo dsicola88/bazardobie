@@ -58,6 +58,9 @@ export default function BecomeVendorPage() {
             <Link to="/vendor/loja" className="btn">
               Registo da loja
             </Link>
+            <Link to="/termos-parceiros" className="btn">
+              Termos do programa
+            </Link>
           </div>
         </div>
       </div>
@@ -119,7 +122,11 @@ export default function BecomeVendorPage() {
             <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} />
             <span>
               Declaro que li e aceito operar em conformidade com as regras da plataforma (catálogo correcto, cumprimento
-              de encomendas e dados de contacto actualizados). A equipa pode recusar ou encerrar lojas que não cumpram.
+              de encomendas e dados de contacto actualizados). A equipa pode recusar ou encerrar lojas que não cumpram.{" "}
+              <Link to="/termos-parceiros" target="_blank" rel="noopener noreferrer">
+                Ler termos completos
+              </Link>{" "}
+              (comissões, moderação e envios).
             </span>
           </label>
           {err ? (

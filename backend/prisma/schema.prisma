@@ -234,6 +234,8 @@ model User {
   orders         Order[]
   reviews        Review[]
   favorites      Favorite[]
+  /// Rasto de produtos vistos (chave `u:{userId}` em `ProductRecentView.identityKey`)
+  recentProductViews ProductRecentView[]
   notifications  Notification[]
   reportsFiled   Report[]       @relation("ReportReporter")
   adminAuditLogs AdminAuditLog[]
@@ -381,6 +383,7 @@ model Product {
   favorites        Favorite[]
   reports          Report[]
   homeGroupMembers HomeProductGroupMember[]
+  recentViews      ProductRecentView[]
 
   @@unique([shopId, sku])
   @@index([categoryId])
@@ -729,6 +732,22 @@ model Favorite {
 
   @@unique([userId, productId, variantId])
   @@index([userId])
+}
+
+/// Histórico de vistas por utilizador autenticado (`u:{cuid}`) ou visitante (`s:{cart_session}`).
+model ProductRecentView {
+  id          String   @id @default(cuid())
+  identityKey String
+  productId   String
+  viewedAt    DateTime @default(now())
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String?
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([identityKey, productId])
+  @@index([identityKey, viewedAt])
+  @@index([userId, viewedAt])
 }
 
 enum NotificationType {
