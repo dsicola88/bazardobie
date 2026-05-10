@@ -42,6 +42,7 @@ const SearchPage = lazy(() => import("./pages/SearchPage.js"));
 const Login = lazy(() => import("./pages/Login.js"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.js"));
 const OAuthDonePage = lazy(() => import("./pages/OAuthDonePage.js"));
+const ProductPage = lazy(() => import("./pages/ProductPage.js"));
 const ShopPublicAboutPage = lazy(() => import("./pages/ShopPublicAboutPage.js"));
 const CartPage = lazy(() => import("./pages/CartPage.js"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage.js"));
