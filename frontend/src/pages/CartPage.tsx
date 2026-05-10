@@ -354,9 +354,9 @@ export default function CartPage() {
                               <span className="ae-cart-line__ship-route">
                                 {item.productDeliveryOption.tipoEntrega === "PLATAFORMA"
                                   ? item.productDeliveryOption.logisticsPartner
-                                    ? `Envio plataforma · ${item.productDeliveryOption.logisticsPartner.name}`
-                                    : "Envio operado pela plataforma"
-                                  : "Envio pela loja parceira"}
+                                    ? `Rede logística · ${item.productDeliveryOption.logisticsPartner.name}`
+                                    : "Rede logística da plataforma"
+                                  : "Modalidade de envio seleccionada"}
                               </span>
                               <span className="ae-cart-line__ship-frete">{formatFreteKz(item.productDeliveryOption.custoEntrega)}</span>
                             </div>

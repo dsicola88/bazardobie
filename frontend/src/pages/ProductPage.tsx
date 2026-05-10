@@ -1239,13 +1239,6 @@ export default function ProductPage() {
                         </dl>
                       </div>
                     </div>
-                    {product.shop.id ? (
-                      <p className="ae-pdp-shop-card__more">
-                        <Link to={`/loja/${product.shop.id}/sobre`} className="ae-linkbtn">
-                          Informações completas da loja
-                        </Link>
-                      </p>
-                    ) : null}
                   </div>
                   <div className="ae-pdp-shop-card__col ae-pdp-shop-card__col--ratings">
                     <h4 className="ae-pdp-shop-card__subhead">Avaliações do vendedor</h4>
@@ -1253,7 +1246,7 @@ export default function ProductPage() {
                       <p className="ae-muted ae-pdp-shop-card__hint">A carregar métricas…</p>
                     ) : shopSobreFailed ? (
                       <p className="ae-muted ae-pdp-shop-card__hint">
-                        Não foi possível carregar as médias agregadas da loja. Utilize o link acima para a página «Sobre».
+                        Não foi possível carregar as médias agregadas da loja neste momento.
                       </p>
                     ) : shopSobre && shopSobre.metricas.totalAvaliacoes > 0 ? (
                       <>

@@ -145,7 +145,7 @@ export const cartService = {
           productDeliveryOptionId: input.productDeliveryOptionId,
         },
         include: {
-          product: { include: { images: true, shop: true } },
+          product: { include: { images: true } },
           variant: true,
           productDeliveryOption: {
             include: {
@@ -165,7 +165,7 @@ export const cartService = {
         quantity: input.quantity,
       },
       include: {
-        product: { include: { images: true, shop: true } },
+        product: { include: { images: true } },
         variant: true,
         productDeliveryOption: {
           include: {
