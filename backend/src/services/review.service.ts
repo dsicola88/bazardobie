@@ -19,33 +19,12 @@ export type ReviewPublicRow = Prisma.ReviewGetPayload<{ include: typeof reviewPu
 
 export type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
-function formatReviewPublicRow(r: ReviewPublicRow, viewerMarkedIds?: Set<string>) {
-  const helpfulCount = r._count.helpfulMarks;
-  const { _count, ...rest } = r;
-  return {
-    ...rest,
-    helpfulCount,
-    viewerMarkedHelpful: viewerMarkedIds ? viewerMarkedIds.has(r.id) : false,
-    photoUrls: (rest.photoUrls ?? []).map((u) => publicMediaUrl(u)),
-    user: rest.user
-      ? {
-          ...rest.user,
-          avatarUrl: rest.user.avatarUrl ? publicMediaUrl(rest.user.avatarUrl) : rest.user.avatarUrl,
-        }
-      : rest.user,
-  };
-}
+/** Lista escalar `photoUrls` — evita `isEmpty`, mais compatível com Postgres nos planos observados na API pública. */
+const reviewWhereHasPhotos: Prisma.ReviewWhereInput = {
+  NOT: { photoUrls: { equals: [] } },
+};
 
-/** Remove `_count` das reviews incluídas em `GET /products/:id` e expõe `helpfulCount`. */
-export function mapEmbeddedReviewsForApi<T extends { reviews?: ReviewPublicRow[] }>(product: T): T {
-  if (!product.reviews?.length) return product;
-  return {
-    ...product,
-    reviews: product.reviews.map((r) => formatReviewPublicRow(r)),
-  };
-}
-
-async function aggregateShopReviewsSummary(shopId: string): Promise<{
+function emptyAggregateShopReviewsSummary(): {
   total: number;
   avgOverall: number | null;
   minReviewsForPublicAvg: number;
@@ -56,8 +35,37 @@ async function aggregateShopReviewsSummary(shopId: string): Promise<{
   porEstrela: { stars: number; count: number }[];
   comFotos: number;
   comTexto: number;
-}> {
-  const baseWhere: Prisma.ReviewWhereInput = { product: shopPublicReviewProductWhere(shopId) };
+} {
+  return {
+    total: 0,
+    avgOverall: null,
+    minReviewsForPublicAvg: MIN_REVIEWS_FOR_PUBLIC_STAR_AVG,
+    revisaoPositivaPercent: null,
+    positivo: 0,
+    neutro: 0,
+    negativo: 0,
+    porEstrela: [5, 4, 3, 2, 1].map((stars) => ({ stars, count: 0 })),
+    comFotos: 0,
+    comTexto: 0,
+  };
+}
+
+async function shelfProductIdsForShop(shopId: string): Promise<string[]> {
+  const rows = await prisma.product.findMany({
+    where: shopPublicReviewProductWhere(shopId),
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Agrega opiniões por conjunto explícito de produtos públicos (`productId in (...)`).
+ * Evita `groupBy`/`count` com filtro profundo `review.product.shop…`, que pode falhar ou degradar em Postgres.
+ */
+async function aggregateShopReviewsSummaryForProductIds(productIds: string[]) {
+  if (productIds.length === 0) return emptyAggregateShopReviewsSummary();
+
+  const baseWhere: Prisma.ReviewWhereInput = { productId: { in: productIds } };
 
   const [rows, comFotos, comTexto] = await Promise.all([
     prisma.review.groupBy({
@@ -66,10 +74,7 @@ async function aggregateShopReviewsSummary(shopId: string): Promise<{
       _count: { _all: true },
     }),
     prisma.review.count({
-      where: {
-        ...baseWhere,
-        photoUrls: { isEmpty: false },
-      },
+      where: { ...baseWhere, ...reviewWhereHasPhotos },
     }),
     prisma.review.count({
       where: {
@@ -113,6 +118,32 @@ async function aggregateShopReviewsSummary(shopId: string): Promise<{
     porEstrela,
     comFotos,
     comTexto,
+  };
+}
+
+function formatReviewPublicRow(r: ReviewPublicRow, viewerMarkedIds?: Set<string>) {
+  const helpfulCount = r._count.helpfulMarks;
+  const { _count, ...rest } = r;
+  return {
+    ...rest,
+    helpfulCount,
+    viewerMarkedHelpful: viewerMarkedIds ? viewerMarkedIds.has(r.id) : false,
+    photoUrls: (rest.photoUrls ?? []).map((u) => publicMediaUrl(u)),
+    user: rest.user
+      ? {
+          ...rest.user,
+          avatarUrl: rest.user.avatarUrl ? publicMediaUrl(rest.user.avatarUrl) : rest.user.avatarUrl,
+        }
+      : rest.user,
+  };
+}
+
+/** Remove `_count` das reviews incluídas em `GET /products/:id` e expõe `helpfulCount`. */
+export function mapEmbeddedReviewsForApi<T extends { reviews?: ReviewPublicRow[] }>(product: T): T {
+  if (!product.reviews?.length) return product;
+  return {
+    ...product,
+    reviews: product.reviews.map((r) => formatReviewPublicRow(r)),
   };
 }
 
@@ -209,7 +240,7 @@ export const reviewService = {
 
     const where: Prisma.ReviewWhereInput = {
       productId,
-      ...(opts.photosOnly ? { photoUrls: { isEmpty: false } } : {}),
+      ...(opts.photosOnly ? reviewWhereHasPhotos : {}),
     };
 
     const orderBy: Prisma.ReviewOrderByWithRelationInput[] =
@@ -273,13 +304,27 @@ export const reviewService = {
         ? opts.rating
         : undefined;
 
-    const productScope: Prisma.ReviewWhereInput = {
-      product: shopPublicReviewProductWhere(shopId),
-    };
+    const shelfProductIds = await shelfProductIdsForShop(shopId);
+
+    if (shelfProductIds.length === 0) {
+      return {
+        summary: emptyAggregateShopReviewsSummary(),
+        items: [],
+        total: 0,
+        skip,
+        take,
+        sort,
+        photosOnly: Boolean(opts.photosOnly),
+        textOnly: Boolean(opts.textOnly),
+        rating: ratingFilter,
+      };
+    }
+
+    const productScope: Prisma.ReviewWhereInput = { productId: { in: shelfProductIds } };
 
     const where: Prisma.ReviewWhereInput = {
       ...productScope,
-      ...(opts.photosOnly ? { photoUrls: { isEmpty: false } } : {}),
+      ...(opts.photosOnly ? reviewWhereHasPhotos : {}),
       ...(opts.textOnly
         ? {
             comment: { not: null },
@@ -304,7 +349,7 @@ export const reviewService = {
     } satisfies Prisma.ReviewInclude;
 
     const [summary, rawRows, total] = await Promise.all([
-      aggregateShopReviewsSummary(shopId),
+      aggregateShopReviewsSummaryForProductIds(shelfProductIds),
       prisma.review.findMany({
         where,
         orderBy,
