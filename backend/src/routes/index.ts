@@ -63,6 +63,7 @@ r.patch("/auth/profile", requireAuth, authController.patchProfile);
 r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authController.becomeVendor);
 
 r.get("/categories", catalogController.categories);
+r.get("/categories/suggest", catalogController.suggestCategories);
 r.get("/homepage/product-groups", homepageGroupController.listPublic);
 r.get("/banners", catalogController.banners);
 r.get("/site-content", siteSettingsController.publicBundle);

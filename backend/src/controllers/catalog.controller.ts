@@ -13,6 +13,13 @@ export const catalogController = {
     res.json(list);
   }),
 
+  suggestCategories: asyncHandler(async (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const take = Math.min(Math.max(Number(req.query.take) || 6, 1), 12);
+    const { items, scope } = await categoryService.suggestForSearch(q, take);
+    res.json({ items, scope });
+  }),
+
   banners: asyncHandler(async (_req, res) => {
     const list = await bannerService.listActive();
     res.json(list);

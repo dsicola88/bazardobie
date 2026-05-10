@@ -645,15 +645,17 @@ export const productService = {
         }
         score += Math.min(40, Math.log10(Number(r.soldCount || 0) + 1) * 16);
         score += Math.min(20, Number(r.reviewCount || 0) * 0.8);
+        const thumb = r.images?.[0]?.url ?? null;
         return {
           id: r.id,
           name: r.name,
           score,
+          imageUrl: thumb,
         };
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, Math.min(Math.max(take, 1), 12));
-    return ranked.map((r) => ({ id: r.id, name: r.name }));
+    return ranked.map((r) => ({ id: r.id, name: r.name, imageUrl: r.imageUrl }));
   },
 
   async visualSearch(imageBuffer: Buffer, take = 24) {

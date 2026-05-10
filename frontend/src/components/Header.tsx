@@ -6,6 +6,7 @@ import { apiFetch, apiUrl, cartSessionHeaders, ensureCartSession } from "../api.
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
+import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { NotificationsBell } from "./NotificationsBell.js";
 import type { ProductCardData } from "./ProductCard.js";
 import { resolveMediaUrl } from "../utils/media.js";
@@ -49,7 +50,15 @@ function promoIntervalActive(now: number, startPrimary: string, endPrimary: stri
 }
 
 type Category = PublicCategory;
-type SearchSuggestProduct = { id: string; name: string };
+type SearchSuggestProduct = { id: string; name: string; imageUrl?: string | null };
+type SearchDiscoveryCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  productCount: number;
+  parentName: string | null;
+};
 
 export function Header() {
   const { user, logout, token } = useAuth();
@@ -65,6 +74,9 @@ export function Header() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestProducts, setSuggestProducts] = useState<SearchSuggestProduct[]>([]);
   const [suggestActiveIdx, setSuggestActiveIdx] = useState(-1);
+  const [discoveryItems, setDiscoveryItems] = useState<SearchDiscoveryCategory[]>([]);
+  const [discoveryScope, setDiscoveryScope] = useState<"related" | "popular">("popular");
+  const [catSuggestLoading, setCatSuggestLoading] = useState(false);
   const [searchCatId, setSearchCatId] = useState<string>("");
   const [catOpen, setCatOpen] = useState(false);
   const [imgSearchBusy, setImgSearchBusy] = useState(false);
@@ -198,40 +210,74 @@ export function Header() {
     return (promoPopupKeywordsRaw ? uniquePromoKeywords(promoPopupKeywordsRaw, 6) : barKw).slice(0, 6);
   }, [promoPopupKeywordsRaw, promoKeywordsRaw]);
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
-  const smartCategorySuggestions =
-    q.trim().length >= 2
-      ? roots
-          .filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()))
-          .slice(0, 4)
-      : [];
+  const discoveryColumnTitle =
+    discoveryScope === "related" ? "Categorias relacionadas" : "Categorias em destaque";
 
   useEffect(() => {
     const term = q.trim();
     if (term.length < 2) {
       setSuggestProducts([]);
+      setDiscoveryItems([]);
+      setDiscoveryScope("popular");
       setSuggestLoading(false);
+      setCatSuggestLoading(false);
       setSuggestActiveIdx(-1);
       return;
     }
     setSuggestLoading(true);
+    setCatSuggestLoading(true);
     const t = window.setTimeout(() => {
-      void apiFetch<{ items: { id: string; name: string }[] }>(
-        `/products/suggest?q=${encodeURIComponent(term)}&take=6`
-      )
-        .then((r) => {
-          setSuggestProducts((r.items ?? []).map((p) => ({ id: p.id, name: p.name })));
-          setSuggestActiveIdx(-1);
-        })
-        .catch(() => {
+      void Promise.allSettled([
+        apiFetch<{ items: { id: string; name: string; imageUrl?: string | null }[] }>(
+          `/products/suggest?q=${encodeURIComponent(term)}&take=8`
+        ),
+        apiFetch<{ items: SearchDiscoveryCategory[]; scope?: string }>(
+          `/categories/suggest?q=${encodeURIComponent(term)}&take=6`
+        ),
+      ]).then((results) => {
+        const pr = results[0];
+        if (pr.status === "fulfilled") {
+          setSuggestProducts(
+            (pr.value.items ?? []).map((p) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl ?? null }))
+          );
+        } else {
           setSuggestProducts([]);
-          setSuggestActiveIdx(-1);
-        })
-        .finally(() => setSuggestLoading(false));
+        }
+        const cr = results[1];
+        if (cr.status === "fulfilled") {
+          const rawItems = cr.value.items ?? [];
+          setDiscoveryItems(
+            rawItems.map((c) => ({
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              imageUrl: c.imageUrl ?? null,
+              productCount: Number(c.productCount) || 0,
+              parentName: c.parentName ?? null,
+            }))
+          );
+          setDiscoveryScope(cr.value.scope === "related" ? "related" : "popular");
+        } else {
+          setDiscoveryItems([]);
+          setDiscoveryScope("popular");
+        }
+        setSuggestActiveIdx(-1);
+      }).finally(() => {
+        setSuggestLoading(false);
+        setCatSuggestLoading(false);
+      });
     }, 220);
     return () => window.clearTimeout(t);
   }, [q]);
 
-  const suggestTotal = suggestProducts.length + smartCategorySuggestions.length;
+  const suggestPanelReady = !suggestLoading && !catSuggestLoading;
+  const showSuggestViewAll =
+    q.trim().length >= 2 &&
+    suggestPanelReady &&
+    suggestProducts.length + discoveryItems.length > 0;
+  const viewAllSuggestIdx = showSuggestViewAll ? suggestProducts.length + discoveryItems.length : -1;
+  const suggestTotal =
+    suggestProducts.length + discoveryItems.length + (showSuggestViewAll ? 1 : 0);
   const searchRoots = roots.slice(0, 20);
   const promoPriority = Number.isFinite(Number(promoPriorityRaw)) ? Math.round(Number(promoPriorityRaw)) : 50;
   const promoDelaySeconds = Number.isFinite(Number(promoDelayRaw))
@@ -333,6 +379,15 @@ export function Header() {
     if (term) params.set("q", term);
     if (id) params.set("categoryId", id);
     nav(params.toString() ? `/search?${params.toString()}` : "/search");
+  }
+
+  function goFullCatalogSearch() {
+    const term = q.trim();
+    const params = new URLSearchParams();
+    if (term) params.set("q", term);
+    if (searchCatId) params.set("categoryId", searchCatId);
+    nav(params.toString() ? `/search?${params.toString()}` : "/search");
+    setSuggestOpen(false);
   }
 
   return (
@@ -450,14 +505,23 @@ export function Header() {
                     setSuggestActiveIdx((n) => (n <= 0 ? suggestTotal - 1 : n - 1));
                   } else if (e.key === "Enter" && suggestActiveIdx >= 0) {
                     e.preventDefault();
-                    if (suggestActiveIdx < suggestProducts.length) {
+                    if (showSuggestViewAll && suggestActiveIdx === viewAllSuggestIdx) {
+                      goFullCatalogSearch();
+                    } else if (suggestActiveIdx < suggestProducts.length) {
                       nav(`/product/${suggestProducts[suggestActiveIdx].id}`);
-                    } else {
+                      setSuggestOpen(false);
+                    } else if (suggestActiveIdx < suggestProducts.length + discoveryItems.length) {
                       const ci = suggestActiveIdx - suggestProducts.length;
-                      const cat = smartCategorySuggestions[ci];
-                      if (cat) nav(`/search?categoryId=${encodeURIComponent(cat.id)}`);
+                      const cat = discoveryItems[ci];
+                      if (cat) {
+                        const params = new URLSearchParams();
+                        const term = q.trim();
+                        if (term) params.set("q", term);
+                        params.set("categoryId", cat.id);
+                        nav(`/search?${params.toString()}`);
+                      }
+                      setSuggestOpen(false);
                     }
-                    setSuggestOpen(false);
                   } else if (e.key === "Escape") {
                     setSuggestOpen(false);
                   }
@@ -479,59 +543,181 @@ export function Header() {
                 onClick={() => imageInputRef.current?.click()}
                 disabled={imgSearchBusy}
               >
-                {imgSearchBusy ? "…" : "📷"}
+                {imgSearchBusy ? (
+                  <span className="ae-search__imgbtn-spin" aria-hidden>
+                    …
+                  </span>
+                ) : (
+                  <span className="ae-search__imgbtn-ico" aria-hidden>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75">
+                      <path
+                        strokeLinejoin="round"
+                        d="M4 7a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"
+                      />
+                      <circle cx="12" cy="13" r="3.25" />
+                    </svg>
+                  </span>
+                )}
               </button>
               <button type="submit" className="ae-search__btn" aria-label="Pesquisar no catálogo">
-                🔎
+                <span className="ae-search__btn-ico" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.1">
+                    <circle cx="10.5" cy="10.5" r="6.5" strokeLinecap="round" />
+                    <path strokeLinecap="round" d="M20 20 15.5 15.5" />
+                  </svg>
+                </span>
               </button>
             </form>
             {suggestOpen && q.trim().length >= 2 ? (
-              <div className="ae-search-suggest">
-                {suggestLoading ? <div className="ae-search-suggest__state">A sugerir produtos…</div> : null}
-                {!suggestLoading && suggestTotal === 0 ? (
-                  <div className="ae-search-suggest__state">Sem sugestões para este termo.</div>
-                ) : null}
-                {!suggestLoading && suggestProducts.length > 0 ? (
-                  <div className="ae-search-suggest__group">
-                    <div className="ae-search-suggest__title">Produtos</div>
-                    {suggestProducts.map((p, i) => (
+              <div className="ae-search-suggest ae-search-suggest--pro" role="listbox" aria-label="Sugestões de pesquisa">
+                <div className="ae-search-suggest__cols">
+                  <div className="ae-search-suggest__col ae-search-suggest__col--list">
+                    <div className="ae-search-suggest__head">
+                      <span className="ae-search-suggest__head-title">Sugestões</span>
+                      {searchCatId ? (
+                        <span className="ae-search-suggest__head-filter">âmbito: categoria seleccionada</span>
+                      ) : null}
+                    </div>
+                    {suggestLoading ? (
+                      <div className="ae-search-suggest__loading" aria-live="polite">
+                        <div className="ae-search-suggest__skel-row">
+                          <div className="ae-skel ae-search-suggest__skel-thumb" />
+                          <div className="ae-search-suggest__skel-lines">
+                            <div className="ae-skel ae-search-suggest__skel-line" />
+                            <div className="ae-skel ae-search-suggest__skel-line ae-search-suggest__skel-line--short" />
+                          </div>
+                        </div>
+                        <div className="ae-search-suggest__skel-row">
+                          <div className="ae-skel ae-search-suggest__skel-thumb" />
+                          <div className="ae-search-suggest__skel-lines">
+                            <div className="ae-skel ae-search-suggest__skel-line" />
+                            <div className="ae-skel ae-search-suggest__skel-line ae-search-suggest__skel-line--mid" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : suggestProducts.length === 0 ? (
+                      <p className="ae-search-suggest__empty-col">
+                        Nenhum artigo com este termo nas primeiras sugestões. Utilize a pesquisa completa ou explore as
+                        categorias ao lado.
+                      </p>
+                    ) : (
+                      <div className="ae-search-suggest__prows">
+                        {suggestProducts.map((p, i) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`ae-search-suggest__prow ${suggestActiveIdx === i ? "ae-search-suggest__prow--on" : ""}`}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              nav(`/product/${p.id}`);
+                              setSuggestOpen(false);
+                            }}
+                          >
+                            <span className="ae-search-suggest__pthumb-wrap">
+                              {p.imageUrl ? (
+                                <img
+                                  className="ae-search-suggest__pthumb"
+                                  src={resolveMediaUrl(p.imageUrl)}
+                                  alt=""
+                                  decoding="async"
+                                />
+                              ) : (
+                                <MediaPlaceholder variant="tile" className="ae-search-suggest__pthumb-ph" />
+                              )}
+                            </span>
+                            <span className="ae-search-suggest__pname">{p.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showSuggestViewAll ? (
                       <button
-                        key={p.id}
                         type="button"
-                        className={`ae-search-suggest__item ${suggestActiveIdx === i ? "ae-search-suggest__item--on" : ""}`}
+                        className={`ae-search-suggest__viewall ${suggestActiveIdx === viewAllSuggestIdx ? "ae-search-suggest__viewall--on" : ""}`}
                         onMouseDown={(e) => {
                           e.preventDefault();
-                          nav(`/product/${p.id}`);
-                          setSuggestOpen(false);
+                          goFullCatalogSearch();
                         }}
                       >
-                        {p.name}
+                        Ver todos os resultados para «{q.trim()}»
                       </button>
-                    ))}
+                    ) : null}
                   </div>
-                ) : null}
-                {!suggestLoading && smartCategorySuggestions.length > 0 ? (
-                  <div className="ae-search-suggest__group">
-                    <div className="ae-search-suggest__title">Categorias</div>
-                    {smartCategorySuggestions.map((c, j) => {
-                      const idx = suggestProducts.length + j;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={`ae-search-suggest__item ${suggestActiveIdx === idx ? "ae-search-suggest__item--on" : ""}`}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            nav(`/search?categoryId=${encodeURIComponent(c.id)}`);
-                            setSuggestOpen(false);
-                          }}
-                        >
-                          {c.name}
-                        </button>
-                      );
-                    })}
+                  <div className="ae-search-suggest__col ae-search-suggest__col--discover">
+                    <div className="ae-search-suggest__discover-head">
+                      <span className="ae-search-suggest__discover-title">{discoveryColumnTitle}</span>
+                      <button
+                        type="button"
+                        className="ae-search-suggest__discover-link"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSuggestOpen(false);
+                          nav("/search");
+                        }}
+                      >
+                        Catálogo completo
+                      </button>
+                    </div>
+                    {catSuggestLoading && discoveryItems.length === 0 ? (
+                      <div className="ae-search-suggest__cgrid ae-search-suggest__cgrid--skel" aria-hidden>
+                        {Array.from({ length: 6 }).map((_, sk) => (
+                          <div key={sk} className="ae-search-suggest__ctile-skel">
+                            <div className="ae-skel ae-search-suggest__cimg-skel" />
+                            <div className="ae-skel ae-search-suggest__clab-skel" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    {!catSuggestLoading && discoveryItems.length === 0 ? (
+                      <p className="ae-search-suggest__empty-col ae-search-suggest__empty-col--muted">
+                        Sem categorias com stock para mostrar.
+                      </p>
+                    ) : null}
+                    {discoveryItems.length > 0 ? (
+                      <div className="ae-search-suggest__cgrid">
+                        {discoveryItems.map((c, j) => {
+                          const idx = suggestProducts.length + j;
+                          const countLabel =
+                            c.productCount >= 1000
+                              ? `${(c.productCount / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })}k+`
+                              : c.productCount.toLocaleString("pt-PT");
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              aria-label={`${c.name}${c.parentName ? ` em ${c.parentName}` : ""}, ${c.productCount.toLocaleString("pt-PT")} artigos`}
+                              className={`ae-search-suggest__ctile ${suggestActiveIdx === idx ? "ae-search-suggest__ctile--on" : ""}`}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                const params = new URLSearchParams();
+                                const term = q.trim();
+                                if (term) params.set("q", term);
+                                params.set("categoryId", c.id);
+                                nav(`/search?${params.toString()}`);
+                                setSuggestOpen(false);
+                              }}
+                            >
+                              <span className="ae-search-suggest__cimg">
+                                {c.imageUrl ? (
+                                  <img src={resolveMediaUrl(c.imageUrl)} alt="" decoding="async" />
+                                ) : (
+                                  <MediaPlaceholder variant="category" className="ae-search-suggest__cph" />
+                                )}
+                                <span className="ae-search-suggest__ccount" aria-hidden>
+                                  {countLabel}
+                                </span>
+                              </span>
+                              <span className="ae-search-suggest__clab">{c.name}</span>
+                              {c.parentName ? (
+                                <span className="ae-search-suggest__cparent">em {c.parentName}</span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
               </div>
             ) : null}
           </div>
