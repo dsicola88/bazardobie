@@ -168,6 +168,8 @@ export function Header() {
   }
 
   const { content } = useSiteContent();
+  const headerLogoRaw = (content["public.header_logo_url"] ?? "").trim();
+  const headerLogoSrc = headerLogoRaw ? resolveMediaUrl(headerLogoRaw) ?? "" : "";
   const promoBarText = (content["public.header_promo_text"] ?? "").trim();
   const promoKeywordsRaw = (content["public.header_promo_keywords"] ?? "").trim();
   const barFlag = triStatePromoFlag(content["public.header_promo_bar_enabled"]);
@@ -448,9 +450,16 @@ export function Header() {
 
       <div className="ae-mainhead">
         <div className="ae-shell ae-mainhead__row">
-          <Link to="/" className="ae-logo">
-            <span className="ae-logo__main">BAZAR</span>
-            <span className="ae-logo__sub">DO BIÉ</span>
+          <Link to="/" className="ae-logo" aria-label="BAZAR DO BIÉ — página inicial">
+            {headerLogoSrc ? (
+              <span className="ae-logo__mark">
+                <img src={headerLogoSrc} alt="" width={42} height={42} decoding="async" className="ae-logo__img" />
+              </span>
+            ) : null}
+            <span className="ae-logo__wordmark">
+              <span className="ae-logo__main">BAZAR</span>
+              <span className="ae-logo__sub">DO BIÉ</span>
+            </span>
           </Link>
 
           <div className="ae-search-wrap">

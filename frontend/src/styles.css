@@ -219,6 +219,7 @@ a:hover {
     grid-area: brand;
     justify-self: start;
     min-width: 0;
+    --ae-logo-mark-size: 36px;
   }
   .ae-mainhead__row > .ae-search-wrap {
     grid-area: search;
@@ -232,6 +233,44 @@ a:hover {
     justify-content: flex-end;
     gap: 10px;
   }
+}
+.ae-logo {
+  --ae-logo-mark-size: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.ae-logo:hover {
+  text-decoration: none;
+}
+.ae-logo__mark {
+  flex: 0 0 var(--ae-logo-mark-size);
+  width: var(--ae-logo-mark-size);
+  height: var(--ae-logo-mark-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgb(248 250 252 / 0.9);
+  border: 1px solid rgb(15 23 42 / 0.06);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.ae-logo__img {
+  max-width: 86%;
+  max-height: 86%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.ae-logo__wordmark {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  min-width: 0;
 }
 .ae-logo__main {
   font-weight: 800;

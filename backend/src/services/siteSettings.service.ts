@@ -36,6 +36,12 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "",
     hint: "Use ícone quadrado (.ico, .png ou .svg). Pode fazer upload no painel e colar aqui a URL retornada.",
   },
+  "public.header_logo_url": {
+    label: "Logo do cabeçalho (à esquerda da marca)",
+    defaultValue: "",
+    hint:
+      "URL ou caminho relativos (ex.: /uploads/...). Quadrada ou horizontal recomendado; aparece ao lado do texto «BAZAR / DO BIÉ» com altura alinhada à marca.",
+  },
   "public.header_promo_text": {
     label: "Barra — mensagem (texto na faixa vermelha)",
     defaultValue: "",

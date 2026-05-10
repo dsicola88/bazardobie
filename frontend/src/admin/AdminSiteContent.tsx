@@ -20,6 +20,7 @@ export default function AdminSiteContent() {
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingHeaderLogo, setUploadingHeaderLogo] = useState(false);
   const [uploadingPromoImage, setUploadingPromoImage] = useState(false);
 
   const load = useCallback(async () => {
@@ -73,6 +74,22 @@ export default function AdminSiteContent() {
       setErr(e instanceof Error ? e.message : "Não foi possível carregar favicon.");
     } finally {
       setUploadingFavicon(false);
+    }
+  }
+
+  async function onUploadHeaderLogo(file: File | null) {
+    if (!token || !file) return;
+    setErr(null);
+    setMsg(null);
+    setUploadingHeaderLogo(true);
+    try {
+      const url = await uploadAdminFile(token, file);
+      setValues((prev) => ({ ...prev, "public.header_logo_url": url }));
+      setMsg("Logo do cabeçalho carregada. Clique em \"Guardar textos\" para publicar.");
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Não foi possível carregar a logo do cabeçalho.");
+    } finally {
+      setUploadingHeaderLogo(false);
     }
   }
 
@@ -529,10 +546,41 @@ export default function AdminSiteContent() {
             </div>
           ) : null}
         </div>
+        <div className="ae-panel" style={{ marginBottom: 16, background: "#fafbfc" }}>
+          <h3 style={{ marginTop: 0, marginBottom: 8 }}>Logo no cabeçalho</h3>
+          <p className="ae-muted" style={{ marginTop: 0, fontSize: 12 }}>
+            Aparece à esquerda do texto «BAZAR / DO BIÉ». Recomendado: PNG ou SVG com fundo transparente, cerca de 128×128 px ou proporção semelhante.
+          </p>
+          <div className="ae-admin-toolbar">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              disabled={uploadingHeaderLogo}
+              onChange={(e) => void onUploadHeaderLogo(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          {values["public.header_logo_url"] ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <img
+                src={resolveMediaUrl(values["public.header_logo_url"])}
+                alt="Pré-visualização da logo do cabeçalho"
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 8,
+                  border: "1px solid var(--ae-line)",
+                  objectFit: "contain",
+                  background: "#fff",
+                }}
+              />
+              <code style={{ fontSize: 12 }}>{values["public.header_logo_url"]}</code>
+            </div>
+          ) : null}
+        </div>
         <div className="ae-form" style={{ gap: 16 }}>
           {items.map((it) => {
             if (PROMO_KEYS.has(it.key)) return null;
-            if (it.key === "public.favicon_url" || it.key === "public.vendor_help_channel_url") return null;
+            if (it.key === "public.favicon_url" || it.key === "public.header_logo_url" || it.key === "public.vendor_help_channel_url") return null;
             const isBool =
               (it.defaultValue === "true" || it.defaultValue === "false") &&
               (it.key.startsWith("public.") || it.key.startsWith("logistics.") || it.key.includes("enabled"));

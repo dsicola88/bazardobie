@@ -8,6 +8,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.footer_col_support":
     "Suporte BAZAR DO BIÉ: ligue ou envie mensagem para o número indicado na barra inferior.",
   "public.favicon_url": "",
+  "public.header_logo_url": "",
   "public.header_promo_text": "",
   "public.header_promo_bar_enabled": "",
   "public.header_promo_popup_enabled": "",
