@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { StarRating } from "./StarRating.js";
 
 const MAX_REVIEW_PHOTOS = 6;
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -119,14 +120,8 @@ export function ReviewOrderModal({ open, token, orderId, productId, productName,
           {productName}
         </p>
         <form className="form-stack" onSubmit={submit}>
-          <label>Avaliação (1–5 estrelas)</label>
-          <select value={rating} onChange={(e) => setRating(Number(e.target.value))}>
-            {[5, 4, 3, 2, 1].map((n) => (
-              <option key={n} value={n}>
-                {"★".repeat(n) + " ☆".repeat(5 - n)}
-              </option>
-            ))}
-          </select>
+          <label>Avaliação</label>
+          <StarRating value={rating} size="lg" onChange={setRating} disabled={loading || uploading} />
           <label>Comentário</label>
           <textarea rows={4} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Opcional mas recomendado" />
 

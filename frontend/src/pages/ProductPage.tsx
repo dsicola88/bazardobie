@@ -5,8 +5,9 @@ import { useAuth } from "../auth/AuthContext.js";
 import { FavoriteToggle } from "../components/FavoriteToggle.js";
 import { ProductReportModal } from "../components/ProductReportModal.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
+import { StarRating } from "../components/StarRating.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
-import { formatKz, formatFreteKz } from "../utils/format.js";
+import { formatKz, formatFreteKz, formatRating } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
@@ -71,6 +72,8 @@ type ProductDetail = {
     };
   };
   reviews: { rating: number; comment?: string | null; photoUrls?: string[]; user?: { name: string } }[];
+  /** Contagens por estrela: [5★, 4★, 3★, 2★, 1★]; vindo da API para gráfico de barras */
+  ratingDistribution?: number[];
 };
 
 type Tab = "overview" | "reviews" | "ship";
@@ -291,6 +294,20 @@ export default function ProductPage() {
   const outOfStock = stockAvailable <= 0;
   const canAdd = product && deliveryId && (!needVariant || variantId) && !outOfStock;
   const meta = useMemo(() => product?.deliveryOptions.find((d) => d.id === deliveryId), [deliveryId, product]);
+
+  const ratingDistribution = useMemo((): [number, number, number, number, number] => {
+    if (!product) return [0, 0, 0, 0, 0];
+    const raw = product.ratingDistribution;
+    if (Array.isArray(raw) && raw.length === 5 && raw.every((x) => typeof x === "number")) {
+      return raw as [number, number, number, number, number];
+    }
+    const fb: [number, number, number, number, number] = [0, 0, 0, 0, 0];
+    for (const r of product.reviews) {
+      if (r.rating >= 1 && r.rating <= 5) fb[5 - r.rating]++;
+    }
+    return fb;
+  }, [product]);
+
   const mainResolved = useMemo(() => {
     if (!product) return "";
     const rawVariantFallback =
@@ -492,11 +509,13 @@ export default function ProductPage() {
             ) : null}
             <div className="ae-buybox__reviews">
               {product.reviewCount > 0 && product.averageRating != null ? (
-                <>
-                  <strong>★ {Number(product.averageRating).toFixed(1)}</strong>
-                  {" · "}
-                  {product.reviewCount} avaliações verificadas · {product.soldCount}+ unidades vendidas
-                </>
+                <div className="ae-buybox__reviews-line">
+                  <StarRating value={Number(product.averageRating)} tone="gold" size="lg" showValue />
+                  <span>
+                    {product.reviewCount.toLocaleString("pt-PT")} avaliações · {product.soldCount.toLocaleString("pt-PT")}+
+                    unidades vendidas
+                  </span>
+                </div>
               ) : (
                 <span>{product.soldCount}+ unidades vendidas · ainda sem avaliações publicadas</span>
               )}
@@ -552,7 +571,9 @@ export default function ProductPage() {
                 </div>
                 {colorSizeMatrix && colorUiGroups ? (
                   <>
-                    <div className="ae-pdp-variant-head">Cor · {selectedVariant?.color?.trim() ?? "—"}</div>
+                    <div className="ae-pdp-variant-head">
+                      cor: <strong>{(selectedVariant?.color ?? "").trim() || "—"}</strong>
+                    </div>
                     <div className="ae-variant-swatches" role="radiogroup" aria-label="Escolha a cor">
                       {colorUiGroups.map((g) => (
                         <button
@@ -799,34 +820,78 @@ export default function ProductPage() {
         ) : null}
         {tab === "reviews" ? (
           <div className="ae-tab-panel">
-            {product.reviews.length === 0 ? (
+            {product.reviewCount === 0 ? (
               <p className="ae-muted">Ainda não existem avaliações para este artigo.</p>
             ) : (
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {product.reviews.map((r, i) => (
-                  <li key={i} style={{ marginBottom: 16 }}>
-                    <strong>{r.rating}</strong> /5 · {(r.user && r.user.name) || "Comprador"}
-                    <div className="ae-muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>
-                      {r.comment}
-                    </div>
-                    {r.photoUrls && r.photoUrls.length > 0 ? (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                        {r.photoUrls.map((u) => (
-                          <a key={u} href={u} target="_blank" rel="noopener noreferrer">
-                            <img
-                              src={resolveMediaUrl(u)}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 6, border: "1px solid var(--ae-line)" }}
-                            />
-                          </a>
-                        ))}
+              <>
+                <div className="ae-pdp-reviews-hero">
+                  <div className="ae-pdp-reviews-hero__left">
+                    <span className="ae-pdp-reviews-hero__avg">
+                      {formatRating(Number(product.averageRating ?? 0))}
+                    </span>
+                    <StarRating
+                      value={Number(product.averageRating ?? 0)}
+                      tone="dark"
+                      size="lg"
+                      className="ae-pdp-reviews-hero__stars"
+                    />
+                    <p className="ae-pdp-reviews-hero__verified">Todas de compras verificadas na plataforma.</p>
+                  </div>
+                  <div className="ae-pdp-reviews-bars" aria-label="Distribuição das avaliações por estrelas">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const idx = 5 - star;
+                      const count = ratingDistribution[idx] ?? 0;
+                      const total = product.reviewCount;
+                      const pct = total > 0 ? Math.min(100, Math.round((count / total) * 1000) / 10) : 0;
+                      return (
+                        <div key={star} className="ae-pdp-review-dist-row">
+                          <span className="ae-pdp-review-dist-label">{star} estrelas</span>
+                          <div className="ae-pdp-review-dist-track">
+                            <div className="ae-pdp-review-dist-fill" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="ae-pdp-review-dist-count">{count.toLocaleString("pt-PT")}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <ul className="ae-pdp-reviews-list">
+                  {product.reviews.map((r, i) => (
+                    <li key={i}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>
+                        <StarRating value={r.rating} size="sm" tone="gold" />
+                        <span className="ae-muted" style={{ fontSize: 13 }}>
+                          {(r.user && r.user.name) || "Comprador"}
+                        </span>
                       </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                      <div className="ae-muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>
+                        {r.comment}
+                      </div>
+                      {r.photoUrls && r.photoUrls.length > 0 ? (
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                          {r.photoUrls.map((u) => (
+                            <a key={u} href={u} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={resolveMediaUrl(u)}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                style={{
+                                  width: 72,
+                                  height: 72,
+                                  objectFit: "cover",
+                                  borderRadius: 6,
+                                  border: "1px solid var(--ae-line)",
+                                }}
+                              />
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         ) : null}

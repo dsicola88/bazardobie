@@ -1,7 +1,8 @@
 import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
+import { formatKz, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { StarRating } from "../components/StarRating.js";
 
 import type { ProductCardData } from "../components/ProductCard.js";
 
@@ -43,10 +44,7 @@ function OfferShowcaseTileInner({
         <div className="ae-offer-tile__social">
           {p.reviewCount > 0 ? (
             <>
-              <span className="ae-offer-tile__star" aria-hidden>
-                ★
-              </span>
-              <span>{formatRating(p.averageRating)}</span>
+              <StarRating value={Number(p.averageRating ?? 0)} size="sm" showValue />
               <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
             </>
           ) : (

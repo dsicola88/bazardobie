@@ -3,8 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { resolveMediaUrl } from "../utils/media.js";
-import { formatRating } from "../utils/format.js";
 import { useSeo } from "../seo/useSeo.js";
+import { StarRating } from "../components/StarRating.js";
 
 type SobrePayload = {
   loja: {
@@ -145,9 +145,10 @@ export default function ShopPublicAboutPage() {
             <span className="ae-shop-sobre-stat__val">{metricas.totalAvaliacoes}</span>
             <span className="ae-shop-sobre-stat__lbl">Avaliações em produtos</span>
             {metricas.avaliacaoMedia != null ? (
-              <span className="ae-muted" style={{ fontSize: 13 }}>
-                Média {formatRating(metricas.avaliacaoMedia)} / 5
-              </span>
+              <div className="ae-muted" style={{ fontSize: 13, marginTop: 8 }}>
+                <StarRating value={metricas.avaliacaoMedia} size="sm" showValue />
+                <span style={{ marginLeft: 6 }}>em 5</span>
+              </div>
             ) : (
               <span className="ae-muted" style={{ fontSize: 13 }}>
                 Sem média ainda

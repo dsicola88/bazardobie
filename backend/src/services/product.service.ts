@@ -474,6 +474,17 @@ export const productService = {
     });
     if (!product) throw new HttpError(404, "Produto não encontrado");
 
+    const ratingGroups = await prisma.review.groupBy({
+      by: ["rating"],
+      where: { productId: id },
+      _count: { _all: true },
+    });
+    const ratingDistribution: [number, number, number, number, number] = [0, 0, 0, 0, 0];
+    for (const row of ratingGroups) {
+      const r = row.rating;
+      if (r >= 1 && r <= 5) ratingDistribution[5 - r] = row._count._all;
+    }
+
     const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
     const deliveryOptions = allowSeller
       ? product.deliveryOptions
@@ -485,6 +496,7 @@ export const productService = {
       ...mapped,
       deliveryOptions,
       shop: lojaResumoProduto(product.shop),
+      ratingDistribution,
     };
   },
 

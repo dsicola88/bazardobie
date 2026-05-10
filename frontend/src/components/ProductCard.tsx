@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { StarRating } from "./StarRating.js";
 
 export type ProductCardData = {
   id: string;
@@ -66,13 +67,13 @@ function ProductCardInner({ p, className }: { p: ProductCardData; className?: st
         <h3 className="ae-pcard__title">{p.name}</h3>
         <div className="ae-pcard__meta">
           {p.averageRating != null && p.reviewCount > 0 ? (
-            <span className="ae-pcard__rate">
-              <span className="ae-pcard__star" aria-hidden="true">
-                ★
-              </span>
-              <span className="ae-pcard__rate-val">{formatRating(p.averageRating)}</span>
-              <span className="ae-pcard__reviews">({p.reviewCount})</span>
-            </span>
+            <StarRating
+              value={Number(p.averageRating)}
+              size="sm"
+              showValue
+              reviewCount={p.reviewCount}
+              className="ae-pcard__rate"
+            />
           ) : (
             <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações</span>
           )}
