@@ -19,9 +19,9 @@ export type ReviewPublicRow = Prisma.ReviewGetPayload<{ include: typeof reviewPu
 
 export type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
-/** Lista escalar `photoUrls` — evita `isEmpty`, mais compatível com Postgres nos planos observados na API pública. */
+/** Opiniões com pelo menos uma foto (Postgres lista escalar via Prisma). */
 const reviewWhereHasPhotos: Prisma.ReviewWhereInput = {
-  NOT: { photoUrls: { equals: [] } },
+  photoUrls: { isEmpty: false },
 };
 
 function emptyAggregateShopReviewsSummary(): {
@@ -60,38 +60,49 @@ async function shelfProductIdsForShop(shopId: string): Promise<string[]> {
 
 /**
  * Agrega opiniões por conjunto explícito de produtos públicos (`productId in (...)`).
- * Evita `groupBy`/`count` com filtro profundo `review.product.shop…`, que pode falhar ou degradar em Postgres.
+ * Usa apenas `count` por estrela — evita `groupBy` problemático em alguns planadores Postgres +
+ * filtros relacionais antigos sobre `review → product`.
  */
 async function aggregateShopReviewsSummaryForProductIds(productIds: string[]) {
   if (productIds.length === 0) return emptyAggregateShopReviewsSummary();
 
-  const baseWhere: Prisma.ReviewWhereInput = { productId: { in: productIds } };
+  const scope = { productId: { in: productIds } } satisfies Prisma.ReviewWhereInput;
 
-  const [rows, comFotos, comTexto] = await Promise.all([
-    prisma.review.groupBy({
-      by: ["rating"],
-      where: baseWhere,
-      _count: { _all: true },
-    }),
-    prisma.review.count({
-      where: { ...baseWhere, ...reviewWhereHasPhotos },
-    }),
+  const [
+    star1,
+    star2,
+    star3,
+    star4,
+    star5,
+    comFotos,
+    comTexto,
+  ] = await Promise.all([
+    prisma.review.count({ where: { ...scope, rating: 1 } }),
+    prisma.review.count({ where: { ...scope, rating: 2 } }),
+    prisma.review.count({ where: { ...scope, rating: 3 } }),
+    prisma.review.count({ where: { ...scope, rating: 4 } }),
+    prisma.review.count({ where: { ...scope, rating: 5 } }),
+    prisma.review.count({ where: { ...scope, ...reviewWhereHasPhotos } }),
     prisma.review.count({
       where: {
-        ...baseWhere,
+        ...scope,
         comment: { not: null },
         NOT: { comment: { equals: "" } },
       },
     }),
   ]);
 
-  const byStar = new Map(rows.map((r) => [r.rating, r._count._all]));
-  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const starCounts: Record<number, number> = {
+    1: star1,
+    2: star2,
+    3: star3,
+    4: star4,
+    5: star5,
+  };
   let total = 0;
   let sumWeighted = 0;
   for (let s = 1; s <= 5; s++) {
-    const c = byStar.get(s) ?? 0;
-    starCounts[s] = c;
+    const c = starCounts[s] ?? 0;
     total += c;
     sumWeighted += s * c;
   }
@@ -320,19 +331,18 @@ export const reviewService = {
       };
     }
 
-    const productScope: Prisma.ReviewWhereInput = { productId: { in: shelfProductIds } };
+    const filters: Prisma.ReviewWhereInput[] = [{ productId: { in: shelfProductIds } }];
+    if (opts.photosOnly) filters.push(reviewWhereHasPhotos);
+    if (opts.textOnly) {
+      filters.push({
+        comment: { not: null },
+        NOT: { comment: { equals: "" } },
+      });
+    }
+    if (ratingFilter != null) filters.push({ rating: ratingFilter });
 
-    const where: Prisma.ReviewWhereInput = {
-      ...productScope,
-      ...(opts.photosOnly ? reviewWhereHasPhotos : {}),
-      ...(opts.textOnly
-        ? {
-            comment: { not: null },
-            NOT: { comment: { equals: "" } },
-          }
-        : {}),
-      ...(ratingFilter != null ? { rating: ratingFilter } : {}),
-    };
+    const where: Prisma.ReviewWhereInput =
+      filters.length === 1 ? filters[0] : { AND: filters };
 
     const orderBy: Prisma.ReviewOrderByWithRelationInput[] =
       sort === "helpful"

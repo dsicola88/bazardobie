@@ -374,15 +374,39 @@ export default function ShopPublicReviews() {
               )}
             </div>
 
-            {err ? <p className="ae-shop-reviews-err">{err}</p> : null}
+            {err ? (
+              <p className="ae-shop-reviews-err" role="alert">
+                {err}
+                {m && m.totalAvaliacoes > 0 ? (
+                  <>
+                    {" "}
+                    <span className="ae-muted">
+                      (Os totais na secção inicial da página vêm das métricas da loja; a lista técnica abaixo depende da
+                      disponibilidade do servidor.)
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
 
             {!loading && items.length === 0 ? (
               <div className="ae-shop-reviews-empty">
                 <p className="ae-shop-reviews-empty__title">
-                  {!summary?.total ? "Nenhuma avaliação pública nesta loja" : "Nenhum resultado para estes filtros"}
+                  {err && m && m.totalAvaliacoes > 0
+                    ? "Lista de opiniões indisponível — verifique dentro de alguns instantes ou contacte suporte."
+                    : !summary?.total
+                      ? "Nenhuma avaliação pública nesta loja"
+                      : "Nenhum resultado para estes filtros"}
                 </p>
-                {!summary?.total ? (
-                  <p className="ae-muted">As primeiras avaliações surgem assim que compradores deixarem opiniões após entrega.</p>
+                {err && m && m.totalAvaliacoes > 0 ? (
+                  <p className="ae-muted">
+                    Recarregar a página; se falhar repetidamente, o serviço de listagem pode precisar de actualização ou o
+                    registo técnico do servidor deve ser consultado.
+                  </p>
+                ) : !summary?.total ? (
+                  <p className="ae-muted">
+                    As primeiras avaliações surgem assim que compradores deixarem opiniões após entrega.
+                  </p>
                 ) : (
                   <button type="button" className="ae-linkbtn" onClick={() => resetFilters()}>
                     Limpar filtros
