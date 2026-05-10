@@ -1,4 +1,4 @@
-/** Apresentação de opiniões ao estilo marketplaces (Amazon / AliExpress): privacidade + datas legíveis. */
+/** Apresentação de opiniões ao estilo vitrine profissional: privacidade + datas legíveis. */
 
 /** Nome público: primeiro nome + inicial do apelido (ex.: «Maria S.»). */
 export function formatReviewerDisplayName(raw: string | undefined | null): string {

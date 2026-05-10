@@ -751,7 +751,7 @@ export default function VendorProductEditor() {
           <h2 className="ae-v-prod-sec__h">04 · Variantes (opcional)</h2>
           <p className="ae-v-prod-sec__lede">
             Cada variante tem o seu SKU e stock. Defina um <strong>preço final próprio</strong> por variante (recomendado,
-            estilo marketplaces como AliExpress). A opção «ajuste ±» permanece só por compatibilidade com fichas antigas.
+            escolher uma tarifa por zona em Kz com prazo em dias úteis (definição comum em grandes vitrinas online). A opção «ajuste ±» permanece só por compatibilidade com fichas antigas.
           </p>
           <p className="ae-field-hint" style={{ marginBottom: 14 }}>
             Se várias variantes partilham a mesma <strong>cor</strong>, preencha sempre{" "}
@@ -866,7 +866,7 @@ export default function VendorProductEditor() {
           <p className="ae-v-prod-sec__lede">
             Indique pelo menos uma modalidade. Por defeito, seleccione a logística operada pela plataforma (BAZAR DO
             BIÉ). Para cada expedición da plataforma pode associar uma transportadora activa já registada pelo
-            administrador (o cliente vê esse nome ao escolher o envio, ao estilo de marketplaces como AliExpress). O
+            administrador (o cliente vê esse nome ao escolher o envio). O
             prazo indicado corresponde a dias úteis estimados para preparação e envio na área definida.
             {allowSellerDelivery ? (
               <>

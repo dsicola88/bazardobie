@@ -144,7 +144,7 @@ function formatShopMemberSincePt(iso: string): string {
   }
 }
 
-/** Barras compactas estilo AliExpress (descrição, comunicação, envio). */
+/** Barras compactas por dimensão da opinião (produto, comunicação, entrega). */
 function PdpReviewAspectBars(props: {
   quality?: number | null;
   communication?: number | null;
@@ -269,12 +269,17 @@ function ProductPageSkeleton() {
           </div>
           <div className="ae-skel ae-pdp-sk-hero" aria-hidden />
           <div className="ae-pdp-sk-buy">
-            <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--title" aria-hidden />
-            <div className="ae-skel ae-pdp-sk-line" aria-hidden />
-            <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--short" aria-hidden />
-            <div className="ae-skel ae-pdp-sk-price" aria-hidden />
-            <div className="ae-skel ae-pdp-sk-line" aria-hidden />
-            <div className="ae-skel ae-pdp-sk-btn" aria-hidden />
+            <div className="ae-pdp-sk-buy-col">
+              <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--title" aria-hidden />
+              <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+              <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--short" aria-hidden />
+              <div className="ae-skel ae-pdp-sk-price" aria-hidden />
+              <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+            </div>
+            <div className="ae-pdp-sk-rail" aria-hidden>
+              <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--short" aria-hidden />
+              <div className="ae-skel ae-pdp-sk-btn" aria-hidden />
+            </div>
           </div>
         </div>
       </div>
@@ -1098,7 +1103,16 @@ export default function ProductPage() {
           </div>
 
           <div className="ae-buybox">
-            <h1 className="ae-buybox__title">{product.name}</h1>
+            <div className="ae-pdp-buy-columns">
+              <div className="ae-pdp-detail-col">
+                <div className="ae-pdp-title-row">
+                  {trust?.seloPremium ? (
+                    <span className="ae-pdp-title-badge">Parceiro premium</span>
+                  ) : trust?.seloVerificado ? (
+                    <span className="ae-pdp-title-badge ae-pdp-title-badge--muted">Parceiro verificado</span>
+                  ) : null}
+                  <h1 className="ae-buybox__title">{product.name}</h1>
+                </div>
             <p className="ae-buybox__sku" aria-label="Referência do artigo">
               Referência:{" "}
               <strong>{needVariant && selectedVariant ? selectedVariant.sku : product.sku ?? "—"}</strong>
@@ -1150,8 +1164,7 @@ export default function ProductPage() {
                   <p className="ae-buybox__reviews-foot">
                     <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
                     {product.reviewCount === 1 ? "opinião verificada" : "opiniões verificadas"} — a média em estrelas só é
-                    exibida publicamente após volume mínimo de feedback, para maior fiabilidade (modelo tipo Amazon /
-                    AliExpress).
+                    exibida publicamente após volume mínimo de feedback, para maior fiabilidade.
                   </p>
                   {product.ratingTrustHintPt ? <p className="ae-buybox__reviews-note ae-muted">{product.ratingTrustHintPt}</p> : null}
                 </>
@@ -1171,137 +1184,29 @@ export default function ProductPage() {
                 </p>
               ) : null}
             </div>
-            <div className="ae-buybox__price">
-              <span className="ae-buybox__now">{formatKz(unitPriceNum ?? product.displayPrice)}</span>
-              {compareAtUnit != null && compareAtUnit > Number(unitPriceNum ?? product.displayPrice) ? (
-                <span className="ae-buybox__was">{formatKz(compareAtUnit)}</span>
-              ) : null}
+            <div className="ae-pdp-price-deal">
+              <p className="ae-pdp-price-deal__head">Preço em destaque</p>
+              <div className="ae-pdp-price-deal__body">
+                <span className="ae-buybox__now">{formatKz(unitPriceNum ?? product.displayPrice)}</span>
+                {compareAtUnit != null && compareAtUnit > Number(unitPriceNum ?? product.displayPrice) ? (
+                  <>
+                    <span className="ae-pdp-price-deal__promo">Preço promocional</span>
+                    <span className="ae-buybox__was">{formatKz(compareAtUnit)}</span>
+                  </>
+                ) : null}
+              </div>
+              <p className="ae-pdp-price-deal__fine">
+                Valores em Kwanzas angolanos (Kz). Impostos aplicáveis segundo a legislação em vigor.
+              </p>
             </div>
 
             <div className="ae-buybox__trust">
               <span className="ae-buybox__chip">Transação segura na plataforma</span>
               <span className="ae-buybox__chip">Pagamento na entrega (COD)</span>
-              {trust?.seloPremium ? (
-                <span className="ae-buybox__chip ae-buybox__chip--premium">Parceiro premium</span>
-              ) : null}
-              {trust?.seloVerificado && !trust?.seloPremium ? (
+              {trust?.seloPremium ? null : trust?.seloVerificado ? (
                 <span className="ae-buybox__chip ae-buybox__chip--verified">Parceiro verificado</span>
               ) : null}
             </div>
-
-            {product.shop ? (
-              <section className="ae-pdp-shop-card" aria-labelledby="ae-pdp-shop-heading">
-                <h3 id="ae-pdp-shop-heading" className="ae-pdp-shop-card__kicker">
-                  Vendido por
-                </h3>
-                <div className="ae-pdp-shop-card__grid">
-                  <div className="ae-pdp-shop-card__col ae-pdp-shop-card__col--info">
-                    <div className="ae-pdp-shop-card__head">
-                      {(() => {
-                        const rawLogo = (shopSobre?.loja.logoUrl ?? product.shop.logoUrl) ?? "";
-                        const logoSrc = rawLogo.trim() ? resolveMediaUrl(rawLogo) : "";
-                        return logoSrc.trim() ? (
-                          <img
-                            className="ae-pdp-shop-card__logo"
-                            src={logoSrc}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : null;
-                      })()}
-                      <div className="ae-pdp-shop-card__info-text">
-                        <p className="ae-pdp-shop-card__name">{product.shop.name}</p>
-                        <dl className="ae-pdp-shop-card__dl">
-                          <div className="ae-pdp-shop-card__dl-row">
-                            <dt>Ref. da loja</dt>
-                            <dd title={product.shop.id} className="ae-pdp-shop-card__id">
-                              {product.shop.id}
-                            </dd>
-                          </div>
-                          <div className="ae-pdp-shop-card__dl-row">
-                            <dt>Localização</dt>
-                            <dd>
-                              {product.shop.city}, {product.shop.province}
-                            </dd>
-                          </div>
-                          {shopSobre?.loja.membroDesde ? (
-                            <div className="ae-pdp-shop-card__dl-row">
-                              <dt>Na plataforma desde</dt>
-                              <dd>{formatShopMemberSincePt(shopSobre.loja.membroDesde)}</dd>
-                            </div>
-                          ) : shopSobreLoading ? (
-                            <div className="ae-pdp-shop-card__dl-row">
-                              <dt>Na plataforma desde</dt>
-                              <dd className="ae-muted">…</dd>
-                            </div>
-                          ) : null}
-                        </dl>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="ae-pdp-shop-card__col ae-pdp-shop-card__col--ratings">
-                    <h4 className="ae-pdp-shop-card__subhead">Avaliações do vendedor</h4>
-                    {shopSobreLoading ? (
-                      <p className="ae-muted ae-pdp-shop-card__hint">A carregar métricas…</p>
-                    ) : shopSobreFailed ? (
-                      <p className="ae-muted ae-pdp-shop-card__hint">
-                        Não foi possível carregar as médias agregadas da loja neste momento.
-                      </p>
-                    ) : shopSobre && shopSobre.metricas.totalAvaliacoes > 0 ? (
-                      <>
-                        <p className="ae-pdp-shop-card__hint">
-                          Com base em {shopSobre.metricas.totalAvaliacoes.toLocaleString("pt-PT")}{" "}
-                          {shopSobre.metricas.totalAvaliacoes === 1
-                            ? "avaliação verificada"
-                            : "avaliações verificadas"}{" "}
-                          em toda a loja (não só neste artigo).
-                        </p>
-                        {shopSobre.metricas.avaliacaoAspectos ? (
-                          <ul className="ae-pdp-shop-card__aspects">
-                            <li>
-                              <span className="ae-pdp-shop-card__aspect-label">Produto conforme descrito</span>
-                              <strong className="ae-pdp-shop-card__aspect-val">
-                                {shopSobre.metricas.avaliacaoAspectos.produto != null
-                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.produto)
-                                  : "—"}
-                              </strong>
-                            </li>
-                            <li>
-                              <span className="ae-pdp-shop-card__aspect-label">Comunicação</span>
-                              <strong className="ae-pdp-shop-card__aspect-val">
-                                {shopSobre.metricas.avaliacaoAspectos.comunicacao != null
-                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.comunicacao)
-                                  : "—"}
-                              </strong>
-                            </li>
-                            <li>
-                              <span className="ae-pdp-shop-card__aspect-label">Velocidade de entrega</span>
-                              <strong className="ae-pdp-shop-card__aspect-val">
-                                {shopSobre.metricas.avaliacaoAspectos.entrega != null
-                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.entrega)
-                                  : "—"}
-                              </strong>
-                            </li>
-                          </ul>
-                        ) : (
-                          <p className="ae-muted ae-pdp-shop-card__hint">
-                            As médias por aspecto são publicadas após um volume mínimo de avaliações na loja.
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="ae-muted ae-pdp-shop-card__hint">
-                        Esta loja ainda não tem avaliações públicas suficientes para médias agregadas.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {guarantees?.textoChips?.length ? (
-                  <p className="ae-pdp-shop-card__guarantees ae-muted">{guarantees.textoChips.join(" · ")}</p>
-                ) : null}
-              </section>
-            ) : null}
 
             {needVariant ? (
               <div className="ae-field ae-pdp-variant-field">
@@ -1432,6 +1337,120 @@ export default function ProductPage() {
                 ? "Sem stock disponível no momento."
                 : `Stock disponível: ${stockAvailable} ${stockAvailable === 1 ? "unidade" : "unidades"}.`}
             </p>
+              </div>
+
+              <aside className="ae-pdp-purchase-rail ae-pdp-rail" aria-label="Compra e envio">
+                {product.shop ? (
+                  <>
+                    <section className="ae-pdp-rail-vendor" aria-labelledby="ae-pdp-rail-vendor-heading">
+                      <p id="ae-pdp-rail-vendor-heading" className="ae-pdp-rail-kicker">
+                        Vendido por
+                      </p>
+                      <div className="ae-pdp-rail-vendor__row">
+                        {(() => {
+                          const rawLogo = (shopSobre?.loja.logoUrl ?? product.shop.logoUrl) ?? "";
+                          const logoSrc = rawLogo.trim() ? resolveMediaUrl(rawLogo) : "";
+                          return logoSrc.trim() ? (
+                            <img
+                              className="ae-pdp-rail-vendor__logo"
+                              src={logoSrc}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <div className="ae-pdp-rail-vendor__logo ae-pdp-rail-vendor__logo--placeholder" aria-hidden>
+                              {product.shop.name.trim().slice(0, 1).toUpperCase() || "?"}
+                            </div>
+                          );
+                        })()}
+                        <div>
+                          <p className="ae-pdp-rail-vendor__name">{product.shop.name}</p>
+                          <p className="ae-muted ae-pdp-rail-vendor__loc">
+                            {product.shop.city}, {product.shop.province}
+                            {shopSobre?.loja.membroDesde ? (
+                              <> · Na plataforma desde {formatShopMemberSincePt(shopSobre.loja.membroDesde)}</>
+                            ) : shopSobreLoading ? (
+                              <> · <span className="ae-muted">a carregar histórico…</span></>
+                            ) : null}
+                          </p>
+                          {shopSobreLoading ? (
+                            <p className="ae-muted ae-pdp-rail-vendor__rating">A carregar avaliações da loja…</p>
+                          ) : shopSobreFailed ? null : shopSobre &&
+                            shopSobre.metricas.totalAvaliacoes > 0 &&
+                            shopSobre.metricas.avaliacaoMedia != null ? (
+                            <div className="ae-pdp-rail-vendor__rating">
+                              <StarRating
+                                value={Number(shopSobre.metricas.avaliacaoMedia)}
+                                tone="gold"
+                                size="sm"
+                                showValue
+                                reviewCount={shopSobre.metricas.totalAvaliacoes}
+                              />
+                            </div>
+                          ) : null}
+                          <Link
+                            className="ae-linkbtn ae-pdp-rail-vendor__link"
+                            to={`/loja/${encodeURIComponent(product.shop.id)}/sobre`}
+                          >
+                            Ver perfil e avaliações da loja
+                          </Link>
+                          {guarantees?.textoChips?.length ? (
+                            <p className="ae-pdp-rail-trust-line">{guarantees.textoChips.join(" · ")}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </section>
+                    <hr className="ae-pdp-rail-divider" />
+                  </>
+                ) : null}
+
+                <div className="ae-pdp-rail-ship">
+                  <span className="ae-pdp-rail-ship__ico" aria-hidden>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z" strokeLinejoin="round" />
+                      <circle cx="5.5" cy="18.5" r="2.5" />
+                      <circle cx="18.5" cy="18.5" r="2.5" />
+                    </svg>
+                  </span>
+                  <span>
+                    {meta ? (
+                      <>
+                        <span className="ae-pdp-rail-ship__meta">{formatFreteKz(meta.custoEntrega)}</span>
+                        {" · "}
+                        <span className="ae-muted">Prazo: {formatBusinessDaysPt(meta.prazoEstimado)}</span>
+                        {meta.tipoEntrega === "PLATAFORMA" && meta.logisticsPartner ? (
+                          <span className="ae-muted"> · {meta.logisticsPartner.name}</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="ae-muted">Seleccione uma opção de envio abaixo.</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="ae-pdp-rail-policies">
+                  <button
+                    type="button"
+                    className="ae-linkbtn"
+                    onClick={() => {
+                      handlePdpTab("ship");
+                      scrollToReviewsPanel();
+                    }}
+                  >
+                    Envio, devoluções e reembolsos
+                  </button>
+                  <button
+                    type="button"
+                    className="ae-linkbtn"
+                    onClick={() => {
+                      handlePdpTab("overview");
+                      scrollToReviewsPanel();
+                    }}
+                  >
+                    Confiança na loja e na plataforma
+                  </button>
+                </div>
 
             <div className="ae-field">
               <label>
@@ -1475,6 +1494,11 @@ export default function ProductPage() {
                 </button>
               </div>
             </div>
+            {!outOfStock && stockAvailable > 0 ? (
+              <p className="ae-buybox__qty-note ae-muted">
+                Limite de {stockAvailable} {stockAvailable === 1 ? "unidade" : "unidades"} por encomenda (stock disponível).
+              </p>
+            ) : null}
 
             {cartFeedback ? (
               <div
@@ -1495,24 +1519,28 @@ export default function ProductPage() {
 
             <div className="ae-buy-actions">
               <button type="button" className="ae-btn-lg ae-btn-buy" disabled={!canAdd || adding} onClick={() => void addToCart()}>
-                {adding ? "A adicionar…" : "Adicionar ao carrinho"}
+                {adding ? "A adicionar à sua seleção…" : "Adicionar à minha seleção"}
               </button>
               <Link className="ae-btn-lg ae-btn-cart" to="/cart">
                 Ver carrinho
               </Link>
             </div>
-            <FavoriteToggle productId={product.id} variantId={variantId} needVariant={needVariant} />
-            <p style={{ marginTop: 12, fontSize: 12 }}>
-              <button type="button" className="ae-linkbtn" onClick={() => setShowReport(true)}>
-                Reportar conteúdo
-              </button>
-              {user ? null : (
-                <span className="ae-muted"> — requer início de sessão</span>
-              )}
-            </p>
+            <div className="ae-pdp-rail__extras">
+              <FavoriteToggle productId={product.id} variantId={variantId} needVariant={needVariant} />
+              <p style={{ margin: 0, fontSize: 12 }}>
+                <button type="button" className="ae-linkbtn" onClick={() => setShowReport(true)}>
+                  Reportar conteúdo
+                </button>
+                {user ? null : (
+                  <span className="ae-muted"> — requer início de sessão</span>
+                )}
+              </p>
+            </div>
             <p className="ae-muted" style={{ fontSize: 12, marginTop: 12, whiteSpace: "pre-wrap" }}>
               {codNote}
             </p>
+              </aside>
+            </div>
           </div>
         </div>
       </div>
@@ -1590,8 +1618,8 @@ export default function ProductPage() {
                   Este artigo ainda não recebeu classificações públicas após entregas concluídas.
                 </p>
                 <p className="ae-pdp-reviews-empty__hint ae-muted">
-                  No BAZAR DO BIÉ, tal como na Amazon ou na AliExpress, só quem comprou e recebeu a encomenda no estado
-                  «Entregue» pode opinar — isto mantém o sistema mais fiável e menos suscetível a manipulação.
+                  No BAZAR DO BIÉ só quem comprou e recebeu a encomenda no estado «Entregue» pode opinar — isto mantém o
+                  sistema mais fiável e menos suscetível a manipulação.
                 </p>
               </div>
             ) : (

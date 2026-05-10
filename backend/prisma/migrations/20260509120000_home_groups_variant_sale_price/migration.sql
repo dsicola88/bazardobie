@@ -1,4 +1,4 @@
--- Preço por variante (AliExpress-style) + secções curatoriais na homepage
+-- Preço opcional por variante + secções curatoriais na homepage
 
 ALTER TABLE "ProductVariant" ADD COLUMN "salePrice" DECIMAL(12,2);
 

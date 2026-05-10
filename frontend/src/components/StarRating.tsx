@@ -8,7 +8,7 @@ export type StarRatingTone = "gold" | "dark";
 type Props = {
   value: number;
   size?: StarRatingSize;
-  /** gold = vitrine (tipo AliExpress); dark = bloco detalhado de avaliações */
+  /** gold = destaque na ficha; dark = bloco detalhado de avaliações */
   tone?: StarRatingTone;
   className?: string;
   /** Mostra o valor numérico (ex. 4,2) ao lado das estrelas */

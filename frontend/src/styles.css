@@ -1525,7 +1525,7 @@ a:hover {
   font-size: 14px;
 }
 
-/* Resumo de avaliações na ficha — padrão AliExpress (média grande, estrelas escuras, barras) */
+/* Resumo de avaliações na ficha — média grande, estrelas escuras, barras */
 .ae-pdp-reviews-hero {
   display: grid;
   grid-template-columns: minmax(140px, 200px) 1fr;
@@ -4644,11 +4644,12 @@ a:hover {
 }
 
 .ae-pdp {
-  background: var(--ae-card);
+  background: var(--ae-surface, #fff);
   border: 1px solid var(--ae-line);
-  border-radius: 4px;
+  border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
+  box-shadow: 0 16px 48px rgb(15 23 42 / 0.07);
 }
 .ae-breadcrumb {
   font-size: 12px;
@@ -4688,9 +4689,6 @@ a:hover {
 }
 .ae-pdp-main {
   grid-area: media;
-}
-.ae-buybox {
-  grid-area: buybox;
 }
 .ae-pdp-thumbs {
   display: flex;
@@ -4934,9 +4932,30 @@ a:hover {
 }
 .ae-pdp-sk-buy {
   grid-area: buybox;
+  container-type: inline-size;
+  container-name: ae-buybox-sk;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+@container ae-buybox-sk (min-width: 520px) {
+  .ae-pdp-sk-buy {
+    grid-template-columns: minmax(0, 1fr) minmax(140px, 180px);
+  }
+}
+.ae-pdp-sk-buy-col {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.ae-pdp-sk-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--ae-line);
+  background: rgb(248 250 252 / 0.8);
 }
 .ae-pdp-sk-line {
   height: 14px;
@@ -5017,13 +5036,240 @@ a:hover {
   }
 }
 .ae-buybox {
+  grid-area: buybox;
+  container-type: inline-size;
+  container-name: ae-buybox;
   border: 1px solid var(--ae-line);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 16px;
-  background: linear-gradient(180deg, #fffefb, var(--ae-card));
+  background: #fff;
   position: sticky;
   top: 110px;
   text-align: left;
+}
+.ae-pdp-buy-columns {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+@container ae-buybox (min-width: 520px) {
+  .ae-pdp-buy-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    gap: 24px;
+  }
+}
+.ae-pdp-detail-col {
+  min-width: 0;
+}
+.ae-pdp-purchase-rail {
+  min-width: 0;
+  border: 1px solid rgb(203 213 225 / 0.85);
+  border-radius: 12px;
+  padding: 16px;
+  background: linear-gradient(180deg, #fcfcfd 0%, #eef1f5 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 8px 22px rgb(15 23 42 / 0.06);
+}
+.ae-pdp-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 10px;
+  margin-bottom: 8px;
+}
+.ae-pdp-title-row .ae-buybox__title {
+  margin: 0;
+  flex: 1 1 220px;
+}
+.ae-buybox__title {
+  margin: 0 0 10px;
+  font-size: 23px;
+  line-height: 1.22;
+  font-weight: 800;
+  color: var(--ae-text);
+}
+.ae-pdp-title-badge {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  color: #fff;
+}
+.ae-pdp-title-badge--muted {
+  background: linear-gradient(180deg, #64748b, #475569);
+}
+.ae-pdp-price-deal {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(165deg, #fffadb 0%, #ffe566 48%, #ffd230 100%);
+  border: 1px solid rgb(245 158 11 / 0.42);
+  box-shadow: 0 6px 18px rgb(245 158 11 / 0.22);
+}
+.ae-pdp-price-deal__head {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ae-deep-text, #1f2937);
+  margin: 0 0 8px;
+}
+.ae-pdp-price-deal__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+.ae-pdp-price-deal__body .ae-buybox__now {
+  font-size: 27px;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+.ae-pdp-price-deal__promo {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--ae-deep);
+}
+.ae-pdp-price-deal__body .ae-buybox__was {
+  font-size: 14px;
+}
+.ae-pdp-price-deal__fine {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--ae-hint, #64748b);
+}
+.ae-pdp-rail-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ae-dim);
+}
+.ae-pdp-rail-vendor__row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.ae-pdp-rail-vendor__logo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: #64748b;
+  background: #f1f5f9;
+}
+.ae-pdp-rail-vendor__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  word-break: break-word;
+}
+.ae-pdp-rail-vendor__loc {
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+.ae-pdp-rail-vendor__rating {
+  margin: 4px 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.ae-pdp-rail-vendor__link {
+  font-size: 13px;
+  font-weight: 650;
+}
+.ae-pdp-rail-trust-line {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ae-dim);
+}
+.ae-pdp-rail-divider {
+  height: 1px;
+  margin: 14px 0;
+  background: rgb(226 232 240 / 0.9);
+  border: none;
+}
+.ae-pdp-rail-ship {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ae-text);
+}
+.ae-pdp-rail-ship__ico {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--ae-deep);
+}
+.ae-pdp-rail-ship__meta {
+  font-weight: 600;
+  color: var(--ae-deep-text, #334155);
+}
+.ae-pdp-rail-policies {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+.ae-pdp-rail-policies .ae-linkbtn {
+  justify-content: flex-start;
+  text-align: left;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.ae-pdp-rail .ae-field {
+  margin-top: 12px;
+}
+.ae-pdp-rail .ae-field label {
+  font-size: 12px;
+  font-weight: 750;
+}
+.ae-buybox__qty-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+.ae-pdp-rail .ae-buy-actions {
+  flex-direction: column;
+}
+.ae-pdp-rail .ae-btn-lg {
+  width: 100%;
+  min-width: 0;
+}
+.ae-pdp-rail .ae-btn-lg.ae-btn-buy {
+  min-height: 48px;
+  height: auto;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(230 46 4 / 0.35);
+}
+.ae-pdp-rail .ae-btn-lg.ae-btn-buy:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+.ae-pdp-rail .ae-btn-lg.ae-btn-cart {
+  border-radius: 6px;
+  font-weight: 750;
+}
+.ae-pdp-rail__extras {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 @media (max-width: 1024px) {
   .ae-buybox {
@@ -7048,7 +7294,7 @@ a:hover {
   color: var(--ae-text);
 }
 
-/* Carrinho — linhas tipo marketplace (Amazon / AliExpress) */
+/* Carrinho — linhas densas estilo vitrine */
 .ae-cart-lines-wrap {
   width: 100%;
   min-width: 0;
