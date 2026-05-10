@@ -12,6 +12,7 @@ import { calcularSearchRankBoost, lojaPaginaPublica } from "../utils/shopCredibi
 import { sinaisConfiancaPublicos } from "../utils/shopPublicSobre.js";
 import { notificationService } from "./notification.service.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 type ShopInput = z.infer<typeof upsertShopSchema>;
 type Tier2Input = z.infer<typeof submitTier2Schema>;
@@ -352,7 +353,12 @@ export const shopService = {
       }),
       prisma.review.count({ where: { product: { shopId } } }),
       prisma.product.count({
-        where: { shopId, isActive: true, moderationStatus: "APPROVED" },
+        where: {
+          shopId,
+          isActive: true,
+          moderationStatus: "APPROVED",
+          ...productPublicShelfExtras,
+        },
       }),
       prisma.product.aggregate({
         where: { shopId },

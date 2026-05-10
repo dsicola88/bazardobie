@@ -96,10 +96,28 @@ export const createProductSchema = createProductShape
     }
   });
 
+/** Rascunho mínimo — completar ficha no editor antes de activar venda. */
+export const createProductDraftSchema = z
+  .object({
+    categoryId: z.union([z.string().min(1), z.null()]).optional(),
+    name: z.string().min(2).max(200),
+    sku: z.string().min(1).max(80),
+    price: z.coerce.number().positive(),
+    promoPrice: z.union([z.coerce.number().positive(), z.null()]).optional(),
+    condition: productConditionSchema.default("NEW"),
+    stock: z.coerce.number().int().nonnegative().default(0),
+  })
+  .refine((d) => d.promoPrice == null || d.promoPrice < d.price, {
+    message: "O preço promocional tem de ser inferior ao preço normal.",
+    path: ["promoPrice"],
+  });
+
 export const updateProductSchema = createProductShape
   .partial()
   .extend({
     isActive: z.boolean().optional(),
+    /** Arquivar restaura via `false`. */
+    archived: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     if (

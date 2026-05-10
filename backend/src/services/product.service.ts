@@ -11,6 +11,7 @@ import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import {
   createProductSchema,
+  createProductDraftSchema,
   updateProductSchema,
   productListQuerySchema,
   categoryFacetQuerySchema,
@@ -21,12 +22,14 @@ import { notificationService } from "./notification.service.js";
 import { env } from "../config/env.js";
 import { mapProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
 import { syncProductDisplayFromVariants } from "./productDisplaySync.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 const deliveryOptionsPublicInclude = {
   include: { logisticsPartner: { select: { id: true, name: true } } },
 } as const;
 
 type CreateProduct = z.infer<typeof createProductSchema>;
+type CreateProductDraft = z.infer<typeof createProductDraftSchema>;
 type UpdateProduct = z.infer<typeof updateProductSchema>;
 type ProductListQuery = z.infer<typeof productListQuerySchema>;
 
@@ -263,6 +266,64 @@ export const productService = {
     );
   },
 
+  async createDraft(shopUserId: string, input: CreateProductDraft) {
+    const shops = shopRepo();
+    const shop = await shops.findByUserId(shopUserId);
+    if (!shop) throw new HttpError(404, "Crie a sua loja primeiro");
+    if (!shop.tier1CompletedAt)
+      throw new HttpError(403, "Complete os dados obrigatórios da loja (nível 1) antes de publicar produtos");
+    if (!shop.isApproved)
+      throw new HttpError(403, "A sua loja ainda está em análise ou não foi aprovada.");
+
+    const prod = productRepo();
+    const skuTaken = await prod.findBySkuShop(shop.id, input.sku);
+    if (skuTaken) throw new HttpError(409, "SKU já existente nesta loja");
+
+    const displayPrice = displayPriceFrom(input.price, input.promoPrice ?? undefined);
+
+    const created = await prisma.product.create({
+      data: {
+        shop: { connect: { id: shop.id } },
+        name: input.name,
+        description: "",
+        sku: input.sku,
+        condition: input.condition,
+        price: String(input.price),
+        promoPrice:
+          input.promoPrice != null && input.promoPrice > 0 ? String(input.promoPrice) : undefined,
+        displayPrice,
+        stock: input.stock,
+        moderationStatus: "PENDING",
+        isActive: false,
+        isDraft: true,
+        isFeatured: false,
+        ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
+      },
+      include: {
+        images: true,
+        variants: true,
+        deliveryOptions: deliveryOptionsPublicInclude,
+        category: true,
+        shop: true,
+      },
+    });
+    await prisma.$transaction(async (tx) => {
+      await syncProductDisplayFromVariants(tx, created.id);
+    });
+    return mapProductMediaForApi(
+      await prisma.product.findFirstOrThrow({
+        where: { id: created.id },
+        include: {
+          images: true,
+          variants: true,
+          deliveryOptions: deliveryOptionsPublicInclude,
+          category: true,
+          shop: true,
+        },
+      })
+    );
+  },
+
   async getOwn(shopUserId: string, productId: string) {
     const shops = shopRepo();
     const shop = await shops.findByUserId(shopUserId);
@@ -290,19 +351,55 @@ export const productService = {
     if (!shop.isApproved)
       throw new HttpError(403, "A sua loja ainda está em análise ou não foi aprovada. Não pode gerir produtos até a equipa aprovar a loja.");
 
-    const existing = await prisma.product.findFirst({
+    let existing = await prisma.product.findFirst({
       where: { id: productId, shopId: shop.id },
+      include: { images: true, deliveryOptions: true },
     });
     if (!existing) throw new HttpError(404, "Produto não encontrado");
 
-    if (input.sku && input.sku !== existing.sku) {
-      const taken = await productRepo().findBySkuShop(shop.id, input.sku);
+    const archivedFlag = input.archived;
+    const { archived: _omitArchived, ...patchInput } = input;
+    const hasArchiveToggle = archivedFlag !== undefined;
+    const hasOtherPatches = Object.entries(patchInput).some(([, v]) => v !== undefined);
+
+    if (hasArchiveToggle) {
+      await prisma.product.update({
+        where: { id: productId },
+        data:
+          archivedFlag === true
+            ? { archivedAt: new Date(), isActive: false, isFeatured: false }
+            : { archivedAt: null },
+      });
+      existing = await prisma.product.findFirstOrThrow({
+        where: { id: productId, shopId: shop.id },
+        include: { images: true, deliveryOptions: true },
+      });
+    }
+
+    if (existing.archivedAt != null && hasOtherPatches) {
+      throw new HttpError(
+        400,
+        "Este produto está arquivado. Restaure-o do arquivo (desarquivar) antes de alterar a ficha."
+      );
+    }
+
+    if (!hasOtherPatches) {
+      return mapProductMediaForApi(
+        await prisma.product.findFirstOrThrow({
+          where: { id: productId },
+          include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+        })
+      );
+    }
+
+    if (patchInput.sku && patchInput.sku !== existing.sku) {
+      const taken = await productRepo().findBySkuShop(shop.id, patchInput.sku);
       if (taken) throw new HttpError(409, "SKU já existente nesta loja");
     }
 
-    const priceNext = input.price ?? existing.price.toNumber();
+    const priceNext = patchInput.price ?? existing.price.toNumber();
     let promoNext: number | null | undefined =
-      input.promoPrice !== undefined ? input.promoPrice : existing.promoPrice?.toNumber();
+      patchInput.promoPrice !== undefined ? patchInput.promoPrice : existing.promoPrice?.toNumber();
     if (promoNext === undefined) promoNext = null;
     if (promoNext != null && promoNext > 0 && promoNext >= priceNext) {
       throw new HttpError(400, "O preço promocional tem de ser inferior ao preço normal.");
@@ -310,20 +407,20 @@ export const productService = {
 
     const displayPrice = displayPriceFrom(priceNext, promoNext ?? undefined);
 
-    if (input.deliveryOptions !== undefined) {
-      await assertSellerDeliveryAllowedForWrites(input.deliveryOptions);
-      await assertDeliveryPartnersRegistered(input.deliveryOptions);
+    if (patchInput.deliveryOptions !== undefined) {
+      await assertSellerDeliveryAllowedForWrites(patchInput.deliveryOptions);
+      await assertDeliveryPartnersRegistered(patchInput.deliveryOptions);
     }
 
     const substantiveForRemod =
-      input.name !== undefined ||
-      input.description !== undefined ||
-      input.demoVideoUrl !== undefined ||
-      input.images !== undefined ||
-      input.variants !== undefined ||
-      input.categoryId !== undefined ||
-      input.sku !== undefined ||
-      input.deliveryOptions !== undefined;
+      patchInput.name !== undefined ||
+      patchInput.description !== undefined ||
+      patchInput.demoVideoUrl !== undefined ||
+      patchInput.images !== undefined ||
+      patchInput.variants !== undefined ||
+      patchInput.categoryId !== undefined ||
+      patchInput.sku !== undefined ||
+      patchInput.deliveryOptions !== undefined;
 
     const shouldRemoderate =
       substantiveForRemod &&
@@ -336,18 +433,33 @@ export const productService = {
           ? { moderationStatus: "PENDING", isActive: false }
           : {};
 
+    if (existing.isDraft && patchInput.isActive === true) {
+      const mergedDesc = patchInput.description ?? existing.description;
+      const mergedImgLen = patchInput.images !== undefined ? patchInput.images.length : existing.images.length;
+      const mergedDelLen =
+        patchInput.deliveryOptions !== undefined
+          ? patchInput.deliveryOptions.length
+          : existing.deliveryOptions.length;
+      if (mergedDesc.trim().length < 10 || mergedImgLen < 1 || mergedDelLen < 1) {
+        throw new HttpError(
+          400,
+          "Complete pelo menos uma imagem, a descrição (mínimo 10 caracteres) e uma opção de envio antes de activar a venda."
+        );
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
-      if (input.images !== undefined) {
+      if (patchInput.images !== undefined) {
         await tx.productImage.deleteMany({ where: { productId } });
-        for (let i = 0; i < input.images.length; i++) {
+        for (let i = 0; i < patchInput.images.length; i++) {
           await tx.productImage.create({
-            data: { productId, url: input.images[i], sortOrder: i },
+            data: { productId, url: patchInput.images[i], sortOrder: i },
           });
         }
       }
-      if (input.variants !== undefined) {
+      if (patchInput.variants !== undefined) {
         await tx.productVariant.deleteMany({ where: { productId } });
-        for (const v of input.variants) {
+        for (const v of patchInput.variants) {
           await tx.productVariant.create({
             data: {
               productId,
@@ -363,9 +475,9 @@ export const productService = {
           });
         }
       }
-      if (input.deliveryOptions !== undefined) {
+      if (patchInput.deliveryOptions !== undefined) {
         await tx.productDeliveryOption.deleteMany({ where: { productId } });
-        for (const d of input.deliveryOptions) {
+        for (const d of patchInput.deliveryOptions) {
           await tx.productDeliveryOption.create({
             data: {
               productId,
@@ -381,22 +493,22 @@ export const productService = {
       }
 
       const scalarData: Prisma.ProductUpdateInput = {
-        ...(input.name !== undefined && { name: input.name }),
-        ...(input.description !== undefined && { description: input.description }),
-        ...(input.demoVideoUrl !== undefined && { demoVideoUrl: input.demoVideoUrl?.trim() || null }),
-        ...(input.sku !== undefined && { sku: input.sku }),
-        ...(input.condition !== undefined && { condition: input.condition }),
-        ...(input.conditionDetail !== undefined && { conditionDetail: input.conditionDetail?.trim() || null }),
-        ...(input.price !== undefined && { price: String(input.price) }),
-        ...(input.promoPrice !== undefined && {
+        ...(patchInput.name !== undefined && { name: patchInput.name }),
+        ...(patchInput.description !== undefined && { description: patchInput.description }),
+        ...(patchInput.demoVideoUrl !== undefined && { demoVideoUrl: patchInput.demoVideoUrl?.trim() || null }),
+        ...(patchInput.sku !== undefined && { sku: patchInput.sku }),
+        ...(patchInput.condition !== undefined && { condition: patchInput.condition }),
+        ...(patchInput.conditionDetail !== undefined && { conditionDetail: patchInput.conditionDetail?.trim() || null }),
+        ...(patchInput.price !== undefined && { price: String(patchInput.price) }),
+        ...(patchInput.promoPrice !== undefined && {
           promoPrice:
-            input.promoPrice != null && input.promoPrice > 0 ? String(input.promoPrice) : null,
+            patchInput.promoPrice != null && patchInput.promoPrice > 0 ? String(patchInput.promoPrice) : null,
         }),
         displayPrice,
-        ...(input.stock !== undefined && { stock: input.stock }),
-        ...(input.isActive !== undefined && { isActive: input.isActive }),
-        ...(input.categoryId !== undefined && {
-          category: input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true },
+        ...(patchInput.stock !== undefined && { stock: patchInput.stock }),
+        ...(patchInput.isActive !== undefined && { isActive: patchInput.isActive }),
+        ...(patchInput.categoryId !== undefined && {
+          category: patchInput.categoryId ? { connect: { id: patchInput.categoryId } } : { disconnect: true },
         }),
         ...moderationData,
       };
@@ -408,6 +520,19 @@ export const productService = {
       await syncProductDisplayFromVariants(tx, productId);
     });
 
+    const fresh = await prisma.product.findFirst({
+      where: { id: productId },
+      include: { images: true, deliveryOptions: true },
+    });
+    if (
+      fresh?.isDraft &&
+      fresh.images.length >= 1 &&
+      fresh.deliveryOptions.length >= 1 &&
+      fresh.description.trim().length >= 10
+    ) {
+      await prisma.product.update({ where: { id: productId }, data: { isDraft: false } });
+    }
+
     return mapProductMediaForApi(
       await prisma.product.findFirstOrThrow({
         where: { id: productId },
@@ -416,14 +541,27 @@ export const productService = {
     );
   },
 
-  async listMine(shopUserId: string, skip = 0, take = 80, search?: string) {
+  async listMine(
+    shopUserId: string,
+    skip = 0,
+    take = 80,
+    search?: string,
+    scope: "active" | "archived" | "all" = "active"
+  ) {
     const shops = shopRepo();
     const shop = await shops.findByUserId(shopUserId);
     if (!shop) throw new HttpError(404, "Loja não encontrada");
 
     const q = search?.trim();
+    const scopeWhere: Prisma.ProductWhereInput =
+      scope === "archived"
+        ? { archivedAt: { not: null } }
+        : scope === "active"
+          ? { archivedAt: null }
+          : {};
     const where: Prisma.ProductWhereInput = {
       shopId: shop.id,
+      ...scopeWhere,
       ...(q && q.length >= 1
         ? {
             OR: [
@@ -440,12 +578,25 @@ export const productService = {
         orderBy: { createdAt: "desc" },
         skip,
         take,
-        include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+        include: {
+          images: true,
+          variants: true,
+          deliveryOptions: deliveryOptionsPublicInclude,
+          category: true,
+          _count: { select: { orderItems: true } },
+        },
       }),
       prisma.product.count({ where }),
     ]);
     return {
-      items: items.map((p) => mapProductMediaForApi(p)),
+      items: items.map((p) => {
+        const { _count, ...rest } = p;
+        return {
+          ...mapProductMediaForApi(rest),
+          orderItemsCount: _count.orderItems,
+          canDelete: _count.orderItems === 0,
+        };
+      }),
       total,
       skip,
       take,
@@ -458,6 +609,7 @@ export const productService = {
         id,
         isActive: true,
         moderationStatus: "APPROVED",
+        ...productPublicShelfExtras,
         shop: { isApproved: true, tier1CompletedAt: { not: null } },
       },
       include: {
@@ -598,6 +750,7 @@ export const productService = {
       id: { in: unique },
       isActive: true,
       moderationStatus: "APPROVED",
+      ...productPublicShelfExtras,
       shop: { isApproved: true, tier1CompletedAt: { not: null } },
       ...(!allowSeller ? { deliveryOptions: { some: { tipoEntrega: "PLATAFORMA" } } } : {}),
     };
@@ -683,6 +836,7 @@ export const productService = {
       where: {
         isActive: true,
         moderationStatus: "APPROVED",
+        ...productPublicShelfExtras,
         shop: { isApproved: true, tier1CompletedAt: { not: null } },
       },
       orderBy: [{ soldCount: "desc" }, { createdAt: "desc" }],
@@ -775,6 +929,29 @@ export const productService = {
       data: { isActive },
       include: { shop: { select: { id: true, name: true } } },
     });
+  },
+
+  async deleteOwn(shopUserId: string, productId: string) {
+    const shops = shopRepo();
+    const shop = await shops.findByUserId(shopUserId);
+    if (!shop) throw new HttpError(404, "Loja não encontrada");
+    if (!shop.tier1CompletedAt)
+      throw new HttpError(403, "Complete os dados obrigatórios da loja (nível 1) antes de gerir produtos");
+    if (!shop.isApproved)
+      throw new HttpError(403, "A sua loja ainda está em análise ou não foi aprovada.");
+
+    const row = await prisma.product.findFirst({
+      where: { id: productId, shopId: shop.id },
+      include: { _count: { select: { orderItems: true } } },
+    });
+    if (!row) throw new HttpError(404, "Produto não encontrado");
+    if (row._count.orderItems > 0) {
+      throw new HttpError(
+        409,
+        "Não é possível eliminar: existem encomendas com esta referência. Arquive ou suspenda a venda."
+      );
+    }
+    await prisma.product.delete({ where: { id: productId } });
   },
 
   async adminListModeration(

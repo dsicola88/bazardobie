@@ -4,6 +4,7 @@ import { personalizationService } from "../services/personalization.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import {
   createProductSchema,
+  createProductDraftSchema,
   updateProductSchema,
   productListQuerySchema,
   categoryFacetQuerySchema,
@@ -30,6 +31,14 @@ export const productController = {
     res.status(201).json(p);
   }),
 
+  createDraft: asyncHandler(async (req, res) => {
+    const uid = req.user?.sub;
+    if (!uid) throw new HttpError(401, "Autenticação necessária");
+    const body = createProductDraftSchema.parse(req.body);
+    const p = await productService.createDraft(uid, body);
+    res.status(201).json(p);
+  }),
+
   update: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");
@@ -38,13 +47,22 @@ export const productController = {
     res.json(p);
   }),
 
+  removeOwn: asyncHandler(async (req, res) => {
+    const uid = req.user?.sub;
+    if (!uid) throw new HttpError(401, "Autenticação necessária");
+    await productService.deleteOwn(uid, req.params.id);
+    res.status(204).send();
+  }),
+
   mine: asyncHandler(async (req, res) => {
     const uid = req.user?.sub;
     if (!uid) throw new HttpError(401, "Autenticação necessária");
     const skip = Math.max(0, Number(req.query.skip) || 0);
     const take = Math.min(Math.max(Number(req.query.take) || 80, 1), 200);
     const q = typeof req.query.q === "string" ? req.query.q : undefined;
-    const list = await productService.listMine(uid, skip, take, q);
+    const scopeParsed = z.enum(["active", "archived", "all"]).safeParse(req.query.scope);
+    const scope = scopeParsed.success ? scopeParsed.data : "active";
+    const list = await productService.listMine(uid, skip, take, q, scope);
     res.json(list);
   }),
 

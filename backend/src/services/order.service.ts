@@ -315,7 +315,7 @@ export const orderService = {
             where: { id: item.productId },
             include: { variants: true },
           });
-          if (!product || !product.isActive) {
+          if (!product || !product.isActive || product.isDraft || product.archivedAt != null || product.moderationStatus !== "APPROVED") {
             throw new HttpError(400, "Produto indisponível no carrinho");
           }
 

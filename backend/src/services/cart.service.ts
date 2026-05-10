@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { cartRepo } from "../repositories/cart.repository.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import { siteSettingsService } from "./siteSettings.service.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 import type { z } from "zod";
 import type { addCartItemSchema, patchCartItemSchema } from "../validators/cart.validators.js";
 
@@ -85,6 +86,8 @@ export const cartService = {
       where: {
         id: input.productId,
         isActive: true,
+        moderationStatus: "APPROVED",
+        ...productPublicShelfExtras,
         shop: { isApproved: true, tier1CompletedAt: { not: null } },
       },
       include: { variants: true, deliveryOptions: true },
@@ -192,6 +195,17 @@ export const cartService = {
       include: { variants: true },
     });
     if (!product) throw new HttpError(404, "Produto não encontrado");
+    if (
+      !product.isActive ||
+      product.isDraft ||
+      product.archivedAt != null ||
+      product.moderationStatus !== "APPROVED"
+    ) {
+      throw new HttpError(
+        400,
+        "Este produto já não está disponível — retire-o do carrinho ou actualize a página."
+      );
+    }
     if (item.variantId) {
       const v = product.variants.find((x) => x.id === item.variantId);
       if (!v || v.stock < input.quantity) throw new HttpError(400, "Stock insuficiente");

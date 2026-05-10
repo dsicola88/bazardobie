@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 export interface ProductListFilters {
   q?: string;
@@ -68,6 +69,7 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {
     isActive: true,
     moderationStatus: "APPROVED",
+    ...productPublicShelfExtras,
     shop: {
       isApproved: true,
       tier1CompletedAt: { not: null },

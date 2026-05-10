@@ -48,6 +48,8 @@ type ProductLoaded = {
   stock: number;
   categoryId?: string | null;
   moderationStatus: string;
+  isDraft?: boolean;
+  archivedAt?: string | null;
   images: { url: string }[];
   variants: {
     sku: string;
@@ -132,6 +134,10 @@ export default function VendorProductEditor() {
   const [variants, setVariants] = useState<VarForm[]>([]);
   const [deliveries, setDeliveries] = useState<DelForm[]>([emptyDel("", "")]);
   const [moderationStatus, setModerationStatus] = useState<string | null>(null);
+  const [listingMeta, setListingMeta] = useState<{ isDraft: boolean; archivedAt: string | null }>({
+    isDraft: false,
+    archivedAt: null,
+  });
   const [loadingEdit, setLoadingEdit] = useState(!isNew);
   const [shippingCarriers, setShippingCarriers] = useState<{ id: string; name: string }[]>([]);
 
@@ -219,6 +225,7 @@ export default function VendorProductEditor() {
           })),
         );
         setModerationStatus(p.moderationStatus);
+        setListingMeta({ isDraft: Boolean(p.isDraft), archivedAt: p.archivedAt ?? null });
       })
       .catch((e: unknown) =>
         setLoadErr(e instanceof Error ? e.message : "Não foi possível obter os dados desta referência."),
@@ -250,6 +257,7 @@ export default function VendorProductEditor() {
       setImages([""]);
       setVariants([]);
       setModerationStatus(null);
+      setListingMeta({ isDraft: false, archivedAt: null });
       return;
     }
     loadProduct();
@@ -308,6 +316,47 @@ export default function VendorProductEditor() {
       variants: varPayload,
       deliveryOptions: delPayload,
     };
+  }
+
+  function buildDraftPartialPayload(): Record<string, unknown> {
+    const full = buildPayload();
+    const out: Record<string, unknown> = {
+      name: full.name,
+      description: full.description,
+      sku: full.sku,
+      condition: full.condition,
+      categoryId: full.categoryId,
+      price: full.price,
+      promoPrice: full.promoPrice,
+      stock: full.stock,
+      demoVideoUrl: full.demoVideoUrl,
+      conditionDetail: full.conditionDetail,
+    };
+    if (full.images.length >= 1) out.images = full.images;
+    if (full.variants.length > 0) out.variants = full.variants;
+    const dels = full.deliveryOptions.filter(
+      (d) => d.areaProvincia.trim().length >= 2 && d.areaCidade.trim().length >= 2,
+    );
+    if (dels.length >= 1) out.deliveryOptions = dels;
+    return out;
+  }
+
+  async function saveDraftProgress() {
+    if (!token || shopOk !== true || !productId) return;
+    setErr(null);
+    setSaving(true);
+    try {
+      await apiFetch(`/vendor/products/${productId}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify(buildDraftPartialPayload()),
+      });
+      await loadProduct();
+    } catch (ex: unknown) {
+      setErr(ex instanceof Error ? ex.message : "Não foi possível gravar o progresso.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -449,6 +498,27 @@ export default function VendorProductEditor() {
           <Link to="/vendor/loja" style={{ marginLeft: 10 }}>
             Estado do registo
           </Link>
+        </div>
+      ) : null}
+
+      {!isNew && listingMeta.archivedAt ? (
+        <div className="ae-admin-alert ae-admin-alert--err" role="alert">
+          Esta referência está arquivada: não aparece na vitrina e a edição da ficha está bloqueada até restaurar no
+          catálogo («Restaurar do arquivo»).
+        </div>
+      ) : null}
+      {!isNew && listingMeta.isDraft ? (
+        <div
+          className="ae-admin-alert"
+          role="status"
+          style={{
+            marginTop: shopOk === false ? 12 : 0,
+            borderColor: "var(--ae-line)",
+            background: "#fafbfc",
+          }}
+        >
+          Modo rascunho: adicione descrição (mín. 10 caracteres), pelo menos uma imagem e uma opção de envio antes de
+          activar a venda.
         </div>
       ) : null}
 
@@ -919,6 +989,16 @@ export default function VendorProductEditor() {
           <button type="submit" className="btn btn-primary" disabled={saving || shopOk !== true}>
             {saving ? "A gravar…" : isNew ? "Enviar para validação" : "Gravar alterações"}
           </button>
+          {!isNew && listingMeta.isDraft ? (
+            <button
+              type="button"
+              className="btn"
+              disabled={saving || shopOk !== true}
+              onClick={() => void saveDraftProgress()}
+            >
+              Guardar progresso (rascunho)
+            </button>
+          ) : null}
           <Link to="/vendor/products" className="btn">
             Fechar sem gravar
           </Link>

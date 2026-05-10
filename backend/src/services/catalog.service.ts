@@ -7,6 +7,7 @@ import type { z } from "zod";
 import type { createCategorySchema, createBannerSchema } from "../validators/admin.validators.js";
 import { updateBannerSchema, updateCategorySchema } from "../validators/admin.validators.js";
 import { siteSettingsService } from "./siteSettings.service.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 type CatIn = z.infer<typeof createCategorySchema>;
 type CatUp = z.infer<typeof updateCategorySchema>;
@@ -66,6 +67,7 @@ async function publicCatalogProductWhere(): Promise<Prisma.ProductWhereInput> {
   const base: Prisma.ProductWhereInput = {
     isActive: true,
     moderationStatus: "APPROVED",
+    ...productPublicShelfExtras,
     shop: {
       isApproved: true,
       tier1CompletedAt: { not: null },

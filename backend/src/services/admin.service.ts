@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { previousRangeFrom, resolveDashboardRange, type DashboardPeriod } from "../utils/dateRange.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { HttpError } from "../middlewares/errorHandler.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -64,7 +65,9 @@ export const adminService = {
       }),
       prisma.user.count(),
       prisma.shop.count({ where: { isApproved: true } }),
-      prisma.product.count({ where: { isActive: true, moderationStatus: "APPROVED" } }),
+      prisma.product.count({
+        where: { isActive: true, moderationStatus: "APPROVED", ...productPublicShelfExtras },
+      }),
       prisma.shop.count({
         where: { isApproved: true, user: { blocked: false, role: "VENDEDOR" } },
       }),

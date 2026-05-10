@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import { cartSession } from "../middlewares/optionalAuth.js";
 import { productService } from "./product.service.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 const VIEW_THROTTLE_MS = 45_000;
 const MAX_VIEWS_PER_IDENTITY = 120;
@@ -52,6 +53,7 @@ async function assertProductTrackable(productId: string) {
       id: productId,
       isActive: true,
       moderationStatus: "APPROVED",
+      ...productPublicShelfExtras,
       shop: { isApproved: true, tier1CompletedAt: { not: null } },
     },
     select: { id: true },
@@ -105,6 +107,7 @@ async function candidateIdsSameCategory(
     where: {
       isActive: true,
       moderationStatus: "APPROVED",
+      ...productPublicShelfExtras,
       categoryId: { in: categoryIds },
       shop: { isApproved: true, tier1CompletedAt: { not: null } },
       id: { notIn: [...exclude] },
@@ -126,6 +129,7 @@ async function candidateIdsSameShop(
     where: {
       isActive: true,
       moderationStatus: "APPROVED",
+      ...productPublicShelfExtras,
       shopId: { in: shopIds },
       shop: { isApproved: true, tier1CompletedAt: { not: null } },
       id: { notIn: [...exclude] },
@@ -292,6 +296,7 @@ export const personalizationService = {
         isActive: true,
         isFeatured: true,
         moderationStatus: "APPROVED",
+        ...productPublicShelfExtras,
         shop: { isApproved: true, tier1CompletedAt: { not: null } },
         id: { notIn: [...exclude] },
       },
@@ -339,6 +344,7 @@ export const personalizationService = {
           id: productId,
           isActive: true,
           moderationStatus: "APPROVED",
+          ...productPublicShelfExtras,
           shop: { isApproved: true, tier1CompletedAt: { not: null } },
         },
         select: { categoryId: true, shopId: true },

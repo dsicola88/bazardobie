@@ -120,8 +120,10 @@ r.post("/vendor/shop/credibility/tier3", requireAuth, requireRoles("VENDEDOR"), 
 r.get("/vendor/shop/me", requireAuth, requireRoles("VENDEDOR"), shopController.mine);
 r.get("/vendor/dashboard/stats", requireAuth, requireRoles("VENDEDOR"), shopController.dashboardStats);
 
+r.post("/vendor/products/draft", requireAuth, requireRoles("VENDEDOR"), productController.createDraft);
 r.post("/vendor/products", requireAuth, requireRoles("VENDEDOR"), productController.create);
 r.patch("/vendor/products/:id", requireAuth, requireRoles("VENDEDOR"), productController.update);
+r.delete("/vendor/products/:id", requireAuth, requireRoles("VENDEDOR"), productController.removeOwn);
 r.get("/vendor/products/mine", requireAuth, requireRoles("VENDEDOR"), productController.mine);
 r.get("/vendor/product/:id", requireAuth, requireRoles("VENDEDOR"), productController.getOwn);
 

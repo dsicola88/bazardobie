@@ -5,17 +5,20 @@ import { HttpError } from "../middlewares/errorHandler.js";
 import type { PatchHomeProductGroupInput } from "../validators/homepageGroup.validators.js";
 import { siteSettingsService } from "./siteSettings.service.js";
 import { publicMediaUrl } from "../utils/publicMediaUrl.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 function isListedProductPublic(
   p: {
     isActive: boolean;
+    isDraft?: boolean;
+    archivedAt?: Date | null;
     moderationStatus: string;
     shop: { isApproved: boolean; tier1CompletedAt: Date | null } | null;
     deliveryOptions: { tipoEntrega: string }[];
   },
   allowSellerDelivery: boolean
 ): boolean {
-  if (!p.isActive || p.moderationStatus !== "APPROVED") return false;
+  if (!p.isActive || p.moderationStatus !== "APPROVED" || p.isDraft || p.archivedAt != null) return false;
   if (!p.shop?.isApproved || !p.shop.tier1CompletedAt) return false;
   const opts = allowSellerDelivery
     ? p.deliveryOptions
