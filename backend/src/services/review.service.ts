@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import type { z } from "zod";
@@ -19,10 +19,16 @@ export type ReviewPublicRow = Prisma.ReviewGetPayload<{ include: typeof reviewPu
 
 export type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
-/** Opiniões com pelo menos uma foto (Postgres lista escalar via Prisma). */
+/** Opiniões com pelo menos uma foto (`TEXT[]` na BD). */
 const reviewWhereHasPhotos: Prisma.ReviewWhereInput = {
-  photoUrls: { isEmpty: false },
+  NOT: { photoUrls: { equals: [] } },
 };
+
+/** Lista pública por loja sem `_count` em `helpfulMarks` (query mais simples; contagens são carregadas à parte). */
+const reviewShopListingInclude = {
+  user: { select: { id: true, name: true, avatarUrl: true } },
+  product: { select: { id: true, name: true } },
+} satisfies Prisma.ReviewInclude;
 
 function emptyAggregateShopReviewsSummary(): {
   total: number;
@@ -59,46 +65,39 @@ async function shelfProductIdsForShop(shopId: string): Promise<string[]> {
 }
 
 /**
- * Agrega opiniões por conjunto explícito de produtos públicos (`productId in (...)`).
- * Usa apenas `count` por estrela — evita `groupBy` problemático em alguns planadores Postgres +
- * filtros relacionais antigos sobre `review → product`.
+ * Agrega métricas em SQL directo sobre Postgres — mais robusto que múltiplos `count` Prisma sobre
+ * `TEXT[] photoUrls`, que em alguns deployments devolvem erro 500 nos logs do motor.
  */
 async function aggregateShopReviewsSummaryForProductIds(productIds: string[]) {
   if (productIds.length === 0) return emptyAggregateShopReviewsSummary();
 
-  const scope = { productId: { in: productIds } } satisfies Prisma.ReviewWhereInput;
+  const inList = Prisma.join(productIds);
 
-  const [
-    star1,
-    star2,
-    star3,
-    star4,
-    star5,
-    comFotos,
-    comTexto,
-  ] = await Promise.all([
-    prisma.review.count({ where: { ...scope, rating: 1 } }),
-    prisma.review.count({ where: { ...scope, rating: 2 } }),
-    prisma.review.count({ where: { ...scope, rating: 3 } }),
-    prisma.review.count({ where: { ...scope, rating: 4 } }),
-    prisma.review.count({ where: { ...scope, rating: 5 } }),
-    prisma.review.count({ where: { ...scope, ...reviewWhereHasPhotos } }),
-    prisma.review.count({
-      where: {
-        ...scope,
-        comment: { not: null },
-        NOT: { comment: { equals: "" } },
-      },
-    }),
+  const [byStars, fotoRow, textoRow] = await Promise.all([
+    prisma.$queryRaw<{ rating: number; c: bigint }[]>`
+      SELECT r.rating, COUNT(*)::bigint AS c
+      FROM "Review" r
+      WHERE r."productId" IN (${inList})
+      GROUP BY r.rating
+    `,
+    prisma.$queryRaw<{ c: bigint }[]>`
+      SELECT COUNT(*)::bigint AS c FROM "Review" r
+      WHERE r."productId" IN (${inList})
+        AND cardinality(r."photoUrls") > 0
+    `,
+    prisma.$queryRaw<{ c: bigint }[]>`
+      SELECT COUNT(*)::bigint AS c FROM "Review" r
+      WHERE r."productId" IN (${inList})
+        AND r.comment IS NOT NULL
+        AND length(trim(r.comment)) > 0
+    `,
   ]);
 
-  const starCounts: Record<number, number> = {
-    1: star1,
-    2: star2,
-    3: star3,
-    4: star4,
-    5: star5,
-  };
+  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const row of byStars) {
+    const s = Number(row.rating);
+    if (Number.isInteger(s) && s >= 1 && s <= 5) starCounts[s] = Number(row.c);
+  }
   let total = 0;
   let sumWeighted = 0;
   for (let s = 1; s <= 5; s++) {
@@ -117,6 +116,9 @@ async function aggregateShopReviewsSummaryForProductIds(productIds: string[]) {
       : null;
 
   const porEstrela = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: starCounts[stars] ?? 0 }));
+
+  const comFotos = Number(fotoRow[0]?.c ?? 0);
+  const comTexto = Number(textoRow[0]?.c ?? 0);
 
   return {
     total,
@@ -353,11 +355,6 @@ export const reviewService = {
             ? [{ rating: "asc" }, { createdAt: "desc" }]
             : [{ createdAt: "desc" }];
 
-    const includeProduct = {
-      ...reviewPublicInclude,
-      product: { select: { id: true, name: true } },
-    } satisfies Prisma.ReviewInclude;
-
     const [summary, rawRows, total] = await Promise.all([
       aggregateShopReviewsSummaryForProductIds(shelfProductIds),
       prisma.review.findMany({
@@ -365,12 +362,23 @@ export const reviewService = {
         orderBy,
         skip,
         take,
-        include: includeProduct,
+        include: reviewShopListingInclude,
       }),
       prisma.review.count({ where }),
     ]);
 
-    type Row = Prisma.ReviewGetPayload<{ include: typeof includeProduct }>;
+    type ShopListRow = Prisma.ReviewGetPayload<{ include: typeof reviewShopListingInclude }>;
+
+    const reviewIds = rawRows.map((r) => r.id);
+    const helpfulGroups =
+      reviewIds.length > 0
+        ? await prisma.reviewHelpful.groupBy({
+            by: ["reviewId"],
+            where: { reviewId: { in: reviewIds } },
+            _count: { _all: true },
+          })
+        : [];
+    const helpfulByReview = new Map(helpfulGroups.map((g) => [g.reviewId, g._count._all]));
 
     let viewerMarkedIds: Set<string> | undefined;
     if (opts.viewerUserId && rawRows.length > 0) {
@@ -382,10 +390,16 @@ export const reviewService = {
       viewerMarkedIds = new Set(marks.map((m) => m.reviewId));
     }
 
-    const items = (rawRows as Row[]).map((r) => {
+    const items = (rawRows as ShopListRow[]).map((r) => {
       const prod = r.product;
-      const { _count, product: _p, ...rest } = r;
-      const base = formatReviewPublicRow(rest as ReviewPublicRow, viewerMarkedIds);
+      const { product: _p, ...rest } = r;
+      const base = formatReviewPublicRow(
+        {
+          ...rest,
+          _count: { helpfulMarks: helpfulByReview.get(r.id) ?? 0 },
+        } as ReviewPublicRow,
+        viewerMarkedIds,
+      );
       return {
         ...base,
         product: { id: prod.id, name: prod.name },
