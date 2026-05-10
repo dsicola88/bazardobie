@@ -80,6 +80,7 @@ export function Header() {
   const [searchCatId, setSearchCatId] = useState<string>("");
   const [catOpen, setCatOpen] = useState(false);
   const [imgSearchBusy, setImgSearchBusy] = useState(false);
+  const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const catMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -248,13 +249,13 @@ export function Header() {
           const rawItems = cr.value.items ?? [];
           setDiscoveryItems(
             rawItems.map((c) => ({
-              id: c.id,
-              name: c.name,
-              slug: c.slug,
+              id: String(c.id ?? ""),
+              name: String(c.name ?? ""),
+              slug: String(c.slug ?? ""),
               imageUrl: c.imageUrl ?? null,
               productCount: Number(c.productCount) || 0,
               parentName: c.parentName ?? null,
-            }))
+            })).filter((c) => c.id && c.name)
           );
           setDiscoveryScope(cr.value.scope === "related" ? "related" : "popular");
         } else {
@@ -303,8 +304,6 @@ export function Header() {
     () => promoIntervalActive(Date.now(), popupStartRaw, popupEndRaw, legacyStartRaw, legacyEndRaw),
     [popupStartRaw, popupEndRaw, legacyStartRaw, legacyEndRaw]
   );
-
-  const [promoPopupOpen, setPromoPopupOpen] = useState(false);
 
   useEffect(() => {
     if (!popupEnabled || !popupScheduleActive) return;
@@ -431,7 +430,12 @@ export function Header() {
             ) : (
               <>
                 <span className="ae-topbar__hi">
-                  Sessão · <strong>{user.name.split(" ")[0]}</strong>
+                  Sessão ·{" "}
+                  <strong>
+                    {(user.name ?? "").trim().split(/\s+/).filter(Boolean)[0] ||
+                      (user.email ?? "").split("@")[0] ||
+                      "Conta"}
+                  </strong>
                 </span>
                 <button type="button" className="ae-linkbtn" onClick={() => logout()}>
                   Terminar sessão
