@@ -838,6 +838,7 @@ export const orderService = {
         buyerUserId: order.userId,
         actorUserId: actor.userId,
         actorRole: actor.role,
+        orderCode: order.orderCode,
       })
       .catch(() => undefined);
     return updated;

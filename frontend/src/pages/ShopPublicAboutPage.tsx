@@ -130,9 +130,17 @@ export default function ShopPublicAboutPage() {
               <span className="ae-buybox__chip">Nível {resumoReputacao.nivelConfianca} / 3</span>
             </div>
             <p style={{ marginTop: 14 }}>
-              <Link className="ae-btn-lg ae-section__cta ae-section__cta--ghost" to={buildSearchPath("/search", new URLSearchParams(), { shopId: loja.id })}>
+              <Link
+                className="ae-btn-lg ae-section__cta ae-section__cta--ghost"
+                to={buildSearchPath("/search", new URLSearchParams(), { shopId: loja.id })}
+                title="Abre o catálogo público com filtros: só artigos desta loja parceira."
+              >
                 Ver artigos desta loja
               </Link>
+            </p>
+            <p className="ae-muted" style={{ marginTop: 8, fontSize: 12, maxWidth: 520, lineHeight: 1.45 }}>
+              O catálogo é o mesmo do marketplace, limitado a esta loja — pode ordenar, filtrar por categoria e abrir cada
+              artigo normalmente.
             </p>
           </div>
         </div>

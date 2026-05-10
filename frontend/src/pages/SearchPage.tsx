@@ -4,6 +4,7 @@ import { apiFetch } from "../api.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
+import { useSeo } from "../seo/useSeo.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
@@ -18,6 +19,10 @@ const sorts: { k: string; label: string }[] = [
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
+  const canonicalQuery = useMemo(() => {
+    const s = params.toString();
+    return s ? `?${s}` : "";
+  }, [params]);
   const visualMode = params.get("visual") === "1";
   const featured = params.get("featured") === "true";
   const onSale = params.get("onSale") === "true";
@@ -44,7 +49,11 @@ export default function SearchPage() {
       ? "Promoções no catálogo — BAZAR DO BIÉ"
       : featured
         ? "Seleção em destaque — BAZAR DO BIÉ"
-        : "Pesquisar produtos — BAZAR DO BIÉ";
+        : shopId && shopLabel
+          ? `Artigos de ${shopLabel} — BAZAR DO BIÉ`
+          : shopId
+            ? "Catálogo da loja — BAZAR DO BIÉ"
+            : "Pesquisar produtos — BAZAR DO BIÉ";
   const seoDescription = q.trim()
     ? `Resultados para "${q.trim()}" no marketplace BAZAR DO BIÉ. Compare preços, avaliações e prazos de envio em Angola.`
     : onSale
@@ -57,7 +66,7 @@ export default function SearchPage() {
     description: visualMode
       ? "Resultados visuais com base na imagem enviada. Refine por filtros para encontrar o produto ideal."
       : seoDescription,
-    canonicalPath: `/search${window.location.search}`,
+    canonicalPath: `/search${canonicalQuery}`,
   });
 
   useEffect(() => {

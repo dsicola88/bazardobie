@@ -118,12 +118,18 @@ export const notificationService = {
 
   async notifyOrderTrackingUpdated(
     orderId: string,
-    payload: { buyerUserId: string; actorUserId: string; actorRole: string }
+    payload: {
+      buyerUserId: string;
+      actorUserId: string;
+      actorRole: string;
+      orderCode?: string | null;
+    }
   ) {
     const vendorIds = await vendorUserIdsFromOrder(orderId);
     const targets = [payload.buyerUserId, ...vendorIds].filter((id) => id !== payload.actorUserId);
+    const ref = (payload.orderCode && payload.orderCode.trim()) || `${orderId.slice(0, 12)}…`;
     const title = "Rastreio actualizado";
-    const message = `O rastreio do pedido ${orderId.slice(0, 12)}… foi actualizado por ${payload.actorRole}.`;
+    const message = `Dados de rastreio da encomenda ${ref} foram actualizados (${payload.actorRole}). Abra a ficha do pedido para ver transportadora, código e hiperligação de consulta.`;
     return createForUserIds(targets, NotificationType.PEDIDO, title, message);
   },
 

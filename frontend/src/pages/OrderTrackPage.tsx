@@ -429,6 +429,10 @@ export default function OrderTrackPage() {
 
       <div className="page-panel ae-track-courier" style={{ marginBottom: 14 }}>
         <h2 style={{ marginTop: 0, marginBottom: 10, fontSize: 15 }}>Rastreio da entrega</h2>
+        <p className="ae-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: 12, lineHeight: 1.5 }}>
+          Com envio pela loja, o parceiro regista guia e URL quando expedir. Com envio BAZAR DO BIÉ, a equipa de logística
+          ou a administração preenchem estes dados. Recebe notificação quando forem actualizados.
+        </p>
         {row.trackingCode || row.trackingUrl || row.trackingCarrier ? (
           <div style={{ fontSize: 14, lineHeight: 1.55 }}>
             {row.trackingCarrier ? (
