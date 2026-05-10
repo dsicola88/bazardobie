@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { StarRating } from "./StarRating.js";
 
 export type ProductCardData = {
@@ -18,7 +19,16 @@ export type ProductCardData = {
   images: { url: string }[];
 };
 
-function ProductCardInner({ p, className }: { p: ProductCardData; className?: string }) {
+function ProductCardInner({
+  p,
+  className,
+  imagePriority,
+}: {
+  p: ProductCardData;
+  className?: string;
+  /** Primeiras células da grelha: carregar imagem com prioridade (LCP). */
+  imagePriority?: boolean;
+}) {
   const img = resolveMediaUrl(p.images[0]?.url);
   const promoRaw = p.promoPrice != null ? String(p.promoPrice).trim() : "";
   const hasPromo = promoRaw !== "" && Number(p.promoPrice) > 0;
@@ -50,9 +60,17 @@ function ProductCardInner({ p, className }: { p: ProductCardData; className?: st
     >
       <div className="ae-pcard__img-wrap">
         {img ? (
-          <img src={img} alt="" className="ae-pcard__img" loading="lazy" decoding="async" />
+          <img
+            src={img}
+            alt=""
+            className="ae-pcard__img"
+            loading={imagePriority ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={imagePriority ? "high" : undefined}
+            sizes="(max-width: 480px) 46vw, (max-width: 920px) 31vw, min(240px, 22vw)"
+          />
         ) : (
-          <div className="ae-pcard__ph" />
+          <MediaPlaceholder variant="card" />
         )}
         <span className={`ae-pcard__cond ae-pcard__cond--${condition.toLowerCase()}`}>{conditionBadge}</span>
         {savePct != null && savePct > 0 ? (

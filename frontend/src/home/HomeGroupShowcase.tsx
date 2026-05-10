@@ -1,6 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import type { ProductCardData } from "../components/ProductCard.js";
+import { useSiteContent } from "../site/SiteContentContext.js";
 import { useFlashDealCountdown } from "./useFlashDealCountdown.js";
 import { OfferShowcaseTile } from "./OfferShowcaseTile.js";
 
@@ -53,6 +53,15 @@ export function resolveHomeGroupCta(g: HomeGroupPublicBlock): { label: string; p
 
 export function HomeGroupShowcase({ group }: { group: HomeGroupPublicBlock }) {
   const railRef = useRef<HTMLDivElement>(null);
+  const { content } = useSiteContent();
+  const showcaseCardStyle = useMemo((): CSSProperties => {
+    const next: Record<string, string> = {};
+    const card = (content["public.home_showcase_card_bg"] ?? "").trim();
+    const head = (content["public.home_showcase_head_bg"] ?? "").trim();
+    if (card) next["--ae-home-showcase-card-bg"] = card;
+    if (head) next["--ae-home-showcase-head-bg"] = head;
+    return next as CSSProperties;
+  }, [content["public.home_showcase_card_bg"], content["public.home_showcase_head_bg"]]);
   const emphasis = (group.productCardEmphasis ?? "BALANCED") as "BALANCED" | "DISCOUNT" | "RATING";
   const cd = useFlashDealCountdown(group.badgeType === "TIMER" ? group.badgeEndAt ?? undefined : undefined);
   const cta = resolveGroupCta(group);
@@ -66,7 +75,7 @@ export function HomeGroupShowcase({ group }: { group: HomeGroupPublicBlock }) {
 
   return (
     <section className="ae-home-showcase" aria-labelledby={`ae-showcase-${group.slug}`}>
-      <div className="ae-home-showcase__card">
+      <div className="ae-home-showcase__card" style={showcaseCardStyle}>
         <header className="ae-home-showcase__head">
           <div className="ae-home-showcase__lead">
             <h2 id={`ae-showcase-${group.slug}`} className="ae-home-showcase__title">

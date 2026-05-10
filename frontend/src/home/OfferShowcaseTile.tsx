@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { formatKz, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { MediaPlaceholder } from "../components/MediaPlaceholder.js";
 import { StarRating } from "../components/StarRating.js";
 
 import type { ProductCardData } from "../components/ProductCard.js";
@@ -29,9 +30,16 @@ function OfferShowcaseTileInner({
     <Link to={`/product/${p.id}`} className={`ae-offer-tile ae-offer-tile--${emphasis.toLowerCase()}`}>
       <div className="ae-offer-tile__visual">
         {img ? (
-          <img src={img} alt="" className="ae-offer-tile__img" loading="lazy" decoding="async" />
+          <img
+            src={img}
+            alt=""
+            className="ae-offer-tile__img"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 640px) 42vw, 168px"
+          />
         ) : (
-          <div className="ae-offer-tile__ph" aria-hidden />
+          <MediaPlaceholder variant="tile" />
         )}
         {showBigDiscount ? (
           <span className="ae-offer-tile__pct-badge" aria-hidden>

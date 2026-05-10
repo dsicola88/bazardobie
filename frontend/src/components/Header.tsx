@@ -17,6 +17,22 @@ function triStatePromoFlag(raw: string | undefined): boolean | null {
   return null;
 }
 
+/** Remove duplicados (case-insensitivo) na lista de chips da barra promocional. */
+function uniquePromoKeywords(raw: string, max: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of raw.split("|")) {
+    const t = x.trim();
+    if (!t) continue;
+    const k = t.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 function promoIntervalActive(now: number, startPrimary: string, endPrimary: string, startFall: string, endFall: string): boolean {
   const hasOwn = startPrimary.trim().length > 0 || endPrimary.trim().length > 0;
   const startRaw = hasOwn ? startPrimary : startFall;
@@ -173,28 +189,13 @@ export function Header() {
   const promoMarqueeRaw = (content["public.header_promo_marquee"] ?? "true").trim().toLowerCase();
   const promoMarqueeOn =
     promoMarqueeRaw === "true" || promoMarqueeRaw === "1" || promoMarqueeRaw === "sim" || promoMarqueeRaw === "yes";
-  const promoKeywords = promoKeywordsRaw
-    .split("|")
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .slice(0, 4);
+  const promoKeywords = uniquePromoKeywords(promoKeywordsRaw, 4);
   const promoPopupTextRaw = (content["public.header_promo_popup_text"] ?? "").trim();
   const promoPopupBody = promoPopupTextRaw || promoBarText;
   const promoPopupKeywordsRaw = (content["public.header_promo_popup_keywords"] ?? "").trim();
   const popupKeywordsForCard = useMemo(() => {
-    const barKw = promoKeywordsRaw
-      .split("|")
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .slice(0, 4);
-    return (
-      promoPopupKeywordsRaw
-        ? promoPopupKeywordsRaw
-            .split("|")
-            .map((x) => x.trim())
-            .filter(Boolean)
-        : barKw
-    ).slice(0, 6);
+    const barKw = uniquePromoKeywords(promoKeywordsRaw, 4);
+    return (promoPopupKeywordsRaw ? uniquePromoKeywords(promoPopupKeywordsRaw, 6) : barKw).slice(0, 6);
   }, [promoPopupKeywordsRaw, promoKeywordsRaw]);
   const roots = cats.filter((c) => !c.parentId).slice(0, 12);
   const smartCategorySuggestions =
@@ -590,14 +591,14 @@ export function Header() {
             {promoKeywords.length > 0 ? (
               <div className={`ae-promo-keywords ${promoMarqueeOn ? "ae-promo-keywords--marquee" : ""}`}>
                 <div className="ae-promo-keywords__track">
-                  {promoKeywords.map((k) => (
-                    <span key={k} className="ae-promo-keywords__chip">
+                  {promoKeywords.map((k, i) => (
+                    <span key={`kw-${i}-${k.slice(0, 24)}`} className="ae-promo-keywords__chip">
                       {k}
                     </span>
                   ))}
                   {promoMarqueeOn
-                    ? promoKeywords.map((k) => (
-                        <span key={`dup-${k}`} className="ae-promo-keywords__chip" aria-hidden>
+                    ? promoKeywords.map((k, i) => (
+                        <span key={`kw-loop-${i}-${k.slice(0, 24)}`} className="ae-promo-keywords__chip" aria-hidden>
                           {k}
                         </span>
                       ))

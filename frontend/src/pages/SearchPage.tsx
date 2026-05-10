@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
+import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
@@ -8,6 +9,8 @@ import { useSeo } from "../seo/useSeo.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
+
+const PAGE_SIZE = 36;
 
 const sorts: { k: string; label: string }[] = [
   { k: "recentes", label: "Novidades" },
@@ -17,7 +20,15 @@ const sorts: { k: string; label: string }[] = [
   { k: "melhor_avaliados", label: "Melhor avaliados" },
 ];
 
+function conditionShortLabel(c: string): string {
+  if (c === "NEW") return "Novo";
+  if (c === "USED") return "Usado";
+  if (c === "REFURBISHED") return "Recondicionado";
+  return c;
+}
+
 export default function SearchPage() {
+  const { token } = useAuth();
   const [params, setParams] = useSearchParams();
   const canonicalQuery = useMemo(() => {
     const s = params.toString();
@@ -38,6 +49,10 @@ export default function SearchPage() {
   const [maxPrice, setMaxPrice] = useState(() => params.get("maxPrice") ?? "");
   const [cats, setCats] = useState<Category[]>([]);
   const [data, setData] = useState<{ items: ProductCardData[]; total: number } | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [forYou, setForYou] = useState<ProductCardData[] | null>(null);
   const [visualRaw, setVisualRaw] = useState<ProductCardData[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sideCollapsed, setSideCollapsed] = useState(false);
@@ -96,7 +111,7 @@ export default function SearchPage() {
     };
   }, [shopId]);
 
-  const qs = useMemo(() => {
+  const catalogQuery = useMemo(() => {
     const p = new URLSearchParams();
     if (q.trim()) p.set("q", q.trim());
     if (categoryId) p.set("categoryId", categoryId);
@@ -109,30 +124,88 @@ export default function SearchPage() {
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
     if (shopId) p.set("shopId", shopId);
-    p.set("take", "36");
+    p.set("take", String(PAGE_SIZE));
     return p.toString();
   }, [q, categoryId, sort, condition, minRating, minPrice, maxPrice, featured, onSale, shopId]);
 
   useEffect(() => {
-    if (visualMode) {
-      try {
-        const raw = sessionStorage.getItem("ae_visual_search_v1");
-        if (!raw) {
-          setVisualRaw([]);
-          return;
-        }
-        const parsed = JSON.parse(raw) as VisualSearchPayload;
-        setVisualRaw(Array.isArray(parsed.items) ? parsed.items : []);
-      } catch {
+    if (!visualMode) return;
+    try {
+      const raw = sessionStorage.getItem("ae_visual_search_v1");
+      if (!raw) {
         setVisualRaw([]);
+        return;
       }
+      const parsed = JSON.parse(raw) as VisualSearchPayload;
+      setVisualRaw(Array.isArray(parsed.items) ? parsed.items : []);
+    } catch {
+      setVisualRaw([]);
+    }
+  }, [visualMode]);
+
+  useEffect(() => {
+    if (visualMode) {
+      setCatalogLoading(false);
+      setCatalogError(false);
       return;
     }
-    setVisualRaw([]);
-    void apiFetch<{ items: ProductCardData[]; total: number }>(`/products?${qs}`)
-      .then(setData)
-      .catch(() => setData({ items: [], total: 0 }));
-  }, [qs, visualMode]);
+    let cancelled = false;
+    setData(null);
+    setCatalogLoading(true);
+    setCatalogError(false);
+    void apiFetch<{ items: ProductCardData[]; total: number }>(`/products?${catalogQuery}`)
+      .then((r) => {
+        if (!cancelled) setData(r);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setData({ items: [], total: 0 });
+          setCatalogError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogQuery, visualMode]);
+
+  useEffect(() => {
+    if (!token || visualMode) {
+      setForYou(null);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<{ items: ProductCardData[] }>("/personalization/for-you?take=8", { token })
+      .then((r) => {
+        if (!cancelled) setForYou(r.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setForYou([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, visualMode]);
+
+  const loadMore = useCallback(async () => {
+    if (visualMode || !data || loadingMore) return;
+    if (data.items.length >= data.total) return;
+    setLoadingMore(true);
+    try {
+      const p = new URLSearchParams(catalogQuery);
+      p.set("skip", String(data.items.length));
+      const more = await apiFetch<{ items: ProductCardData[]; total: number }>(`/products?${p.toString()}`);
+      setData((prev) =>
+        prev ? { total: more.total, items: [...prev.items, ...more.items] } : more,
+      );
+    } catch {
+      /* ignorar — utilizador pode tentar de novo */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [visualMode, data, loadingMore, catalogQuery]);
 
   const visualFiltered = useMemo(() => {
     if (!visualMode) return null;
@@ -164,6 +237,59 @@ export default function SearchPage() {
 
   const effectiveData = visualMode ? visualFiltered ?? { items: [], total: 0 } : data;
 
+  const rangeLabel = useMemo(() => {
+    if (!effectiveData || effectiveData.total === 0 || effectiveData.items.length === 0) return null;
+    const to = effectiveData.items.length;
+    return `Mostrando 1–${to.toLocaleString("pt-AO")} de ${effectiveData.total.toLocaleString("pt-AO")}`;
+  }, [effectiveData]);
+
+  const roots = useMemo(() => cats.filter((c) => !c.parentId), [cats]);
+
+  const categoryLabel = useMemo(() => {
+    if (!categoryId) return "";
+    return cats.find((c) => c.id === categoryId)?.name ?? "";
+  }, [cats, categoryId]);
+
+  const activeFilterChips = useMemo(() => {
+    const out: { label: string; patch: Record<string, string | null> }[] = [];
+    if (categoryId && categoryLabel) out.push({ label: categoryLabel, patch: { categoryId: null } });
+    if (featured) out.push({ label: "Em destaque", patch: { featured: null } });
+    if (onSale) out.push({ label: "Em promoção", patch: { onSale: null } });
+    if (condition) out.push({ label: conditionShortLabel(condition), patch: { condition: null } });
+    if (minRating) out.push({ label: `${minRating}+ estrelas`, patch: { minRating: null } });
+    if (minPrice || maxPrice) {
+      const bit = [minPrice ? `≥ ${minPrice}` : null, maxPrice ? `≤ ${maxPrice}` : null]
+        .filter(Boolean)
+        .join(" · ");
+      out.push({ label: `Preço ${bit} Kz`, patch: { minPrice: null, maxPrice: null } });
+    }
+    if (shopId) out.push({ label: shopLabel ? `Loja: ${shopLabel}` : "Loja filtrada", patch: { shopId: null } });
+    if (sort !== "recentes") {
+      const sl = sorts.find((s) => s.k === sort)?.label ?? sort;
+      out.push({ label: `Ordenação: ${sl}`, patch: { sort: null } });
+    }
+    return out;
+  }, [
+    categoryId,
+    categoryLabel,
+    featured,
+    onSale,
+    condition,
+    minRating,
+    minPrice,
+    maxPrice,
+    shopId,
+    shopLabel,
+    sort,
+  ]);
+
+  const showLoadMore =
+    !visualMode &&
+    !catalogLoading &&
+    effectiveData != null &&
+    effectiveData.items.length > 0 &&
+    effectiveData.items.length < effectiveData.total;
+
   function applyPrice() {
     const n = new URLSearchParams(params);
     const minN = minPrice ? Number(minPrice) : undefined;
@@ -187,7 +313,11 @@ export default function SearchPage() {
     setParams(n);
   }
 
-  const roots = cats.filter((c) => !c.parentId);
+  function clearFiltersKeepQuery() {
+    const n = new URLSearchParams();
+    if (q.trim()) n.set("q", q.trim());
+    setParams(n);
+  }
 
   return (
     <div className="ae-layout-search">
@@ -345,13 +475,42 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-          <span className="ae-toolbar__count">
-            {effectiveData?.total ?? "—"} resultado(s)
-            {featured ? <span className="ae-toolbar__pill ae-toolbar__pill--accent">Destaque</span> : null}
-            {onSale ? <span className="ae-toolbar__pill ae-toolbar__pill--promo">Promoções</span> : null}
-            {shopId ? <span className="ae-toolbar__pill">Uma loja</span> : null}
-          </span>
+          <div className="ae-toolbar__meta">
+            {rangeLabel ? <span className="ae-toolbar__range">{rangeLabel}</span> : null}
+            <span className="ae-toolbar__count">
+              {effectiveData != null ? (
+                <>
+                  {effectiveData.total.toLocaleString("pt-AO")} resultado(s)
+                  {featured ? <span className="ae-toolbar__pill ae-toolbar__pill--accent">Destaque</span> : null}
+                  {onSale ? <span className="ae-toolbar__pill ae-toolbar__pill--promo">Promoções</span> : null}
+                  {shopId ? <span className="ae-toolbar__pill">Uma loja</span> : null}
+                </>
+              ) : (
+                "—"
+              )}
+            </span>
+          </div>
         </div>
+
+        {activeFilterChips.length > 0 ? (
+          <div className="ae-active-filters" aria-label="Filtros activos">
+            <span className="ae-active-filters__label">Filtros:</span>
+            {activeFilterChips.map((chip, i) => (
+              <Link
+                key={`f-${i}-${chip.label}`}
+                to={buildSearchPath("/search", params, chip.patch)}
+                className="ae-active-filters__chip"
+              >
+                {chip.label}
+                <span aria-hidden> ×</span>
+              </Link>
+            ))}
+            <button type="button" className="ae-active-filters__clear" onClick={clearFiltersKeepQuery}>
+              Limpar filtros
+            </button>
+          </div>
+        ) : null}
+
         {shopId ? (
           <div className="ae-shop-filter-banner page-panel">
             <p style={{ margin: 0, fontSize: 14 }}>
@@ -369,19 +528,53 @@ export default function SearchPage() {
           Apresentamos apenas artigos homologados e lojas com registo comercial válido na plataforma. Referências pendentes
           de validação não são exibidas.
         </p>
-        {!effectiveData ? (
+        {catalogError ? (
+          <div className="page-panel ae-search-empty" role="alert">
+            Não foi possível carregar o catálogo. Verifique a ligação e tente actualizar a página.
+          </div>
+        ) : null}
+
+        {!visualMode && catalogLoading ? (
+          <section className="ae-grid" aria-busy="true" aria-label="A carregar resultados">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="ae-skel ae-skel-pcard" />
+            ))}
+          </section>
+        ) : !effectiveData ? (
           <p className="ae-muted">A consultar o catálogo…</p>
         ) : effectiveData.items.length === 0 ? (
           <div className="page-panel ae-empty-center ae-search-empty">
             Não foram encontradas referências com os critérios seleccionados. Ajuste filtros ou o termo de pesquisa.
           </div>
         ) : (
-          <section className="ae-grid">
-            {effectiveData.items.map((p) => (
-              <ProductCard key={p.id} p={p} />
-            ))}
-          </section>
+          <>
+            <section className="ae-grid">
+              {effectiveData.items.map((p, idx) => (
+                <ProductCard key={p.id} p={p} imagePriority={idx < 6} />
+              ))}
+            </section>
+            {showLoadMore ? (
+              <button type="button" className="ae-search-load-more" disabled={loadingMore} onClick={() => void loadMore()}>
+                {loadingMore ? "A carregar…" : `Carregar mais (${(data?.total ?? 0) - (data?.items.length ?? 0)} restantes)`}
+              </button>
+            ) : null}
+          </>
         )}
+
+        {!visualMode && forYou !== null && forYou.length > 0 ? (
+          <section className="ae-search-reco" aria-labelledby="ae-search-reco-title">
+            <div className="ae-search-reco__head">
+              <h2 id="ae-search-reco-title">Sugestões para si</h2>
+              <p className="ae-muted">Com base na sua actividade e preferências na plataforma.</p>
+              <Link to="/#ae-home-foryou">Ver recomendações completas na página inicial</Link>
+            </div>
+            <div className="ae-grid">
+              {forYou.map((p) => (
+                <ProductCard key={`reco-${p.id}`} p={p} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );

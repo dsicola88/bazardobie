@@ -26,7 +26,7 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.header_promo_link_url": "",
   "public.header_promo_price": "",
   "public.header_promo_image_url": "",
-  "public.header_promo_keywords": "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",
+  "public.header_promo_keywords": "Super oferta|Entrega rápida|Preço baixo|Qualidade verificada",
   "public.header_promo_popup_text": "",
   "public.header_promo_popup_keywords": "",
   "public.header_promo_marquee": "true",
@@ -42,6 +42,17 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.home_flash_deals_end_at": "",
   "public.home_flash_deals_cta": "Ver todas as promoções",
   "public.home_flash_deals_link": "",
+  "public.home_flash_deals_surface_bg":
+    "linear-gradient(135deg, rgb(14 26 53) 0%, rgb(30 41 59) 38%, rgb(102 34 52) 112%)",
+  "public.home_flash_deals_rail_bg":
+    "linear-gradient(180deg, rgb(15 23 42 / 0.45) 0%, rgb(10 17 37 / 0.55) 100%)",
+  "public.home_flash_deals_text_color": "rgb(248 250 252)",
+  "public.home_flash_deals_muted_text_color": "rgb(226 232 240 / 0.88)",
+  "public.home_showcase_card_bg": "#ffffff",
+  "public.home_showcase_head_bg": "#ffffff",
+  "public.home_showcase_shell_bg": "",
+  "public.home_group_strip_header_bg":
+    "linear-gradient(135deg, rgb(248 250 252) 0%, rgb(255 255 255) 68%)",
   "public.home_pulse_tags": "Lojas nacionais|Envio em Kz|Pagamento COD quando disponível|Ofertas diárias",
   "public.trust_strip_1":
     "Pagamento à entrega|Kwanzas ao receber, quando a loja oferece COD.",

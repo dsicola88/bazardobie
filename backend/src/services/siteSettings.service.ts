@@ -128,7 +128,7 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
   },
   "public.header_promo_keywords": {
     label: "Barra — chips (separados por |)",
-    defaultValue: "Super oferta|Entrega rapida|Preco baixo|Qualidade verificada",
+    defaultValue: "Super oferta|Entrega rápida|Preço baixo|Qualidade verificada",
     hint: "Até 4 chips na barra.",
   },
   "public.header_promo_popup_keywords": {
@@ -190,6 +190,47 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     label: "Home — «Ofertas do dia» — link do botão (opcional)",
     defaultValue: "",
     hint: "Vazio = /search?onSale=true&sort=preco_asc. Ou URL/caminho próprio iniciado por /.",
+  },
+  "public.home_flash_deals_surface_bg": {
+    label: "Home — «Ofertas do dia» — fundo (CSS)",
+    defaultValue:
+      "linear-gradient(135deg, rgb(14 26 53) 0%, rgb(30 41 59) 38%, rgb(102 34 52) 112%)",
+    hint: "Qualquer valor CSS válido para background (cor sólida, linear-gradient, url(...), etc.).",
+  },
+  "public.home_flash_deals_rail_bg": {
+    label: "Home — «Ofertas do dia» — fundo do carril de produtos (CSS)",
+    defaultValue:
+      "linear-gradient(180deg, rgb(15 23 42 / 0.45) 0%, rgb(10 17 37 / 0.55) 100%)",
+    hint: "Área abaixo do cabeçalho da faixa, por baixo dos cartões.",
+  },
+  "public.home_flash_deals_text_color": {
+    label: "Home — «Ofertas do dia» — cor principal do texto (CSS color)",
+    defaultValue: "rgb(248 250 252)",
+    hint: "Título e textos principais da faixa.",
+  },
+  "public.home_flash_deals_muted_text_color": {
+    label: "Home — «Ofertas do dia» — cor de texto secundário (CSS color)",
+    defaultValue: "rgb(226 232 240 / 0.88)",
+    hint: "Subtítulo, notas e texto do carril vazio.",
+  },
+  "public.home_showcase_card_bg": {
+    label: "Home — vitrines (SHOWCASE) — fundo do cartão (CSS)",
+    defaultValue: "#ffffff",
+  },
+  "public.home_showcase_head_bg": {
+    label: "Home — vitrines (SHOWCASE) — fundo do cabeçalho (CSS)",
+    defaultValue: "#ffffff",
+    hint: "Zona do título e CTA; pode ser igual ao cartão ou um tom ligeiramente diferente.",
+  },
+  "public.home_showcase_shell_bg": {
+    label: "Home — vitrines (SHOWCASE) — fundo da secção (CSS, opcional)",
+    defaultValue: "",
+    hint: "Vazio = sem fundo extra (usa o da página). Útil para destacar blocos alternados.",
+  },
+  "public.home_group_strip_header_bg": {
+    label: "Home — grupos em grelha — fundo do cabeçalho (CSS)",
+    defaultValue: "linear-gradient(135deg, rgb(248 250 252) 0%, rgb(255 255 255) 68%)",
+    hint: "Faixa por trás do título «Curadoria» nos blocos que não são vitrine horizontal.",
   },
   "public.home_pulse_tags": {
     label: "Home — benefícios (separados por |)",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { apiFetch, cartSessionHeaders, withCartSession } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
@@ -11,7 +11,7 @@ import { formatKz, formatFreteKz, formatRating } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
-import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
+import { variantCompareAtUnitKz, variantEffectiveUnitKz } from "../utils/variantPrice.js";
 
 type Img = { url: string };
 type Variant = {
@@ -38,6 +38,7 @@ type Delivery = {
 type ProductDetail = {
   id: string;
   name: string;
+  sku?: string;
   condition?: string | null;
   conditionDetail?: string | null;
   description: string;
@@ -52,6 +53,7 @@ type ProductDetail = {
   images: Img[];
   variants: Variant[];
   deliveryOptions: Delivery[];
+  category?: { id: string; name: string } | null;
   shop?: {
     id: string;
     name: string;
@@ -131,6 +133,52 @@ function buildSizeOnlyOrder(variants: Variant[]): Variant[] | null {
   return [...variants].sort((a, b) => normSelKey(a.size).localeCompare(normSelKey(b.size), "pt"));
 }
 
+function pdpMainAlt(productName: string, variant: Variant | null): string {
+  const n = productName.trim();
+  if (!variant) return n || "Artigo à venda";
+  const vl = variantLabel(variant);
+  if (!vl || vl === n) return n;
+  return `${n} — ${vl}`;
+}
+
+function ProductPageSkeleton() {
+  return (
+    <div className="ae-pdp-wrap-skel" aria-busy="true" aria-label="A carregar ficha do artigo">
+      <div className="ae-pdp ae-pdp--skeleton">
+        <div className="ae-pdp-grid ae-pdp-grid--skeleton">
+          <div className="ae-pdp-sk-side">
+            <div className="ae-skel ae-pdp-sk-thumb" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-thumb" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-thumb" aria-hidden />
+          </div>
+          <div className="ae-skel ae-pdp-sk-hero" aria-hidden />
+          <div className="ae-pdp-sk-buy">
+            <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--title" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--short" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-price" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+            <div className="ae-skel ae-pdp-sk-btn" aria-hidden />
+          </div>
+        </div>
+      </div>
+      <div className="page-panel ae-pdp-sk-panel" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="ae-pdp-sk-tabs" role="presentation">
+          <span className="ae-skel ae-pdp-sk-tabpill" aria-hidden />
+          <span className="ae-skel ae-pdp-sk-tabpill" aria-hidden />
+          <span className="ae-skel ae-pdp-sk-tabpill" aria-hidden />
+        </div>
+        <div className="ae-pdp-sk-tabbody">
+          <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--title" aria-hidden />
+          <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+          <div className="ae-skel ae-pdp-sk-line" aria-hidden />
+          <div className="ae-skel ae-pdp-sk-line ae-pdp-sk-line--short" aria-hidden />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductPage() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -150,6 +198,10 @@ export default function ProductPage() {
   const [zoomOn, setZoomOn] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const [heroImgBroken, setHeroImgBroken] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const mainSwipeRef = useRef<{ x: number; y: number } | null>(null);
+  const lbTouchRef = useRef<{ x: number; y: number } | null>(null);
   const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
   const seoDescription = product
     ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ`
@@ -225,6 +277,51 @@ export default function ProductPage() {
     }
     return Number(product.displayPrice);
   }, [needVariant, product, selectedVariant]);
+
+  const compareAtUnit = useMemo(() => {
+    if (!product) return null;
+    return variantCompareAtUnitKz(product, needVariant ? selectedVariant ?? undefined : undefined);
+  }, [product, needVariant, selectedVariant]);
+
+  const mainImageAlt = useMemo(
+    () => (product ? pdpMainAlt(product.name, selectedVariant) : "Artigo"),
+    [product, selectedVariant],
+  );
+
+  const goLightbox = useCallback((dir: -1 | 1) => {
+    if (!product?.images?.length) return;
+    const n = product.images.length;
+    if (n < 2) return;
+    setLightboxIndex((prev) => {
+      const next = (prev + dir + n) % n;
+      setMainImg(product.images[next].url);
+      return next;
+    });
+  }, [product]);
+
+  const openLightbox = useCallback(() => {
+    if (!product?.images?.length) return;
+    const idx = product.images.findIndex((im) => im.url === mainImg);
+    if (idx >= 0) {
+      setLightboxIndex(idx);
+    } else {
+      setLightboxIndex(0);
+      setMainImg(product.images[0].url);
+    }
+    setLightboxOpen(true);
+  }, [product, mainImg]);
+
+  const lightboxResolved = useMemo(() => {
+    if (!product?.images?.length) return "";
+    const raw = product.images[lightboxIndex]?.url ?? "";
+    return raw ? resolveMediaUrl(raw) : "";
+  }, [product, lightboxIndex]);
+
+  const lightboxAlt = useMemo(() => {
+    if (!product?.images?.length) return mainImageAlt;
+    return `${mainImageAlt} — fotografia ${lightboxIndex + 1} de ${product.images.length}`;
+  }, [product, lightboxIndex, mainImageAlt]);
+
   const seoJsonLd = product
     ? {
         "@context": "https://schema.org",
@@ -232,7 +329,7 @@ export default function ProductPage() {
         name: product.name,
         description: product.description,
         image: product.images.map((im) => resolveMediaUrl(im.url)).slice(0, 6),
-        sku: seoVariant?.sku ?? undefined,
+        sku: seoVariant?.sku || product.sku || undefined,
         brand: {
           "@type": "Brand",
           name: "BAZAR DO BIÉ",
@@ -285,6 +382,43 @@ export default function ProductPage() {
       { replace: true }
     );
   }, [needVariant, product?.id, setSearchParams, variantId]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setLightboxOpen(false);
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goLightbox(-1);
+        return;
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goLightbox(1);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [lightboxOpen, goLightbox]);
+
+  useEffect(() => {
+    setLightboxOpen(false);
+    setLightboxIndex(0);
+  }, [id]);
+
+  useEffect(() => {
+    if (!lightboxOpen || !product?.images?.length) return;
+    const idx = product.images.findIndex((im) => im.url === mainImg);
+    if (idx >= 0) setLightboxIndex(idx);
+  }, [lightboxOpen, mainImg, product]);
 
   useEffect(() => {
     setHeroImgBroken(false);
@@ -357,6 +491,58 @@ export default function ProductPage() {
     setVariantId(next.id);
   }
 
+  const canMainGallerySwipe =
+    Boolean(product && product.images.length >= 2 && !product.demoVideoUrl);
+
+  function onMainTouchStart(ev: ReactTouchEvent<HTMLDivElement>) {
+    if (!canMainGallerySwipe) return;
+    const t = ev.touches[0];
+    if (t) mainSwipeRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onMainTouchEnd(ev: ReactTouchEvent<HTMLDivElement>) {
+    if (!canMainGallerySwipe || !product) {
+      mainSwipeRef.current = null;
+      return;
+    }
+    const start = mainSwipeRef.current;
+    mainSwipeRef.current = null;
+    if (!start) return;
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    const urls = product.images.map((im) => im.url);
+    const idx = urls.indexOf(mainImg);
+    const cur = idx >= 0 ? idx : 0;
+    const next = dx < 0 ? cur + 1 : cur - 1;
+    const j = ((next % urls.length) + urls.length) % urls.length;
+    setMainImg(urls[j]);
+  }
+
+  function onLbTouchStart(ev: ReactTouchEvent<HTMLDivElement>) {
+    if (!product || product.images.length < 2) return;
+    const t = ev.touches[0];
+    if (t) lbTouchRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onLbTouchEnd(ev: ReactTouchEvent<HTMLDivElement>) {
+    if (!product || product.images.length < 2) {
+      lbTouchRef.current = null;
+      return;
+    }
+    const start = lbTouchRef.current;
+    lbTouchRef.current = null;
+    if (!start) return;
+    const t = ev.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    goLightbox(dx < 0 ? 1 : -1);
+  }
+
   function onMainImageMove(ev: ReactMouseEvent<HTMLDivElement>) {
     const rect = ev.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -417,8 +603,25 @@ export default function ProductPage() {
     setQty((n) => Math.max(1, Math.min(stockAvailable, n)));
   }, [stockAvailable]);
 
-  if (err) return <div className="page-panel" style={{ color: "#c00" }}>{err}</div>;
-  if (!product) return <p className="ae-muted">A carregar ficha de produto…</p>;
+  if (err)
+    return (
+      <div className="page-panel" role="alert" style={{ color: "#c00" }}>
+        {err}
+      </div>
+    );
+  if (!product)
+    return (
+      <>
+        <div className="ae-breadcrumb ae-breadcrumb--muted">
+          <span className="ae-muted">Início</span>
+          <span>/</span>
+          <span className="ae-muted">Catálogo</span>
+          <span>/</span>
+          <span className="ae-muted">A carregar…</span>
+        </div>
+        <ProductPageSkeleton />
+      </>
+    );
 
   const trust = product.shop?.credibilidade;
   const guarantees = trust?.garantiasAoComprador;
@@ -434,20 +637,28 @@ export default function ProductPage() {
       ) : null}
       <div className="ae-breadcrumb">
         <Link to="/">Início</Link>
-        <span>/</span>
+        <span aria-hidden>/</span>
         <Link to="/search">Catálogo</Link>
-        <span>/</span>
-        <span>{product.name.slice(0, 48)}</span>
+        {product.category?.id ? (
+          <>
+            <span aria-hidden>/</span>
+            <Link to={`/search?categoryId=${encodeURIComponent(product.category.id)}`}>{product.category.name}</Link>
+          </>
+        ) : null}
+        <span aria-hidden>/</span>
+        <span aria-current="page">{product.name.length > 56 ? `${product.name.slice(0, 56)}…` : product.name}</span>
       </div>
 
       <div className="ae-pdp">
         <div className="ae-pdp-grid">
           <div className="ae-pdp-thumbs">
-            {product.images.map((im) => (
+            {product.images.map((im, ix) => (
               <button
                 key={im.url}
                 type="button"
                 className={mainImg === im.url ? "ae-on" : ""}
+                aria-label={`Miniatura ${ix + 1} de ${product.images.length}: ${product.name}`}
+                aria-pressed={mainImg === im.url}
                 onClick={() => setMainImg(im.url)}
                 onMouseEnter={() => setMainImg(im.url)}
               >
@@ -460,6 +671,8 @@ export default function ProductPage() {
             onMouseMove={!product.demoVideoUrl ? onMainImageMove : undefined}
             onMouseEnter={!product.demoVideoUrl ? () => setZoomOn(true) : undefined}
             onMouseLeave={!product.demoVideoUrl ? () => setZoomOn(false) : undefined}
+            onTouchStart={canMainGallerySwipe ? onMainTouchStart : undefined}
+            onTouchEnd={canMainGallerySwipe ? onMainTouchEnd : undefined}
           >
             {product.demoVideoUrl ? (
               <video
@@ -472,9 +685,24 @@ export default function ProductPage() {
               />
             ) : (
               <>
+                {!product.demoVideoUrl ? (
+                  <button
+                    type="button"
+                    className="ae-pdp-expand"
+                    aria-label="Ampliar fotografia em ecrã inteiro"
+                    onClick={() => openLightbox()}
+                  >
+                    <span className="ae-pdp-expand__ico" aria-hidden>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" d="M9 3H5a2 2 0 0 0-2 2v4m10 12h4a2 2 0 0 0 2-2v-4M3 9v6a2 2 0 0 0 2 2h2M21 9V5a2 2 0 0 0-2-2h-4" />
+                      </svg>
+                    </span>
+                    Ampliar
+                  </button>
+                ) : null}
                 <img
                   src={displayMainResolved}
-                  alt=""
+                  alt={mainImageAlt}
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
@@ -499,6 +727,13 @@ export default function ProductPage() {
 
           <div className="ae-buybox">
             <h1 className="ae-buybox__title">{product.name}</h1>
+            <p className="ae-buybox__sku" aria-label="Referência do artigo">
+              Referência:{" "}
+              <strong>{needVariant && selectedVariant ? selectedVariant.sku : product.sku ?? "—"}</strong>
+              {needVariant && selectedVariant && product.sku && selectedVariant.sku !== product.sku ? (
+                <span className="ae-muted"> · modelo {product.sku}</span>
+              ) : null}
+            </p>
             <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
               Condição: <strong>{productConditionLabel(product.condition)}</strong>
             </p>
@@ -521,11 +756,9 @@ export default function ProductPage() {
               )}
             </div>
             <div className="ae-buybox__price">
-              <span className="ae-buybox__now">
-                {formatKz(unitPriceNum ?? product.displayPrice)}
-              </span>
-              {product.promoPrice ? (
-                <span className="ae-buybox__was">{formatKz(product.price)}</span>
+              <span className="ae-buybox__now">{formatKz(unitPriceNum ?? product.displayPrice)}</span>
+              {compareAtUnit != null && compareAtUnit > Number(unitPriceNum ?? product.displayPrice) ? (
+                <span className="ae-buybox__was">{formatKz(compareAtUnit)}</span>
               ) : null}
             </div>
 
@@ -589,7 +822,7 @@ export default function ProductPage() {
                           {g.thumbnailVariant.imageUrl?.trim() ? (
                             <img
                               src={resolveMediaUrl(g.thumbnailVariant.imageUrl)}
-                              alt=""
+                              alt={`Cor ${g.label}`}
                               loading="lazy"
                               decoding="async"
                             />
@@ -655,7 +888,7 @@ export default function ProductPage() {
                         onClick={() => setVariantId(v.id)}
                       >
                         {v.imageUrl?.trim() ? (
-                          <img src={resolveMediaUrl(v.imageUrl)} alt="" loading="lazy" decoding="async" />
+                          <img src={resolveMediaUrl(v.imageUrl)} alt={`Variante ${v.label}`} loading="lazy" decoding="async" />
                         ) : (
                           <span className="ae-variant-swatch__txt">{v.label.slice(0, 3).toUpperCase()}</span>
                         )}
@@ -873,7 +1106,7 @@ export default function ProductPage() {
                             <a key={u} href={u} target="_blank" rel="noopener noreferrer">
                               <img
                                 src={resolveMediaUrl(u)}
-                                alt=""
+                                alt="Fotografia publicada pelo comprador na avaliação"
                                 loading="lazy"
                                 decoding="async"
                                 style={{
@@ -913,6 +1146,72 @@ export default function ProductPage() {
             ))}
           </div>
         </section>
+      ) : null}
+      {lightboxOpen && product && product.images.length ? (
+        <div
+          className="ae-pdp-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Galeria de fotografias ampliada"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            className="ae-pdp-lightbox__close"
+            aria-label="Fechar ampliação"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxOpen(false);
+            }}
+          >
+            ×
+          </button>
+          {product.images.length >= 2 ? (
+            <>
+              <button
+                type="button"
+                className="ae-pdp-lightbox__nav ae-pdp-lightbox__nav--prev"
+                aria-label="Fotografia anterior"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goLightbox(-1);
+                }}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="ae-pdp-lightbox__nav ae-pdp-lightbox__nav--next"
+                aria-label="Fotografia seguinte"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goLightbox(1);
+                }}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+          <div
+            className="ae-pdp-lightbox__stage"
+            role="presentation"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={product.images.length >= 2 ? onLbTouchStart : undefined}
+            onTouchEnd={product.images.length >= 2 ? onLbTouchEnd : undefined}
+          >
+            <img
+              src={lightboxResolved || displayMainResolved}
+              alt={lightboxAlt}
+              className="ae-pdp-lightbox__img"
+              decoding="async"
+            />
+            {product.images.length >= 2 ? (
+              <p className="ae-pdp-lightbox__counter" aria-live="polite">
+                {lightboxIndex + 1} / {product.images.length}
+              </p>
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </>
   );

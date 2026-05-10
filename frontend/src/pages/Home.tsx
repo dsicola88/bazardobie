@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, withCartSession } from "../api.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { MediaPlaceholder } from "../components/MediaPlaceholder.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { parseTrustCell, parseSiteTruthy, splitPipeTags } from "../site/siteContent.js";
@@ -78,6 +79,29 @@ export default function Home() {
   const flashEndAtRaw = (content["public.home_flash_deals_end_at"] ?? "").trim();
   const flashCtaRaw = (content["public.home_flash_deals_cta"] ?? "").trim() || "Ver todas as promoções";
   const flashExplore = resolveFlashExplore(content["public.home_flash_deals_link"] ?? "");
+  const flashSurfaceStyle = useMemo((): CSSProperties => {
+    const next: Record<string, string> = {};
+    const surf = (content["public.home_flash_deals_surface_bg"] ?? "").trim();
+    const rail = (content["public.home_flash_deals_rail_bg"] ?? "").trim();
+    const tc = (content["public.home_flash_deals_text_color"] ?? "").trim();
+    const mu = (content["public.home_flash_deals_muted_text_color"] ?? "").trim();
+    if (surf) next["--ae-home-flash-surface-bg"] = surf;
+    if (rail) next["--ae-home-flash-rail-bg"] = rail;
+    if (tc) next["--ae-home-flash-text-color"] = tc;
+    if (mu) next["--ae-home-flash-muted-color"] = mu;
+    return next as CSSProperties;
+  }, [
+    content["public.home_flash_deals_surface_bg"],
+    content["public.home_flash_deals_rail_bg"],
+    content["public.home_flash_deals_text_color"],
+    content["public.home_flash_deals_muted_text_color"],
+  ]);
+  const groupStripSectionStyle = useMemo((): CSSProperties | undefined => {
+    const v = (content["public.home_group_strip_header_bg"] ?? "").trim();
+    if (!v) return undefined;
+    return { ["--ae-home-group-strip-header-bg" as string]: v } as CSSProperties;
+  }, [content["public.home_group_strip_header_bg"]]);
+  const showcaseShellBg = (content["public.home_showcase_shell_bg"] ?? "").trim();
   const pulseTags = splitPipeTags(content["public.home_pulse_tags"]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [bi, setBi] = useState(0);
@@ -323,7 +347,7 @@ export default function Home() {
       ) : null}
 
       {personalForYou !== null && personalForYou.length > 0 ? (
-        <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-foryou-title">
+        <section id="ae-home-foryou" className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-foryou-title">
           <header className="ae-section__masthead">
             <div className="ae-section__masthead-copy">
               <h2 id="ae-home-foryou-title">Recomendado para si</h2>
@@ -362,7 +386,7 @@ export default function Home() {
           aria-describedby="ae-home-flash-dek"
         >
           <div className="ae-home-flash ae-home-flash--full">
-          <div className="ae-home-flash__surface">
+          <div className="ae-home-flash__surface" style={flashSurfaceStyle}>
             <div className="ae-home-flash__hero">
               <div className="ae-home-flash__lead">
                 <p className="ae-home-flash__eyebrow">Ofertas do dia · marketplace nacional</p>
@@ -416,7 +440,10 @@ export default function Home() {
             </div>
             <div className="ae-home-flash__rail-panel">
               {flashDeals.length > 0 ? (
-                <div className="ae-home-flash__scroller" role="list">
+                <div
+                  className={`ae-home-flash__scroller${flashDeals.length > 0 && flashDeals.length <= 4 ? " ae-home-flash__scroller--sparse" : ""}`}
+                  role="list"
+                >
                   {flashDeals.map((p) => (
                     <div key={`flash-${p.id}`} className="ae-home-flash__cell" role="listitem">
                       <ProductCard p={p} className="ae-pcard--spotlight ae-pcard--flash-rail" />
@@ -484,7 +511,7 @@ export default function Home() {
                           aria-hidden
                         />
                       ) : (
-                        <span className="ae-home-cat-rail__ph" aria-hidden />
+                        <MediaPlaceholder variant="category" />
                       )}
                     </span>
                     <span className="ae-home-cat-rail__label">{c.name}</span>
@@ -589,11 +616,15 @@ export default function Home() {
           .filter((g) => g.items?.length > 0)
           .map((g) =>
             g.layoutStyle === "SHOWCASE" ? (
-              <div key={g.slug} className="ae-shell ae-home-showcase-shell">
+              <div
+                key={g.slug}
+                className={`ae-shell ae-home-showcase-shell${showcaseShellBg ? " ae-home-showcase-shell--tinted" : ""}`}
+                style={showcaseShellBg ? { background: showcaseShellBg } : undefined}
+              >
                 <HomeGroupShowcase group={g} />
               </div>
             ) : (
-              <section key={g.slug} className="ae-section ae-home-group-strip">
+              <section key={g.slug} className="ae-section ae-home-group-strip" style={groupStripSectionStyle}>
                 <div className="ae-home-group-strip__header">
                   <div className="ae-home-group-strip__titles">
                     <p className="ae-home-group-strip__slug" aria-hidden>
