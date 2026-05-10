@@ -801,7 +801,7 @@ export function Header() {
       ) : null}
 
       {popupEnabled && popupScheduleActive && promoPopupBody && promoPopupOpen ? (
-        <div className="ae-modal-backdrop" role="dialog" aria-modal="true">
+        <div className="ae-modal-backdrop ae-modal-backdrop--promo-popup" role="dialog" aria-modal="true">
           <div className={`ae-promo-card-wrap ${promoPositionClass}`} style={{ zIndex: Math.max(1000, 1000 + promoPriority) }}>
             <div className="ae-promo-card">
               <button type="button" className="ae-modal__close" aria-label="Fechar" onClick={closePromoPopup}>

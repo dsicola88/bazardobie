@@ -5078,12 +5078,53 @@ a:hover {
   justify-content: center;
   padding: 16px;
 }
+.ae-modal-backdrop--promo-popup {
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  padding: max(16px, env(safe-area-inset-top, 16px)) max(16px, env(safe-area-inset-right, 16px))
+    max(16px, env(safe-area-inset-bottom, 16px)) max(16px, env(safe-area-inset-left, 16px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap {
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex-shrink: 0;
+  width: min(92vw, 440px);
+  max-width: 100%;
+  pointer-events: none;
+  padding: 0;
+  box-sizing: border-box;
+}
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap--center {
+  align-items: stretch;
+  justify-content: center;
+  margin: auto;
+}
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap--top-right {
+  align-self: flex-start;
+  margin-left: auto;
+  margin-right: 0;
+  margin-top: 0;
+}
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap--bottom-right {
+  align-self: flex-end;
+  margin-left: auto;
+  margin-right: 0;
+  margin-bottom: 0;
+}
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap--top-right,
+.ae-modal-backdrop--promo-popup .ae-promo-card-wrap--bottom-right {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
 .ae-promo-card-wrap {
-  position: fixed;
-  inset: 0;
   display: flex;
   pointer-events: none;
-  padding: 16px;
 }
 .ae-promo-card-wrap--center {
   align-items: center;
@@ -5098,7 +5139,7 @@ a:hover {
   justify-content: flex-end;
 }
 .ae-promo-card {
-  width: min(92vw, 440px);
+  width: 100%;
   border-radius: 18px;
   overflow: hidden;
   background: linear-gradient(180deg, #b8ffd0 0%, #7ef3a8 38%, #ffffff 100%);
