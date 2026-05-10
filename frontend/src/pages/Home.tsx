@@ -244,6 +244,7 @@ export default function Home() {
               hero.linkUrl ? (
                 <a href={hero.linkUrl} className="ae-hero-media">
                   <img
+                    className="ae-hero-photo"
                     src={resolveMediaUrl(hero.imageUrl)}
                     alt={hero.title ?? "Campanha em destaque no BAZAR DO BIÉ"}
                     loading="eager"
@@ -254,6 +255,7 @@ export default function Home() {
               ) : (
                 <div className="ae-hero-media">
                   <img
+                    className="ae-hero-photo"
                     src={resolveMediaUrl(hero.imageUrl)}
                     alt={hero.title ?? "Campanha em destaque no BAZAR DO BIÉ"}
                     loading="eager"

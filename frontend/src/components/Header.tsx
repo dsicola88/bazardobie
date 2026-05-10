@@ -551,16 +551,30 @@ export function Header() {
                   ) : null}
                 </Link>
                 <Link to="/orders" className="ae-ico-link">
-                  <span className="ae-ico ae-ico--glyph" aria-hidden>
-                    P
+                  <span className="ae-ico ae-ico--inline-svg" aria-hidden>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.85">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8.25 18.75a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm7.5 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm.696-10.5H5.25l1.5 9h10.5l1.32-7.92a.75.75 0 0 0-.74-.87H7.696"
+                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 8.25V6a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v2.25" />
+                    </svg>
                   </span>
                   <span>Encomendas</span>
                 </Link>
               </>
             )}
             <Link to="/cart" className="ae-ico-link ae-ico-link--cart">
-              <span className="ae-ico ae-ico--glyph" aria-hidden>
-                C
+              <span className="ae-ico ae-ico--inline-svg" aria-hidden>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.85">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M2.25 3h1.386c.51 0 .955.343 1.087.835l3.936 14.25a1.125 1.125 0 0 0 1.086.865h8.508a1.125 1.125 0 0 0 1.086-.865l1.284-4.835M7.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm9.75 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"
+                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V6.75A3.75 3.75 0 0 0 12 3h0a3.75 3.75 0 0 0-3.75 3.75V9" />
+                </svg>
               </span>
               <span>Carrinho</span>
               {cartCount > 0 ? <span className="ae-cart-badge">{cartCount > 99 ? "99+" : cartCount}</span> : null}
