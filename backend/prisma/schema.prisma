@@ -800,6 +800,36 @@ enum NotificationType {
   GERAL
 }
 
+/// Fila persistida de e-mails transaccionais (retry, idempotência por template+dedupe).
+enum EmailOutboxStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+model EmailOutbox {
+  id          String             @id @default(cuid())
+  toEmail     String
+  toName      String?
+  subject     String
+  htmlBody    String             @db.Text
+  textBody    String?            @db.Text
+  templateKey String
+  dedupeKey   String?
+  status      EmailOutboxStatus  @default(PENDING)
+  attempts    Int                @default(0)
+  maxAttempts Int                @default(10)
+  lastError   String?            @db.Text
+  scheduledAt DateTime           @default(now())
+  sentAt      DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([templateKey, dedupeKey])
+  @@index([status, scheduledAt])
+}
+
 model Notification {
   id        String           @id @default(cuid())
   userId    String

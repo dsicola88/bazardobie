@@ -103,6 +103,19 @@ O workflow **GitHub Actions** (`.github/workflows/ci.yml`) só corre `npm run bu
 
 A primeira vez precisa da base vazia ou compatível com as migrações em `backend/prisma/migrations`.
 
+### E-mail transaccional (nível profissional, baixo custo)
+
+A API envia e-mail via **Resend** (HTTP, recomendado em produção) ou **SMTP** (Brevo, Gmail app password, etc.). Quando `RESEND_API_KEY` está definido, ela tem prioridade sobre SMTP.
+
+| Variável | Descrição |
+|----------|-----------|
+| `RESEND_API_KEY` | Chave da API em [resend.com](https://resend.com) — plano gratuito sufficient para começar. |
+| `RESEND_FROM_EMAIL` | Endereço remetente **verificado** no Resend (ou `onboarding@resend.dev` para testes). |
+| `SMTP_*` | Alternativa clássica; ver `backend/.env.example`. |
+| `ENABLE_EMAIL_QUEUE_PROCESSOR` | Por defeito activo: a API processa a fila `EmailOutbox` na base de dados a cada ~45s. Defina `false` e use cron com `cd backend && npm run email-queue-once` se preferir um único worker. |
+
+Fluxos suportados na base de código: **recuperação de senha** (imediato), **confirmação de encomenda** após checkout (fila + retries). Novos tipos de e-mail devem usar `emailOutboxService.enqueueTransactionalEmail` com `dedupeKey` estável para idempotência.
+
 ---
 
 ## Vercel — frontend (Vite)

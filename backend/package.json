@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "create-admin": "tsx scripts/create-admin.ts",
-    "create-logistics": "tsx scripts/create-logistics.ts"
+    "create-logistics": "tsx scripts/create-logistics.ts",
+    "email-queue-once": "tsx scripts/runEmailQueueOnce.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

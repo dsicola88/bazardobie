@@ -20,6 +20,22 @@ async function bootstrap() {
         "[R2] Não usado (env incompleto ou R2_UPLOADS_ENABLED=0) — uploads em disco (UPLOAD_DIR)."
       );
     }
+
+    if (env.ENABLE_EMAIL_QUEUE_PROCESSOR) {
+      const runQueue = () => {
+        import("./services/emailOutbox.service.js")
+          .then((m) => m.emailOutboxService.processEmailQueueBatch())
+          .then((out) => {
+            if (out.sent > 0 || out.failed > 0) {
+              console.log("[email-queue]", out);
+            }
+          })
+          .catch((err) => console.error("[email-queue]", err));
+      };
+      runQueue();
+      setInterval(runQueue, 45_000);
+      console.log("[email-queue] Processador da fila activo (intervalo 45s).");
+    }
   });
 }
 

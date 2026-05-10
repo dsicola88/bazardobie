@@ -26,6 +26,7 @@ import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
 import { variantUnitPrice } from "../utils/variantPricing.js";
 import { mapOrderWithItemsMedia } from "../utils/publicMediaUrl.js";
+import { enqueueOrderConfirmationEmail } from "../emails/orderConfirmed.email.js";
 
 type Checkout = z.infer<typeof checkoutSchema>;
 
@@ -211,7 +212,7 @@ export const orderService = {
 
     const buyer = await prisma.user.findUnique({
       where: { id: userId },
-      select: { phone: true, email: true, municipalityId: true },
+      select: { phone: true, email: true, name: true, municipalityId: true },
     });
     const phoneOk = buyer?.phone?.trim() && buyer.phone.trim().length >= 6;
     if (!phoneOk) {
@@ -535,6 +536,19 @@ export const orderService = {
           })
           .catch(() => undefined);
       }
+    }
+
+    if (buyer?.email?.trim()) {
+      void enqueueOrderConfirmationEmail({
+        checkoutGroupId,
+        buyerEmail: buyer.email,
+        buyerName: buyer.name ?? "",
+        orders: createdOrders.map((o) => ({
+          orderCode: o.orderCode ?? o.id,
+          grandTotal: o.grandTotal.toString(),
+          shopNames: [...new Set(o.items.map((it) => it.shop.name))],
+        })),
+      }).catch((err) => console.error("[email] enqueue ORDER_CONFIRMED:", err));
     }
 
     return { checkoutGroupId, orders: createdOrders };

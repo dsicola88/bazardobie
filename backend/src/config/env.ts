@@ -31,6 +31,17 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS ?? "",
   SMTP_FROM: process.env.SMTP_FROM ?? "",
   SMTP_FROM_NAME: process.env.SMTP_FROM_NAME ?? "BAZAR DO BIE",
+  /** Resend (https://resend.com) — API simples; plano gratuito generoso; recomendado em produção. */
+  RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
+  /** Endereço remetente verificado no Resend (ex.: onboarding@resend.dev em dev ou no-reply@seudominio.com). */
+  RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL ?? "",
+  /**
+   * Processa fila `EmailOutbox` periodicamente no mesmo processo da API.
+   * Defina "false" se usar cron/script externo (`npm run email-queue-once`).
+   */
+  ENABLE_EMAIL_QUEUE_PROCESSOR: !["0", "false", "no"].includes(
+    (process.env.ENABLE_EMAIL_QUEUE_PROCESSOR ?? "true").toLowerCase()
+  ),
   /** Horas até libertação automática ao vendedor se o comprador não confirmar nem abrir disputa */
   ESCROW_AUTO_CONFIRM_HOURS: Math.max(
     1,
