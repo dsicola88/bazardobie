@@ -6081,6 +6081,9 @@ a:hover {
   margin-inline: auto;
   width: 100%;
 }
+.ae-cart-main {
+  min-width: 0;
+}
 @media (min-width: 980px) {
   .ae-cart-layout {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 348px);
@@ -6223,17 +6226,6 @@ a:hover {
   width: 100%;
   min-width: 0;
 }
-@media (min-width: 900px) {
-  .ae-cart-lines-wrap {
-    overflow-x: auto;
-    overflow-y: visible;
-    overscroll-behavior-x: contain;
-    padding-bottom: 2px;
-  }
-  .ae-cart-lines {
-    min-width: 922px;
-  }
-}
 .ae-cart-lines {
   border: 1px solid rgb(226 232 240 / 0.98);
   border-radius: var(--ae-radius-md);
@@ -6250,10 +6242,16 @@ a:hover {
 @media (min-width: 900px) {
   .ae-cart-lines__head {
     display: grid;
-    grid-template-columns: 152px minmax(180px, 1fr) 110px 158px 184px 54px;
-    gap: 14px 16px;
+    grid-template-columns:
+      minmax(100px, 148px)
+      minmax(0, 1fr)
+      minmax(88px, 112px)
+      minmax(124px, 164px)
+      minmax(104px, 148px)
+      minmax(3.25rem, max-content);
+    gap: 12px 14px;
     align-items: center;
-    padding: 11px 20px;
+    padding: 11px 16px;
     background: linear-gradient(180deg, #f8fafc, #f1f5f9);
     border-bottom: 1px solid rgb(226 232 240 / 0.98);
     font-size: 11px;
@@ -6308,11 +6306,39 @@ a:hover {
 }
 @media (min-width: 900px) {
   .ae-cart-line__grid {
-    grid-template-columns: 152px minmax(180px, 1fr) 110px 158px 184px 54px;
+    grid-template-columns:
+      minmax(100px, 148px)
+      minmax(0, 1fr)
+      minmax(88px, 112px)
+      minmax(124px, 164px)
+      minmax(104px, 148px)
+      minmax(3.25rem, max-content);
     grid-template-areas: "media detail unit qty sub actions";
     align-items: start;
-    padding: 20px 20px;
-    gap: 14px 16px;
+    padding: 18px 16px;
+    gap: 12px 14px;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1180px) {
+  .ae-cart-lines__head {
+    gap: 10px 12px;
+    padding-inline: 14px;
+  }
+  .ae-cart-line__grid {
+    gap: 10px 12px;
+    padding-inline: 14px;
+  }
+  .ae-cart-page .ae-qty-stepper__btn {
+    width: 34px;
+    min-height: 34px;
+    font-size: 16px;
+  }
+  .ae-page .ae-cart-page .ae-qty-stepper__input {
+    width: 40px !important;
+    min-width: 40px;
+    padding-inline: 2px !important;
+    font-size: 14px !important;
   }
 }
 
