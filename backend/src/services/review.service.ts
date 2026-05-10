@@ -52,6 +52,71 @@ export function mapEmbeddedReviewsForApi<T extends { reviews?: ReviewPublicRow[]
   };
 }
 
+async function aggregateShopReviewsSummary(shopId: string): Promise<{
+  total: number;
+  avgOverall: number | null;
+  revisaoPositivaPercent: number | null;
+  positivo: number;
+  neutro: number;
+  negativo: number;
+  porEstrela: { stars: number; count: number }[];
+  comFotos: number;
+  comTexto: number;
+}> {
+  const baseWhere: Prisma.ReviewWhereInput = { product: shopReviewProductWhere(shopId) };
+
+  const [rows, comFotos, comTexto] = await Promise.all([
+    prisma.review.groupBy({
+      by: ["rating"],
+      where: baseWhere,
+      _count: { _all: true },
+    }),
+    prisma.review.count({
+      where: {
+        ...baseWhere,
+        photoUrls: { isEmpty: false },
+      },
+    }),
+    prisma.review.count({
+      where: {
+        ...baseWhere,
+        comment: { not: null },
+        NOT: { comment: { equals: "" } },
+      },
+    }),
+  ]);
+
+  const byStar = new Map(rows.map((r) => [r.rating, r._count._all]));
+  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let total = 0;
+  let sumWeighted = 0;
+  for (let s = 1; s <= 5; s++) {
+    const c = byStar.get(s) ?? 0;
+    starCounts[s] = c;
+    total += c;
+    sumWeighted += s * c;
+  }
+  const positivo = (starCounts[4] ?? 0) + (starCounts[5] ?? 0);
+  const neutro = starCounts[3] ?? 0;
+  const negativo = (starCounts[1] ?? 0) + (starCounts[2] ?? 0);
+  const revisaoPositivaPercent =
+    total > 0 ? Math.min(100, Math.max(0, Math.round((100 * positivo) / total))) : null;
+  const avgOverall = total > 0 ? Math.round((sumWeighted / total) * 10) / 10 : null;
+  const porEstrela = [5, 4, 3, 2, 1].map((stars) => ({ stars, count: starCounts[stars] ?? 0 }));
+
+  return {
+    total,
+    avgOverall,
+    revisaoPositivaPercent,
+    positivo,
+    neutro,
+    negativo,
+    porEstrela,
+    comFotos,
+    comTexto,
+  };
+}
+
 export const reviewService = {
   async create(userId: string, input: CreateReview) {
     const order = await prisma.order.findFirst({
@@ -196,12 +261,18 @@ export const reviewService = {
       take?: number;
       sort?: ReviewSortKey;
       photosOnly?: boolean;
+      textOnly?: boolean;
+      rating?: number;
       viewerUserId?: string;
     } = {},
   ) {
     const skip = Math.max(0, opts.skip ?? 0);
     const take = Math.min(Math.max(1, opts.take ?? 50), 100);
     const sort: ReviewSortKey = opts.sort ?? "recent";
+    const ratingFilter =
+      opts.rating != null && Number.isInteger(opts.rating) && opts.rating >= 1 && opts.rating <= 5
+        ? opts.rating
+        : undefined;
 
     const productScope: Prisma.ReviewWhereInput = {
       product: shopReviewProductWhere(shopId),
@@ -210,6 +281,13 @@ export const reviewService = {
     const where: Prisma.ReviewWhereInput = {
       ...productScope,
       ...(opts.photosOnly ? { photoUrls: { isEmpty: false } } : {}),
+      ...(opts.textOnly
+        ? {
+            comment: { not: null },
+            NOT: { comment: { equals: "" } },
+          }
+        : {}),
+      ...(ratingFilter != null ? { rating: ratingFilter } : {}),
     };
 
     const orderBy: Prisma.ReviewOrderByWithRelationInput[] =
@@ -226,7 +304,8 @@ export const reviewService = {
       product: { select: { id: true, name: true } },
     } satisfies Prisma.ReviewInclude;
 
-    const [rawRows, total] = await Promise.all([
+    const [summary, rawRows, total] = await Promise.all([
+      aggregateShopReviewsSummary(shopId),
       prisma.review.findMany({
         where,
         orderBy,
@@ -260,12 +339,15 @@ export const reviewService = {
     });
 
     return {
+      summary,
       items,
       total,
       skip,
       take,
       sort,
       photosOnly: Boolean(opts.photosOnly),
+      textOnly: Boolean(opts.textOnly),
+      rating: ratingFilter,
     };
   },
 

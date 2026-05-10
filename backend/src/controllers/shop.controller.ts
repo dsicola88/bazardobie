@@ -31,12 +31,18 @@ export const shopController = {
         ? sortRaw
         : "recent";
     const photosOnly = req.query.photosOnly === "1" || req.query.photosOnly === "true";
+    const textOnly = req.query.textOnly === "1" || req.query.textOnly === "true";
+    const ratingRaw = Number(req.query.rating);
+    const rating =
+      Number.isInteger(ratingRaw) && ratingRaw >= 1 && ratingRaw <= 5 ? ratingRaw : undefined;
     const skip = Number(req.query.skip) || 0;
     const take = Number(req.query.take) || 50;
     const viewerUserId = req.user?.sub;
     const out = await reviewService.listForShop(req.params.id, {
       sort,
       photosOnly,
+      textOnly,
+      rating,
       skip,
       take,
       viewerUserId,
