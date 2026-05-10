@@ -45,6 +45,10 @@ const Login = lazy(() => import("./pages/Login.js"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.js"));
 const OAuthDonePage = lazy(() => import("./pages/OAuthDonePage.js"));
 const ProductPage = lazy(() => import("./pages/ProductPage.js"));
+const ShopPublicOutlet = lazy(() => import("./pages/ShopPublicOutlet.js"));
+const ShopPublicHome = lazy(() => import("./pages/ShopPublicHome.js"));
+const ShopPublicProducts = lazy(() => import("./pages/ShopPublicProducts.js"));
+const ShopPublicReviews = lazy(() => import("./pages/ShopPublicReviews.js"));
 const ShopPublicAboutPage = lazy(() => import("./pages/ShopPublicAboutPage.js"));
 const CartPage = lazy(() => import("./pages/CartPage.js"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage.js"));
@@ -168,7 +172,12 @@ export default function App() {
           <Route path="termos-parceiros" element={<TermsPartnersPage />} />
           <Route path="privacidade" element={<PrivacyPage />} />
           <Route path="product/:id" element={<ProductPage />} />
-          <Route path="loja/:shopId/sobre" element={<ShopPublicAboutPage />} />
+          <Route path="loja/:shopId" element={<ShopPublicOutlet />}>
+            <Route index element={<ShopPublicHome />} />
+            <Route path="produtos" element={<ShopPublicProducts />} />
+            <Route path="avaliacoes" element={<ShopPublicReviews />} />
+            <Route path="sobre" element={<ShopPublicAboutPage />} />
+          </Route>
           <Route path="cart" element={<CartPage />} />
           <Route path="favorites" element={<FavoritesPage />} />
           <Route path="checkout" element={<CheckoutPage />} />

@@ -5,6 +5,7 @@ import type { z } from "zod";
 import type { createReviewSchema } from "../validators/review.validators.js";
 import { Decimal } from "@prisma/client/runtime/library";
 import { publicMediaUrl } from "../utils/publicMediaUrl.js";
+import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 type CreateReview = z.infer<typeof createReviewSchema>;
 
@@ -14,6 +15,14 @@ const reviewPublicInclude = {
 } satisfies Prisma.ReviewInclude;
 
 export type ReviewPublicRow = Prisma.ReviewGetPayload<{ include: typeof reviewPublicInclude }>;
+
+const shopReviewProductWhere = (shopId: string): Prisma.ProductWhereInput => ({
+  shopId,
+  isActive: true,
+  moderationStatus: "APPROVED",
+  ...productPublicShelfExtras,
+  shop: { isApproved: true, tier1CompletedAt: { not: null } },
+});
 
 export type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
@@ -171,6 +180,87 @@ export const reviewService = {
 
     return {
       items: rows.map((r) => formatReviewPublicRow(r, viewerMarkedIds)),
+      total,
+      skip,
+      take,
+      sort,
+      photosOnly: Boolean(opts.photosOnly),
+    };
+  },
+
+  /** Opiniões públicas agregadas de todos os artigos visíveis da loja (mesmas regras do catálogo). */
+  async listForShop(
+    shopId: string,
+    opts: {
+      skip?: number;
+      take?: number;
+      sort?: ReviewSortKey;
+      photosOnly?: boolean;
+      viewerUserId?: string;
+    } = {},
+  ) {
+    const skip = Math.max(0, opts.skip ?? 0);
+    const take = Math.min(Math.max(1, opts.take ?? 50), 100);
+    const sort: ReviewSortKey = opts.sort ?? "recent";
+
+    const productScope: Prisma.ReviewWhereInput = {
+      product: shopReviewProductWhere(shopId),
+    };
+
+    const where: Prisma.ReviewWhereInput = {
+      ...productScope,
+      ...(opts.photosOnly ? { photoUrls: { isEmpty: false } } : {}),
+    };
+
+    const orderBy: Prisma.ReviewOrderByWithRelationInput[] =
+      sort === "helpful"
+        ? [{ helpfulMarks: { _count: "desc" } }, { createdAt: "desc" }]
+        : sort === "rating_desc"
+          ? [{ rating: "desc" }, { createdAt: "desc" }]
+          : sort === "rating_asc"
+            ? [{ rating: "asc" }, { createdAt: "desc" }]
+            : [{ createdAt: "desc" }];
+
+    const includeProduct = {
+      ...reviewPublicInclude,
+      product: { select: { id: true, name: true } },
+    } satisfies Prisma.ReviewInclude;
+
+    const [rawRows, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        include: includeProduct,
+      }),
+      prisma.review.count({ where }),
+    ]);
+
+    type Row = Prisma.ReviewGetPayload<{ include: typeof includeProduct }>;
+
+    let viewerMarkedIds: Set<string> | undefined;
+    if (opts.viewerUserId && rawRows.length > 0) {
+      const ids = rawRows.map((x) => x.id);
+      const marks = await prisma.reviewHelpful.findMany({
+        where: { userId: opts.viewerUserId, reviewId: { in: ids } },
+        select: { reviewId: true },
+      });
+      viewerMarkedIds = new Set(marks.map((m) => m.reviewId));
+    }
+
+    const items = (rawRows as Row[]).map((r) => {
+      const prod = r.product;
+      const { _count, product: _p, ...rest } = r;
+      const base = formatReviewPublicRow(rest as ReviewPublicRow, viewerMarkedIds);
+      return {
+        ...base,
+        product: { id: prod.id, name: prod.name },
+      };
+    });
+
+    return {
+      items,
       total,
       skip,
       take,

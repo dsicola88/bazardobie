@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useOutletContext, useParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { resolveMediaUrl } from "../utils/media.js";
@@ -30,6 +30,7 @@ type SobrePayload = {
       entrega: number | null;
     } | null;
     totalAvaliacoes: number;
+    revisaoPositivaPercent: number | null;
     vendasSemDisputaPercent: number | null;
     pedidosComDisputaEntregues: number;
     novoVendedor: boolean;
@@ -47,6 +48,8 @@ type SobrePayload = {
     fachadaParceiraUrl: string | null;
   };
 };
+
+type ShopOutletCtx = { storefrontShell?: boolean } | undefined;
 
 function formatMembroDesdePt(iso: string): string {
   try {
@@ -74,6 +77,7 @@ function ultimaActividadeLegivel(iso: string): string {
 
 export default function ShopPublicAboutPage() {
   const { shopId } = useParams();
+  const storefrontShell = Boolean(useOutletContext<ShopOutletCtx>()?.storefrontShell);
   const [data, setData] = useState<SobrePayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -131,13 +135,32 @@ export default function ShopPublicAboutPage() {
         <span>/</span>
         <Link to="/search">Catálogo</Link>
         <span>/</span>
-        <span>Sobre a loja</span>
+        {storefrontShell && shopId ? (
+          <>
+            <Link to={`/loja/${encodeURIComponent(shopId)}`}>{loja.name}</Link>
+            <span>/</span>
+          </>
+        ) : null}
+        <span>{storefrontShell ? "Confiança e detalhes" : "Sobre a loja"}</span>
       </div>
 
-      <header className="ae-shop-sobre-hero page-panel">
-        <div className="ae-shop-sobre-hero__main">
-          <div className="ae-shop-sobre-logo">{logo ? <img src={logo} alt="" /> : <span className="ae-shop-sobre-logo__ph" />}</div>
-          <div>
+      {storefrontShell ? (
+        <section className="page-panel ae-storefront-panel ae-storefront-about-intro">
+          <h2 className="ae-storefront-h2" style={{ marginTop: 0 }}>
+            Credibilidade, métricas e verificações
+          </h2>
+          <p className="ae-muted" style={{ margin: "6px 0 0", maxWidth: 720 }}>
+            Informação institucional da equipa <strong>BAZAR DO BIÉ</strong> sobre este parceiro — transparência sem expor dados
+            sensíveis.
+          </p>
+        </section>
+      ) : (
+        <header className="ae-shop-sobre-hero page-panel">
+          <div className="ae-shop-sobre-hero__main">
+            <div className="ae-shop-sobre-logo">
+              {logo ? <img src={logo} alt="" /> : <span className="ae-shop-sobre-logo__ph" />}
+            </div>
+            <div>
             <h1 className="ae-shop-sobre-title">{loja.name}</h1>
             <p className="ae-muted" style={{ margin: "4px 0 0" }}>
               {loja.city}, {loja.province} · Angola
@@ -178,7 +201,8 @@ export default function ShopPublicAboutPage() {
             </p>
           </div>
         </div>
-      </header>
+        </header>
+      )}
 
       <section className="page-panel ae-shop-sobre-metrics" aria-label="Métricas públicas">
         <h2 className="ae-shop-sobre-h2">Métricas e reputação</h2>
@@ -217,6 +241,12 @@ export default function ShopPublicAboutPage() {
                   <li>Entrega / logística: {metricas.avaliacaoAspectos.entrega}/5</li>
                 ) : null}
               </ul>
+            ) : null}
+            {metricas.revisaoPositivaPercent != null ? (
+              <p className="ae-muted" style={{ fontSize: 13, marginTop: 10 }}>
+                <strong>{metricas.revisaoPositivaPercent}%</strong> das opiniões com nota ≥4★ (de{" "}
+                {metricas.totalAvaliacoes.toLocaleString("pt-PT")} avaliações registadas nos produtos da loja).
+              </p>
             ) : null}
           </div>
           <div className="ae-shop-sobre-stat">

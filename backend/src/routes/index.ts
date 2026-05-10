@@ -92,6 +92,7 @@ r.get("/shipping-carriers", logisticsPartnerController.shippingCarriers);
 
 r.get("/shops", shopController.list);
 r.get("/shops/:id/sobre", shopController.publicSobre);
+r.get("/shops/:id/reviews", optionalAuth, shopController.publicReviews);
 r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);

@@ -44,3 +44,9 @@ export function formatReviewDatePt(iso: string | undefined | null): string {
   if (diffDays < 365) return `Há ${Math.floor(diffDays / 30)} meses · ${full}`;
   return full;
 }
+
+export function helpfulReviewSentence(count: number): string {
+  if (count <= 0) return "Ainda sem marcações «útil» por outros visitantes.";
+  if (count === 1) return "1 pessoa considerou esta opinião útil.";
+  return `${count.toLocaleString("pt-PT")} pessoas consideraram esta opinião útil.`;
+}

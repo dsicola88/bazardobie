@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { shopService } from "../services/shop.service.js";
+import { reviewService } from "../services/review.service.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import {
   shopCredibilityAdminSchema,
@@ -20,6 +21,27 @@ export const shopController = {
   publicSobre: asyncHandler(async (req, res) => {
     const payload = await shopService.getPublicSobre(req.params.id);
     res.json(payload);
+  }),
+
+  publicReviews: asyncHandler(async (req, res) => {
+    await shopService.getPublic(req.params.id);
+    const sortRaw = req.query.sort;
+    const sort =
+      sortRaw === "helpful" || sortRaw === "rating_desc" || sortRaw === "rating_asc" || sortRaw === "recent"
+        ? sortRaw
+        : "recent";
+    const photosOnly = req.query.photosOnly === "1" || req.query.photosOnly === "true";
+    const skip = Number(req.query.skip) || 0;
+    const take = Number(req.query.take) || 50;
+    const viewerUserId = req.user?.sub;
+    const out = await reviewService.listForShop(req.params.id, {
+      sort,
+      photosOnly,
+      skip,
+      take,
+      viewerUserId,
+    });
+    res.json(out);
   }),
 
   create: asyncHandler(async (req, res) => {

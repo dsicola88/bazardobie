@@ -20,6 +20,7 @@ import {
 import {
   formatReviewerDisplayName,
   formatReviewDatePt,
+  helpfulReviewSentence,
   reviewerAvatarInitials,
 } from "../utils/reviewDisplay.js";
 
@@ -228,12 +229,6 @@ function pdpMainAlt(productName: string, variant: Variant | null): string {
   const vl = variantDisplaySummary(variant);
   if (!vl || vl === n) return n;
   return `${n} — ${vl}`;
-}
-
-function helpfulReviewSentence(count: number): string {
-  if (count <= 0) return "Ainda sem marcações «útil» por outros visitantes.";
-  if (count === 1) return "1 pessoa considerou esta opinião útil.";
-  return `${count.toLocaleString("pt-PT")} pessoas consideraram esta opinião útil.`;
 }
 
 function PdpReviewsListSkeleton() {
@@ -1391,9 +1386,9 @@ export default function ProductPage() {
                           ) : null}
                           <Link
                             className="ae-linkbtn ae-pdp-rail-vendor__link"
-                            to={`/loja/${encodeURIComponent(product.shop.id)}/sobre`}
+                            to={`/loja/${encodeURIComponent(product.shop.id)}`}
                           >
-                            Ver perfil e avaliações da loja
+                            Ver página da loja
                           </Link>
                           {guarantees?.textoChips?.length ? (
                             <p className="ae-pdp-rail-trust-line">{guarantees.textoChips.join(" · ")}</p>

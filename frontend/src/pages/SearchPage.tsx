@@ -912,7 +912,7 @@ export default function SearchPage() {
           <div className="ae-shop-filter-banner page-panel">
             <p style={{ margin: 0, fontSize: 14 }}>
               <strong>Catálogo filtrado por loja:</strong> {shopLabel ?? "A carregar…"}{" "}
-              <Link to={`/loja/${encodeURIComponent(shopId)}/sobre`}>Perfil e confiança</Link>
+              <Link to={`/loja/${encodeURIComponent(shopId)}`}>Abrir página da loja</Link>
               {" · "}
               <Link to={buildSearchPath("/search", params, { shopId: null })}>Remover filtro</Link>
             </p>

@@ -345,6 +345,7 @@ export const shopService = {
       unidadesEntreguesAgg,
       revAgg,
       totalAvaliacoes,
+      avaliacoesRating4ou5,
       produtosActivos,
       soldCatalog,
       lastOrder,
@@ -369,6 +370,7 @@ export const shopService = {
         },
       }),
       prisma.review.count({ where: { product: { shopId } } }),
+      prisma.review.count({ where: { product: { shopId }, rating: { gte: 4 } } }),
       prisma.product.count({
         where: {
           shopId,
@@ -425,6 +427,11 @@ export const shopService = {
       pedidosEntregues < MIN_DELIVERED_ORDERS_FOR_SELLER_MATURITY ||
       totalAvaliacoes < MIN_REVIEWS_FOR_PUBLIC_STAR_AVG;
 
+    const revisaoPositivaPercent =
+      totalAvaliacoes > 0
+        ? Math.min(100, Math.max(0, Math.round((100 * avaliacoesRating4ou5) / totalAvaliacoes)))
+        : null;
+
     let reputacaoHintPt: string | null = null;
     if (novoVendedor) {
       reputacaoHintPt =
@@ -463,6 +470,7 @@ export const shopService = {
         novoVendedor,
         reputacaoHintPt,
         avaliacoesMinimoParaMediaPublica: MIN_REVIEWS_FOR_PUBLIC_STAR_AVG,
+        revisaoPositivaPercent,
         produtosActivos,
         vendasRegistadasCatalogo: soldCatalog._sum.soldCount ?? 0,
         ultimaActividadeEm: lastActivity.toISOString(),
