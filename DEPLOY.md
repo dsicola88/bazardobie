@@ -93,9 +93,15 @@ Para persistir ficheiros:
 
 ### Migrações
 
-**Automático em cada deploy / arranque:** o `Dockerfile` da API executa `npx prisma migrate deploy` antes de `node dist/server.js`. O script `npm start` no `backend/package.json` faz o mesmo, para qualquer hospedagem que invoque `start` após o build.
+**O que o `git push` faz:** apenas actualiza o repositório. **Não corre migrações** na base de dados.
 
-Não é necessário SSH nem comando manual à base, desde que o serviço suba com este contentor ou com `npm start` compilado. A primeira vez precisa da base vazia ou compatível com as migrações em `backend/prisma/migrations`.
+**Quando é automático:** se a API em produção arranca com o **`backend/Dockerfile`** (por exemplo Railway com imagem construída a partir deste ficheiro), o comando de arranque inclui `npx prisma migrate deploy` **antes** de `node dist/server.js`. Ou seja: cada **novo deploy** que subir um contentor com esse `CMD` aplica as migrações pendentes. Isso costuma estar ligado ao push só **indirectamente** (push → CI build → plataforma faz deploy → contentor inicia).
+
+**O `npm start` actual** em `backend/package.json` é só `node dist/server.js` — **não** inclui `migrate deploy`. Para migrações manuais ou servidores sem Docker, use `npx prisma migrate deploy` com `DATABASE_URL` correcto.
+
+O workflow **GitHub Actions** (`.github/workflows/ci.yml`) só corre `npm run build`; **não** aplica migrações na sua base de produção.
+
+A primeira vez precisa da base vazia ou compatível com as migrações em `backend/prisma/migrations`.
 
 ---
 
