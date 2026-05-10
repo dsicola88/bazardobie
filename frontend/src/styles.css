@@ -6024,6 +6024,23 @@ a:hover {
   color: inherit;
 }
 
+.ae-cart-page {
+  margin-inline: -16px;
+  padding-inline: 16px;
+  padding-block: 20px 44px;
+  margin-block-start: -8px;
+  background: linear-gradient(180deg, rgb(237 242 247) 0%, rgb(243 246 249) 28%, rgb(248 250 252) 100%);
+  border-radius: 0 0 var(--ae-radius-md) var(--ae-radius-md);
+  box-sizing: border-box;
+}
+@media (max-width: 480px) {
+  .ae-cart-page {
+    margin-inline: -12px;
+    padding-inline: 12px;
+    padding-block: 16px 36px;
+  }
+}
+
 .ae-cart-page .ae-checkout__title {
   margin-bottom: 8px;
   font-size: clamp(1.38rem, 2.4vw, 1.72rem);
@@ -6060,14 +6077,14 @@ a:hover {
   display: grid;
   gap: 24px;
   align-items: start;
-  max-width: 1140px;
+  max-width: 1220px;
   margin-inline: auto;
   width: 100%;
 }
 @media (min-width: 980px) {
   .ae-cart-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(288px, 320px);
-    gap: 28px 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 348px);
+    gap: 28px 36px;
   }
 }
 
@@ -6099,21 +6116,43 @@ a:hover {
   color: #374151;
 }
 .ae-cart-summary__total {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
-  color: #111827;
-  padding-top: 14px;
-  margin-top: 8px;
-  border-top: 1px solid #e5e7eb;
+  color: #0f172a;
+  padding-top: 16px;
+  margin-top: 10px;
+  border-top: 1px solid rgb(226 232 240);
   margin-bottom: 0;
 }
-.ae-cart-summary__note {
+.ae-cart-summary__trust {
+  list-style: none;
   margin: 14px 0 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
+  color: rgb(71 85 105);
+  background: rgb(248 250 252 / 0.92);
+  border-radius: 10px;
+  border: 1px solid rgb(226 232 240 / 0.95);
 }
-.ae-cart-summary__cta {
-  margin-top: 18px;
+.ae-cart-summary__trust li {
+  margin: 0;
+  padding-left: 18px;
+  position: relative;
+}
+.ae-cart-summary__trust li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--ae-red), var(--ae-deep));
+  opacity: 0.85;
 }
 .ae-cart-summary__btn {
   width: 100%;
@@ -6124,8 +6163,30 @@ a:hover {
   font-weight: 780;
   letter-spacing: -0.02em;
   padding-block: 14px;
+  padding-inline: 18px;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgb(230 46 4 / 0.22);
+  box-shadow: 0 2px 10px rgb(230 46 4 / 0.28);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
+}
+.ae-cart-summary .ae-cart-summary__btn:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 18px rgb(230 46 4 / 0.38);
+  transform: translateY(-1px);
+}
+.ae-cart-summary .ae-cart-summary__btn:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+.ae-cart-summary__note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ae-cart-summary__cta {
+  margin-top: 18px;
 }
 
 .ae-cart-summary__hint {
@@ -6139,6 +6200,14 @@ a:hover {
   text-align: center;
   font-size: 13px;
   color: var(--ae-dim);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+.ae-cart-summary__back:hover {
+  color: var(--ae-accent-nav);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .ae-cart-kz {
   font-variant-numeric: tabular-nums;
@@ -6158,7 +6227,10 @@ a:hover {
   border: 1px solid rgb(226 232 240 / 0.98);
   border-radius: var(--ae-radius-md);
   background: #fff;
-  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06), 0 8px 28px rgb(15 23 42 / 0.05);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.05),
+    0 8px 32px rgb(15 23 42 / 0.07),
+    0 0 0 1px rgb(255 255 255 / 0.8) inset;
   overflow: hidden;
 }
 .ae-cart-lines__head {
@@ -6192,6 +6264,15 @@ a:hover {
 
 .ae-cart-line {
   border-bottom: 1px solid rgb(241 245 249);
+  transition: background-color 0.16s ease;
+}
+.ae-cart-line:hover {
+  background-color: rgb(255 255 255 / 0.65);
+}
+@media (min-width: 900px) {
+  .ae-cart-line:hover {
+    background-color: rgb(248 250 252 / 0.9);
+  }
 }
 .ae-cart-line:last-child {
   border-bottom: none;
@@ -6529,9 +6610,15 @@ a:hover {
 .ae-qty-stepper__btn:hover:not(:disabled) {
   background: #e2e8f0;
 }
-.ae-qty-stepper__btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.ae-qty-stepper__btn:focus-visible {
+  outline: 2px solid var(--ae-accent-nav);
+  outline-offset: 0;
+  position: relative;
+  z-index: 1;
+}
+.ae-page .ae-qty-stepper__input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgb(47 111 235 / 0.35);
 }
 .ae-page .ae-qty-stepper__input {
   width: 48px !important;
