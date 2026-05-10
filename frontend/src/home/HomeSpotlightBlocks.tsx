@@ -84,7 +84,7 @@ function HomeSpotlightSection({ section }: { section: HomeSpotlightPublicSection
       <header className="ae-home-spotlight__masthead">
         <div className="ae-home-spotlight__titles">
           <p className="ae-home-spotlight__eyebrow" aria-hidden>
-            Destaque
+            Em destaque
           </p>
           <h2 id={`ae-spot-${section.slug}`}>{section.title}</h2>
           {section.subtitle ? <p className="ae-home-spotlight__dek">{section.subtitle}</p> : null}

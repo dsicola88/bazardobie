@@ -565,6 +565,46 @@ export default function SearchPage() {
     sort,
   ]);
 
+  /** Texto explicativo quando a lista filtrada está vazia (filtros restritivos ≠ erro do site). */
+  const searchEmptyStateHint = useMemo(() => {
+    const constraints: string[] = [];
+    if (q.trim()) constraints.push("termo de pesquisa");
+    if (categoryId && categoryLabel) constraints.push(`categoria «${categoryLabel}»`);
+    if (condition) constraints.push(`condição «${conditionShortLabel(condition)}»`);
+    const minP = parsePriceFilterInput(minPriceParam);
+    const maxP = parsePriceFilterInput(maxPriceParam);
+    if (minP != null || maxP != null) constraints.push("filtro de preço");
+    const mn = Number(minRating);
+    if (mn >= 1 && mn <= 5) constraints.push("avaliação mínima");
+    if (featured) constraints.push("só artigos em destaque");
+    if (onSale) constraints.push("só artigos em promoção");
+    if (shopId) constraints.push("uma loja específica");
+
+    let combo = "";
+    if (constraints.length === 1) combo = constraints[0];
+    else if (constraints.length === 2) combo = `${constraints[0]} e ${constraints[1]}`;
+    else if (constraints.length > 2)
+      combo = `${constraints.slice(0, -1).join(", ")} e ${constraints[constraints.length - 1]}`;
+
+    let s =
+      "É frequente não haver resultados quando os critérios são apertados: só contam artigos homologados que cumpram todos os filtros ao mesmo tempo.";
+    if (combo) s += ` Neste momento está a limitar por ${combo}.`;
+    s +=
+      " As «Sugestões para si» mais abaixo são recomendações paralelas — não aplicam automaticamente estes filtros. Experimente alargar preço ou condição, ou reformular o termo.";
+    return s;
+  }, [
+    q,
+    categoryId,
+    categoryLabel,
+    condition,
+    minPriceParam,
+    maxPriceParam,
+    minRating,
+    featured,
+    onSale,
+    shopId,
+  ]);
+
   const showLoadMore =
     !visualMode &&
     !catalogLoading &&
@@ -572,7 +612,8 @@ export default function SearchPage() {
     effectiveData.items.length > 0 &&
     effectiveData.items.length < effectiveData.total;
 
-  const [priceFloorResolved, priceCeilingResolved] = useMemo(() => {
+  /** Limites reais do catálogo (faceta sem intervalo de preço): usados para normalizar query ao aplicar o slider. */
+  const catalogPriceBounds = useMemo(() => {
     let pf =
       facet?.priceFloor != null && Number.isFinite(facet.priceFloor) ? Math.max(0, facet.priceFloor) : 0;
     let pt =
@@ -580,8 +621,24 @@ export default function SearchPage() {
         ? facet.priceCeiling
         : DEFAULT_PRICE_CEILING;
     if (pt < pf) [pf, pt] = [pt, pf];
-    return [pf, pt] as const;
+    return { pf, pt };
   }, [facet?.priceFloor, facet?.priceCeiling]);
+
+  /**
+   * Domínio do slider: inclui sempre os valores já committed na URL, para não clampar o máximo
+   * abaixo do chip (ex.: faceta USED até 185 k com maxPrice=5,6 M na URL) e evitar trilho degenerado
+   * (ceiling ≤ floor ou ceiling === 0).
+   */
+  const sliderPriceBounds = useMemo(() => {
+    const { pf, pt } = catalogPriceBounds;
+    const amin = parsePriceFilterInput(minPriceParam);
+    const amax = parsePriceFilterInput(maxPriceParam);
+    let sf = Math.min(pf, amin ?? pf);
+    sf = Math.max(0, sf);
+    let st = Math.max(pt, amax ?? pt, amin ?? pt);
+    if (st <= sf) st = sf + 1;
+    return { sf, st };
+  }, [catalogPriceBounds, minPriceParam, maxPriceParam]);
 
   const commitNumericPricesToUrl = useCallback(
     (rawMin?: number | null, rawMax?: number | null) => {
@@ -589,13 +646,7 @@ export default function SearchPage() {
       let lo = rawMin === undefined || rawMin === null ? undefined : rawMin;
       let hi = rawMax === undefined || rawMax === null ? undefined : rawMax;
 
-      let pf =
-        facet?.priceFloor != null && Number.isFinite(facet.priceFloor) ? Math.max(0, facet.priceFloor) : 0;
-      let pt =
-        facet?.priceCeiling != null && Number.isFinite(facet.priceCeiling)
-          ? facet.priceCeiling
-          : DEFAULT_PRICE_CEILING;
-      if (pt < pf) [pf, pt] = [pt, pf];
+      const { pf, pt } = catalogPriceBounds;
 
       if (lo != null && hi != null && lo > hi) [lo, hi] = [hi, lo];
 
@@ -611,7 +662,7 @@ export default function SearchPage() {
       else n.delete("maxPrice");
       setParams(n);
     },
-    [params, setParams, facet?.priceFloor, facet?.priceCeiling],
+    [params, setParams, catalogPriceBounds],
   );
 
   function applyPrice() {
@@ -787,8 +838,8 @@ export default function SearchPage() {
             </p>
             <SearchPriceRange
               disabled={visualMode}
-              floor={priceFloorResolved}
-              ceiling={priceCeilingResolved}
+              floor={sliderPriceBounds.sf}
+              ceiling={sliderPriceBounds.st}
               minPriceParam={minPriceParam}
               maxPriceParam={maxPriceParam}
               minDraft={minPrice}
@@ -890,7 +941,8 @@ export default function SearchPage() {
           <p className="ae-muted">A consultar o catálogo…</p>
         ) : effectiveData.items.length === 0 ? (
           <div className="page-panel ae-empty-center ae-search-empty">
-            Não foram encontradas referências com os critérios seleccionados. Ajuste filtros ou o termo de pesquisa.
+            <p className="ae-search-empty__lead">Não foram encontradas referências com os critérios seleccionados.</p>
+            <p className="ae-muted ae-search-empty__hint">{searchEmptyStateHint}</p>
           </div>
         ) : (
           <>

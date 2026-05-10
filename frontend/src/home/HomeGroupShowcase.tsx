@@ -23,8 +23,8 @@ function padUnit(n: number): string {
 }
 
 function defaultCtaLabel(slug: string): string {
-  if (slug === "SUPER_OFERTAS") return "Explorar selecção em destaque";
-  if (slug === "PRODUTOS_DESCONTO") return "Ver todas as promoções";
+  if (slug === "SUPER_OFERTAS") return "Ver coleção";
+  if (slug === "PRODUTOS_DESCONTO") return "Ver promoções";
   return "Ver mais";
 }
 

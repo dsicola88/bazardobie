@@ -67,20 +67,19 @@ export default function Home() {
   const featuredTitle = (content["public.home_featured_title"] ?? "").trim();
   const bestsellersTitle = (content["public.home_bestsellers_title"] ?? "").trim();
   const bestsellersHeading = bestsellersTitle || "Mais vendidos";
-  const featuredHeading = featuredTitle || "Em destaque na plataforma";
-  const catRailTitle = (content["public.home_category_rail_title"] ?? "").trim() || "Explore por categoria";
+  const featuredHeading = featuredTitle || "Em destaque";
+  const catRailTitle = (content["public.home_category_rail_title"] ?? "").trim() || "Comprar por categoria";
   const t1 = parseTrustCell(content["public.trust_strip_1"] ?? "");
   const t2 = parseTrustCell(content["public.trust_strip_2"] ?? "");
   const t3 = parseTrustCell(content["public.trust_strip_3"] ?? "");
   const t4 = parseTrustCell(content["public.trust_strip_4"] ?? "");
   const flashEnabled = parseSiteTruthy(content["public.home_flash_deals_enabled"], "true");
-  const flashTitle =
-    (content["public.home_flash_deals_title"] ?? "").trim() || "Ofertas do dia · preços rebaixados";
+  const flashTitle = (content["public.home_flash_deals_title"] ?? "").trim() || "Ofertas do dia";
   const flashSubtitle =
     (content["public.home_flash_deals_subtitle"] ?? "").trim() ||
-    "Artigos em promoção com preço clarificado em kwanzas. Oferta sujeita a stock.";
+    "Preços em kwanzas, com stock limitado. Veja e encomende com calma.";
   const flashEndAtRaw = (content["public.home_flash_deals_end_at"] ?? "").trim();
-  const flashCtaRaw = (content["public.home_flash_deals_cta"] ?? "").trim() || "Ver todas as promoções";
+  const flashCtaRaw = (content["public.home_flash_deals_cta"] ?? "").trim() || "Ver promoções";
   const flashExplore = resolveFlashExplore(content["public.home_flash_deals_link"] ?? "");
   const flashSurfaceStyle = useMemo((): CSSProperties => {
     const next: Record<string, string> = {};
@@ -128,7 +127,7 @@ export default function Home() {
   useSeo({
     title: "BAZAR DO BIÉ — Marketplace em Angola",
     description:
-      "Compre online em kwanzas angolanos com lojas parceiras verificadas, envio nacional e acompanhamento de encomendas.",
+      "Compre em kwanzas, com lojas de confiança, envio nacional e acompanhamento de encomendas.",
     canonicalPath: "/",
     jsonLd: {
       "@context": "https://schema.org",
@@ -272,24 +271,24 @@ export default function Home() {
     { title: string; dek: string; primaryCta: { label: string; to: string }; secondaryCta?: { label: string; to: string }; items: ProductCardData[] }
   > = {
     recent: {
-      title: "Novidades no catálogo",
-      dek: "Últimas referências públicas na plataforma.",
-      primaryCta: { label: "Ver catálogo completo", to: "/search?sort=recentes" },
-      secondaryCta: { label: "Só promoções", to: "/search?onSale=true&sort=preco_asc" },
+      title: "Novidades",
+      dek: "Artigos que acabaram de entrar.",
+      primaryCta: { label: "Ver tudo", to: "/search?sort=recentes" },
+      secondaryCta: { label: "Promoções", to: "/search?onSale=true&sort=preco_asc" },
       items: recent,
     },
     featured: {
       title: featuredHeading,
-      dek: "Selecção editorial da equipa e parceiros.",
-      primaryCta: { label: "Ver selecção completa", to: "/search?featured=true" },
-      secondaryCta: { label: "Poupar em promoções", to: "/search?onSale=true" },
+      dek: "Escolhidos para si na loja.",
+      primaryCta: { label: "Ver em destaque", to: "/search?featured=true" },
+      secondaryCta: { label: "Promoções", to: "/search?onSale=true" },
       items: featured,
     },
     top: {
       title: bestsellersHeading,
-      dek: "Referências com maior número de vendas registadas — confiança da comunidade.",
-      primaryCta: { label: "Ranking global", to: "/search?sort=mais_vendidos" },
-      secondaryCta: { label: "Ver novidades", to: "/search?sort=recentes" },
+      dek: "O que mais sai para outras pessoas.",
+      primaryCta: { label: "Ver ranking", to: "/search?sort=mais_vendidos" },
+      secondaryCta: { label: "Novidades", to: "/search?sort=recentes" },
       items: top,
     },
   };
@@ -350,34 +349,22 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="ae-shell ae-home-quick" aria-label="Atalhos de navegação do catálogo">
+      <section className="ae-shell ae-home-quick" aria-label="Atalhos rápidos">
         <nav className="ae-home-quick__track">
           <Link className="ae-home-quick__pill ae-home-quick__pill--accent" to="/search?sort=recentes">
-            Últimos lançamentos
+            Novidades
           </Link>
           <Link className="ae-home-quick__pill" to="/search?onSale=true&sort=preco_asc">
-            Ofertas e promoções
+            Promoções
           </Link>
           <Link className="ae-home-quick__pill" to="/search?featured=true">
-            Selecção editorial
+            Em destaque
           </Link>
           <Link className="ae-home-quick__pill" to="/search?sort=mais_vendidos">
-            Mais populares
+            Mais vendidos
           </Link>
         </nav>
       </section>
-
-      {pulseTags.length > 0 ? (
-        <section className="ae-shell ae-home-pulse" aria-label="Vantagens do marketplace">
-          <ul className="ae-home-pulse__list">
-            {pulseTags.map((tag, i) => (
-              <li key={`${i}-${tag}`}>{tag}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
 
       <section className="ae-shell ae-trust-shell ae-trust-shell--premium ae-home-trust-early">
         <div className="ae-trust-strip ae-trust-strip--premium">
@@ -400,44 +387,132 @@ export default function Home() {
         </div>
       </section>
 
-      {personalRecent !== null && personalRecent.length > 0 ? (
-        <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-recent-title">
-          <header className="ae-section__masthead">
-            <div className="ae-section__masthead-copy">
-              <h2 id="ae-home-recent-title">Continuar a explorar</h2>
-              <p className="ae-section__dek">Artigos que consultou recentemente neste dispositivo ou na sua conta.</p>
-            </div>
+      {roots.length > 0 ? (
+        <section
+          className="ae-shell ae-home-cats"
+          onMouseLeave={() => setMegaOpen(false)}
+          aria-label={catRailTitle}
+        >
+          <header className="ae-home-cats__masthead">
+            <h2 className="ae-home-cat-rail__title">{catRailTitle}</h2>
+            <span className="ae-home-cat-rail__kicker">Escolha uma área</span>
           </header>
-          <div className="ae-grid">
-            {personalRecent.map((p) => (
-              <ProductCard key={p.id} p={p} />
-            ))}
+          <div className="ae-home-cat-rail__viewport">
+            <div className="ae-home-cat-rail__track" role="list">
+              {roots.map((c) => (
+                <div
+                  key={c.id}
+                  role="listitem"
+                  className={`ae-home-cat-rail__cell ${activeRootId === c.id ? "ae-home-cat-rail__cell--on" : ""}`}
+                  onMouseEnter={() => {
+                    setActiveRootId(c.id);
+                    setMegaOpen(true);
+                  }}
+                  onFocus={() => {
+                    setActiveRootId(c.id);
+                    setMegaOpen(true);
+                  }}
+                >
+                  <Link
+                    to={`/search?categoryId=${c.id}`}
+                    className="ae-home-cat-rail__card"
+                    aria-label={`Categoria «${c.name}»`}
+                    onFocus={() => {
+                      setActiveRootId(c.id);
+                      setMegaOpen(true);
+                    }}
+                  >
+                    <span className="ae-home-cat-rail__img-shell">
+                      {c.imageUrl ? (
+                        <img
+                          src={resolveMediaUrl(c.imageUrl)}
+                          alt=""
+                          className="ae-home-cat-rail__img"
+                          loading="lazy"
+                          decoding="async"
+                          aria-hidden
+                        />
+                      ) : (
+                        <MediaPlaceholder variant="category" />
+                      )}
+                    </span>
+                    <span className="ae-home-cat-rail__label">{c.name}</span>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            role="region"
+            aria-live="polite"
+            aria-label="Subcategorias e sugestões"
+            className={`ae-home-mega ${megaOpen ? "ae-home-mega--open" : ""}`}
+          >
+            <div className="ae-home-mega__left">
+              <h3>{activeRoot?.name ?? "Categorias"}</h3>
+              {activeRoot?.imageUrl ? (
+                <div className="ae-home-mega__hero">
+                  <img
+                    src={resolveMediaUrl(activeRoot.imageUrl)}
+                    alt=""
+                    decoding="async"
+                    loading="lazy"
+                    aria-hidden
+                  />
+                </div>
+              ) : null}
+              <nav className="ae-home-mega__children" aria-label="Subcategorias">
+                {activeChildren.slice(0, 12).map((child) => (
+                  <Link key={child.id} to={`/search?categoryId=${child.id}`}>
+                    {child.name}
+                  </Link>
+                ))}
+                <Link className="ae-home-mega__children-all" to={activeRoot ? `/search?categoryId=${activeRoot.id}` : "/search"}>
+                  Ver tudo nesta categoria
+                </Link>
+              </nav>
+            </div>
+            <div className="ae-home-mega__right">
+              <h3>Populares nesta categoria</h3>
+              {megaLoading && !megaProducts[activeRootId] ? (
+                <div className="ae-home-mega__products ae-home-mega__products--skeleton">
+                  {Array.from({ length: 8 }).map((_, sx) => (
+                    <div key={sx} className="ae-skel ae-skel-mega-product" aria-hidden />
+                  ))}
+                </div>
+              ) : null}
+              {!megaLoading && (megaProducts[activeRootId]?.length ?? 0) === 0 ? (
+                <p className="ae-home-mega__state ae-home-mega__state--empty">Sem produtos de exemplo por agora.</p>
+              ) : null}
+              {!megaLoading && (megaProducts[activeRootId]?.length ?? 0) > 0 ? (
+                <div className="ae-home-mega__products">
+                  {(megaProducts[activeRootId] ?? []).slice(0, 8).map((p) => (
+                    <Link key={p.id} className="ae-home-mega__product" to={`/product/${p.id}`}>
+                      <span className="ae-home-mega__product-thumb">
+                        <img src={resolveMediaUrl(p.images?.[0]?.url)} alt="" loading="lazy" decoding="async" />
+                      </span>
+                      <span className="ae-home-mega__product-copy">{p.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
       ) : null}
 
-      {personalForYou !== null && personalForYou.length > 0 ? (
-        <section id="ae-home-foryou" className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-foryou-title">
-          <header className="ae-section__masthead">
-            <div className="ae-section__masthead-copy">
-              <h2 id="ae-home-foryou-title">Recomendado para si</h2>
-              <p className="ae-section__dek">
-                Combina histórico de navegação, favoritos, encomendas na plataforma e padrões reais de compra conjunta.
-              </p>
-            </div>
-            <div className="ae-section__masthead-actions">
-              <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
-                Ver mais populares
-              </Link>
-            </div>
-          </header>
-          <div className="ae-grid">
-            {personalForYou.map((p) => (
-              <ProductCard key={`foryou-${p.id}`} p={p} />
+      {pulseTags.length > 0 ? (
+        <section className="ae-shell ae-home-pulse" aria-label="Vantagens">
+          <ul className="ae-home-pulse__list">
+            {pulseTags.map((tag, i) => (
+              <li key={`${i}-${tag}`}>{tag}</li>
             ))}
-          </div>
+          </ul>
         </section>
       ) : null}
+
+      {homeGroupsLoaded ? <HomeSpotlightBlocks sections={homeSpotlights} /> : null}
 
       {flashEnabled ? (
         <section
@@ -449,7 +524,7 @@ export default function Home() {
           <div className="ae-home-flash__surface" style={flashSurfaceStyle}>
             <div className="ae-home-flash__hero">
               <div className="ae-home-flash__lead">
-                <p className="ae-home-flash__eyebrow">Ofertas do dia · marketplace nacional</p>
+                <p className="ae-home-flash__eyebrow">Ofertas do dia</p>
                 <h2 id="ae-home-flash-title" className="ae-home-flash__title">
                   {flashTitle}
                 </h2>
@@ -482,8 +557,7 @@ export default function Home() {
                     </div>
                   ) : (
                     <p className="ae-home-flash__timer-note">
-                      Esta janela de contagem terminou — as promoções do catálogo continuam activas para consulta e
-                      encomenda.
+                      Contagem terminada — as promoções no catálogo mantêm-se disponíveis.
                     </p>
                   )
                 ) : null}
@@ -512,9 +586,9 @@ export default function Home() {
                 </div>
               ) : (
                 <p className="ae-home-flash__rail-empty">
-                  Não há artigos públicos marcados como promoção neste momento — explore o{" "}
+                  Sem promoções activas neste momento —{" "}
                   <Link className="ae-home-flash__inline-link" to="/search?onSale=true">
-                    catálogo filtrado
+                    ver artigos em desconto
                   </Link>
                   .
                 </p>
@@ -525,117 +599,39 @@ export default function Home() {
         </section>
       ) : null}
 
-      {roots.length > 0 ? (
-        <section
-          className="ae-shell ae-home-cats"
-          onMouseLeave={() => setMegaOpen(false)}
-          aria-label={catRailTitle}
-        >
-          <header className="ae-home-cats__masthead">
-            <h2 className="ae-home-cat-rail__title">{catRailTitle}</h2>
-            <span className="ae-home-cat-rail__kicker">Seleccione uma categoria</span>
+      {personalRecent !== null && personalRecent.length > 0 ? (
+        <section className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-recent-title">
+          <header className="ae-section__masthead">
+            <div className="ae-section__masthead-copy">
+              <h2 id="ae-home-recent-title">Continuar a ver</h2>
+              <p className="ae-section__dek">Produtos que abriu recentemente.</p>
+            </div>
           </header>
-          <div className="ae-home-cat-rail__viewport">
-            <div className="ae-home-cat-rail__track" role="list">
-              {roots.map((c) => (
-                <div
-                  key={c.id}
-                  role="listitem"
-                  className={`ae-home-cat-rail__cell ${activeRootId === c.id ? "ae-home-cat-rail__cell--on" : ""}`}
-                  onMouseEnter={() => {
-                    setActiveRootId(c.id);
-                    setMegaOpen(true);
-                  }}
-                  onFocus={() => {
-                    setActiveRootId(c.id);
-                    setMegaOpen(true);
-                  }}
-                >
-                  <Link
-                    to={`/search?categoryId=${c.id}`}
-                    className="ae-home-cat-rail__card"
-                    aria-label={`Explorar categoria «${c.name}»`}
-                    onFocus={() => {
-                      setActiveRootId(c.id);
-                      setMegaOpen(true);
-                    }}
-                  >
-                    <span className="ae-home-cat-rail__img-shell">
-                      {c.imageUrl ? (
-                        <img
-                          src={resolveMediaUrl(c.imageUrl)}
-                          alt=""
-                          className="ae-home-cat-rail__img"
-                          loading="lazy"
-                          decoding="async"
-                          aria-hidden
-                        />
-                      ) : (
-                        <MediaPlaceholder variant="category" />
-                      )}
-                    </span>
-                    <span className="ae-home-cat-rail__label">{c.name}</span>
-                  </Link>
-                </div>
-              ))}
-            </div>
+          <div className="ae-grid">
+            {personalRecent.map((p) => (
+              <ProductCard key={p.id} p={p} />
+            ))}
           </div>
+        </section>
+      ) : null}
 
-          <div
-            role="region"
-            aria-live="polite"
-            aria-label="Subcategorias e exemplos da categoria sob o cursor"
-            className={`ae-home-mega ${megaOpen ? "ae-home-mega--open" : ""}`}
-          >
-            <div className="ae-home-mega__left">
-              <h3>{activeRoot?.name ?? "Categorias"}</h3>
-              {activeRoot?.imageUrl ? (
-                <div className="ae-home-mega__hero">
-                  <img
-                    src={resolveMediaUrl(activeRoot.imageUrl)}
-                    alt=""
-                    decoding="async"
-                    loading="lazy"
-                    aria-hidden
-                  />
-                </div>
-              ) : null}
-              <nav className="ae-home-mega__children" aria-label="Subcategorias">
-                {activeChildren.slice(0, 12).map((child) => (
-                  <Link key={child.id} to={`/search?categoryId=${child.id}`}>
-                    {child.name}
-                  </Link>
-                ))}
-                <Link className="ae-home-mega__children-all" to={activeRoot ? `/search?categoryId=${activeRoot.id}` : "/search"}>
-                  Ver tudo nesta categoria
-                </Link>
-              </nav>
+      {personalForYou !== null && personalForYou.length > 0 ? (
+        <section id="ae-home-foryou" className="ae-shell ae-section ae-section--catalog" aria-labelledby="ae-home-foryou-title">
+          <header className="ae-section__masthead">
+            <div className="ae-section__masthead-copy">
+              <h2 id="ae-home-foryou-title">Para si</h2>
+              <p className="ae-section__dek">Sugestões com base no que já viu ou pediu na loja.</p>
             </div>
-            <div className="ae-home-mega__right">
-              <h3>Produtos populares nesta área</h3>
-              {megaLoading && !megaProducts[activeRootId] ? (
-                <div className="ae-home-mega__products ae-home-mega__products--skeleton">
-                  {Array.from({ length: 8 }).map((_, sx) => (
-                    <div key={sx} className="ae-skel ae-skel-mega-product" aria-hidden />
-                  ))}
-                </div>
-              ) : null}
-              {!megaLoading && (megaProducts[activeRootId]?.length ?? 0) === 0 ? (
-                <p className="ae-home-mega__state ae-home-mega__state--empty">Sem exemplos públicos nesta categoria neste momento.</p>
-              ) : null}
-              {!megaLoading && (megaProducts[activeRootId]?.length ?? 0) > 0 ? (
-                <div className="ae-home-mega__products">
-                  {(megaProducts[activeRootId] ?? []).slice(0, 8).map((p) => (
-                    <Link key={p.id} className="ae-home-mega__product" to={`/product/${p.id}`}>
-                      <span className="ae-home-mega__product-thumb">
-                        <img src={resolveMediaUrl(p.images?.[0]?.url)} alt="" loading="lazy" decoding="async" />
-                      </span>
-                      <span className="ae-home-mega__product-copy">{p.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
+            <div className="ae-section__masthead-actions">
+              <Link className="ae-section__cta ae-section__cta--ghost" to="/search?sort=mais_vendidos">
+                Ver mais vendidos
+              </Link>
             </div>
+          </header>
+          <div className="ae-grid">
+            {personalForYou.map((p) => (
+              <ProductCard key={`foryou-${p.id}`} p={p} />
+            ))}
           </div>
         </section>
       ) : null}
@@ -666,9 +662,6 @@ export default function Home() {
               <section key={g.slug} className="ae-section ae-home-group-strip" style={groupStripSectionStyle}>
                 <div className="ae-home-group-strip__header">
                   <div className="ae-home-group-strip__titles">
-                    <p className="ae-home-group-strip__slug" aria-hidden>
-                      Curadoria
-                    </p>
                     <div className="ae-section__head ae-section__head--stack ae-section__head--group">
                       <h2>{g.title}</h2>
                       {g.subtitle ? (
@@ -706,7 +699,7 @@ export default function Home() {
           <header className="ae-section__masthead ae-home-discovery-hub__masthead">
             <div className="ae-section__masthead-copy">
               <p className="ae-home-discovery-hub__eyebrow" id="ae-home-discovery-eyebrow">
-                Explorar o catálogo
+                Catálogo
               </p>
               <h2 id="ae-home-discovery-title">{disc.title}</h2>
               <p className="ae-section__dek">{disc.dek}</p>
@@ -722,12 +715,12 @@ export default function Home() {
               ) : null}
             </div>
           </header>
-          <div className="ae-home-discovery-tabs" role="tablist" aria-label="Listagem do catálogo">
+          <div className="ae-home-discovery-tabs" role="tablist" aria-label="Tipo de listagem">
             {(
               [
                 { id: "recent" as const, label: "Novidades" },
-                { id: "featured" as const, label: "Destaque" },
-                { id: "top" as const, label: "Populares" },
+                { id: "featured" as const, label: "Em destaque" },
+                { id: "top" as const, label: "Mais vendidos" },
               ] as const
             ).map((tab) => (
               <button
@@ -753,8 +746,7 @@ export default function Home() {
               </div>
             ) : (
               <p className="ae-home-discovery-empty">
-                Sem artigos públicos nesta vista neste momento —{" "}
-                <Link to="/search">abra a pesquisa completa</Link> ou experimente outro separador acima.
+                Nada aqui por agora — <Link to="/search">abrir pesquisa</Link> ou mudar de separador.
               </p>
             )}
           </div>

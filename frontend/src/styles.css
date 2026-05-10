@@ -2171,7 +2171,7 @@ a:hover {
 .ae-home-cats {
   position: relative;
   margin-top: clamp(16px, 3vw, 22px);
-  margin-bottom: 8px;
+  margin-bottom: clamp(12px, 2.2vw, 18px);
   padding-bottom: 8px;
 }
 .ae-home-cats__masthead {
@@ -2549,7 +2549,7 @@ a:hover {
   margin-bottom: clamp(10px, 2vw, 18px);
 }
 
-/** Hub único: Novidades · Destaque · Populares */
+/** Hub: Novidades · Em destaque · Mais vendidos */
 .ae-home-discovery-hub {
   scroll-margin-top: 88px;
   margin-top: clamp(16px, 3vw, 26px);
@@ -3587,6 +3587,17 @@ a:hover {
 }
 .ae-search-empty {
   padding: 22px 16px;
+}
+.ae-search-empty__lead {
+  margin: 0 0 12px;
+  font-weight: 700;
+  color: var(--ae-text);
+}
+.ae-search-empty__hint {
+  margin: 0 auto;
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.55;
 }
 .ae-toolbar {
   background: var(--ae-card);
