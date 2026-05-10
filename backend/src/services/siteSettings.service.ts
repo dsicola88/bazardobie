@@ -259,7 +259,94 @@ export const SITE_SETTING_DEFS: Record<string, { label: string; defaultValue: st
     defaultValue: "500",
     hint: "500 = 5%, 1000 = 10%. Usado em relatórios e painel financeiro/admin.",
   },
+  "public.terms_partners_doc_ref": {
+    label: "Termos parceiros — linha «Referência» (documento público)",
+    defaultValue: "",
+    hint:
+      'Vazio = texto por defeito (ex.: "Maio de 2026"). Aparece no cabeçalho imprimível de /termos-parceiros.',
+  },
+  "public.terms_partners_footer_note": {
+    label: "Termos parceiros — rodapé do documento",
+    defaultValue: "",
+    hint:
+      "Vazio = texto por defeito. Disponível apenas em texto corrido ou listas (- item por linha, blocos separados por linha em branco).",
+  },
+  "public.terms_partners_s01": {
+    label: 'Termos parceiros — secção «1. Âmbito e natureza»',
+    defaultValue: "",
+    hint:
+      "Vazio = texto jurídico por defeito. Opcional primeira linha # Título. Parágrafos separados por linha em blanco; listas com cada linha - item.",
+  },
+  "public.terms_partners_s02": {
+    label: 'Termos parceiros — secção «2. Adesão e conta»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação. Formato igual à secção anterior.",
+  },
+  "public.terms_partners_s03": {
+    label: 'Termos parceiros — secção «3. Comissão»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s04": {
+    label: 'Termos parceiros — secção «4. Envio e rastreamento»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s05": {
+    label: 'Termos parceiros — secção «5. Escrow e disputas»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s06": {
+    label: 'Termos parceiros — secção «6. Credibilização»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s07": {
+    label: 'Termos parceiros — secção «7. Obrigações»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s08": {
+    label: 'Termos parceiros — secção «8. Suspensão»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s09": {
+    label: 'Termos parceiros — secção «9. Dados pessoais»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s10": {
+    label: 'Termos parceiros — secção «10. Alterações»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
+  "public.terms_partners_s11": {
+    label: 'Termos parceiros — secção «11. Contacto»',
+    defaultValue: "",
+    hint: "Vazio = defeito da aplicação.",
+  },
 };
+
+/** Chaves só deste documento legal (painel próprio ADMIN + SUPORTE). */
+export const PARTNER_TERMS_SITE_KEYS = [
+  "public.terms_partners_doc_ref",
+  "public.terms_partners_footer_note",
+  "public.terms_partners_s01",
+  "public.terms_partners_s02",
+  "public.terms_partners_s03",
+  "public.terms_partners_s04",
+  "public.terms_partners_s05",
+  "public.terms_partners_s06",
+  "public.terms_partners_s07",
+  "public.terms_partners_s08",
+  "public.terms_partners_s09",
+  "public.terms_partners_s10",
+  "public.terms_partners_s11",
+] as const;
+
+const PARTNER_TERMS_SITE_KEY_SET = new Set<string>(PARTNER_TERMS_SITE_KEYS);
 
 const ALLOWED_KEYS = new Set(Object.keys(SITE_SETTING_DEFS));
 
@@ -353,6 +440,53 @@ export const siteSettingsService = {
         hint: def.hint,
       }));
     }
+  },
+
+  async listPartnerTermsForAdmin() {
+    const keys = [...PARTNER_TERMS_SITE_KEYS];
+    try {
+      const rows = await prisma.siteSetting.findMany({ where: { key: { in: keys } } });
+      const rowMap = new Map(rows.map((r) => [r.key, r.value]));
+      return keys.map((key) => {
+        const def = SITE_SETTING_DEFS[key];
+        const value = rowMap.get(key);
+        return {
+          key,
+          label: def.label,
+          hint: def.hint,
+          value: value ?? def.defaultValue,
+          defaultValue: def.defaultValue,
+        };
+      });
+    } catch (e) {
+      warnSiteSettingRead("listPartnerTermsForAdmin", e);
+      return keys.map((key) => {
+        const def = SITE_SETTING_DEFS[key];
+        return {
+          key,
+          label: def.label,
+          hint: def.hint,
+          value: def.defaultValue,
+          defaultValue: def.defaultValue,
+        };
+      });
+    }
+  },
+
+  async upsertPartnerTerms(pairs: Record<string, string>) {
+    const maxLen = 80_000;
+    const filtered: Record<string, string> = {};
+    for (const [key, raw] of Object.entries(pairs)) {
+      if (!PARTNER_TERMS_SITE_KEY_SET.has(key)) continue;
+      if (typeof raw !== "string") continue;
+      if (raw.length > maxLen) {
+        throw new HttpError(400, `Campo "${key}" excede o limite (${maxLen} caracteres).`, {
+          code: "PARTNER_TERMS_TOO_LONG",
+        });
+      }
+      filtered[key] = raw;
+    }
+    return this.upsertMany(filtered);
   },
 
   async upsertMany(pairs: Record<string, string>) {

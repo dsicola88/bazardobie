@@ -28,6 +28,7 @@ const AdminLayout = lazy(() => import("./admin/AdminLayout.js"));
 const AdminLogisticsPartners = lazy(() => import("./admin/AdminLogisticsPartners.js"));
 const AdminOrderDetail = lazy(() => import("./admin/AdminOrderDetail.js"));
 const AdminOrders = lazy(() => import("./admin/AdminOrders.js"));
+const AdminPartnerTerms = lazy(() => import("./admin/AdminPartnerTerms.js"));
 const AdminProducts = lazy(() => import("./admin/AdminProducts.js"));
 const AdminSellers = lazy(() => import("./admin/AdminSellers.js"));
 const AdminTeam = lazy(() => import("./admin/AdminTeam.js"));
@@ -147,6 +148,7 @@ export default function App() {
             }
           />
           <Route path="homepage-groups" element={<AdminHomeGroups />} />
+          <Route path="partner-terms" element={<AdminPartnerTerms />} />
         </Route>
 
         <Route path="/unauthorized" element={<UnauthorizedPage />} />

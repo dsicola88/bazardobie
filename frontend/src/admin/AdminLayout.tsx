@@ -120,6 +120,9 @@ export default function AdminLayout() {
               Configurações
             </NavLink>
           ) : null}
+          <NavLink to="/admin/partner-terms" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            Termos do parceiro
+          </NavLink>
           <a href={helpChannelHref} target="_blank" rel="noreferrer noopener">
             Canal de ajuda (vídeos)
           </a>

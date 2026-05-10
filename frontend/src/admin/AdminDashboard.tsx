@@ -490,6 +490,8 @@ export default function AdminDashboard() {
           ) : null}
           {" · "}
           <Link to="/admin/orders">Encomendas</Link>
+          {" · "}
+          <Link to="/admin/partner-terms">Termos parceiros</Link>
           {fullAdmin ? (
             <>
               {" · "}

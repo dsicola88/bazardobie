@@ -54,6 +54,19 @@ export const SITE_CONTENT_DEFAULTS: Record<string, string> = {
   "public.vendor_help_channel_url": "",
   "public.checkout_transfer_instructions":
     "Transfira o montante total do pedido para a conta que a loja ou o suporte BAZAR DO BIÉ lhe indicar (confirme sempre os dados por canal oficial).\n\nDepois de efectuar a transferência, guarde o comprovativo (PDF ou foto), coloque-o num serviço acessível por HTTPS (drive, etc.) e cole o link no campo «Link do comprovativo».",
+  "public.terms_partners_doc_ref": "",
+  "public.terms_partners_footer_note": "",
+  "public.terms_partners_s01": "",
+  "public.terms_partners_s02": "",
+  "public.terms_partners_s03": "",
+  "public.terms_partners_s04": "",
+  "public.terms_partners_s05": "",
+  "public.terms_partners_s06": "",
+  "public.terms_partners_s07": "",
+  "public.terms_partners_s08": "",
+  "public.terms_partners_s09": "",
+  "public.terms_partners_s10": "",
+  "public.terms_partners_s11": "",
 };
 
 export function mergeSiteContent(api: Record<string, string>): Record<string, string> {

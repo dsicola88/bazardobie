@@ -12,6 +12,7 @@ import { paymentController } from "../controllers/payment.controller.js";
 import { favoriteController, reviewController } from "../controllers/reviewFavorite.controller.js";
 import { catalogController } from "../controllers/catalog.controller.js";
 import { siteSettingsController } from "../controllers/siteSettings.controller.js";
+import { partnerTermsController } from "../controllers/partnerTerms.controller.js";
 import { adminController } from "../controllers/admin.controller.js";
 import { uploadController } from "../controllers/upload.controller.js";
 import { disputeController } from "../controllers/dispute.controller.js";
@@ -261,6 +262,9 @@ admin.post("/banners", requirePlatformAdmin, catalogController.createBanner);
 admin.get("/banners", requirePlatformAdmin, catalogController.bannersAdmin);
 admin.patch("/banners/:id", requirePlatformAdmin, catalogController.patchBanner);
 admin.delete("/banners/:id", requirePlatformAdmin, catalogController.deleteBanner);
+
+admin.get("/partner-terms", partnerTermsController.listForAdmin);
+admin.put("/partner-terms", partnerTermsController.upsertForAdmin);
 
 admin.get("/site-settings", requirePlatformAdmin, siteSettingsController.adminList);
 admin.put("/site-settings", requirePlatformAdmin, siteSettingsController.adminPutBulk);
