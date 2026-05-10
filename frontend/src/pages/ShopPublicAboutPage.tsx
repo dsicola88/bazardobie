@@ -14,6 +14,8 @@ type SobrePayload = {
     province: string;
     city: string;
     logoUrl?: string | null;
+    /** ISO — registo na plataforma */
+    membroDesde?: string;
   };
   sinais: { id: string; label: string; ok: boolean }[];
   metricas: {
@@ -45,6 +47,18 @@ type SobrePayload = {
     fachadaParceiraUrl: string | null;
   };
 };
+
+function formatMembroDesdePt(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("pt-AO", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(iso));
+  } catch {
+    return "";
+  }
+}
 
 function ultimaActividadeLegivel(iso: string): string {
   const d = new Date(iso);
@@ -128,6 +142,11 @@ export default function ShopPublicAboutPage() {
             <p className="ae-muted" style={{ margin: "4px 0 0" }}>
               {loja.city}, {loja.province} · Angola
             </p>
+            {loja.membroDesde ? (
+              <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
+                Na plataforma desde {formatMembroDesdePt(loja.membroDesde)}
+              </p>
+            ) : null}
             <div className="ae-shop-sobre-badges" style={{ marginTop: 12 }}>
               {resumoReputacao.seloPremium ? (
                 <span className="ae-buybox__chip ae-buybox__chip--premium">Parceiro premium</span>

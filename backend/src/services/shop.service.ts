@@ -440,7 +440,11 @@ export const shopService = {
       ),
     );
 
-    const loja = lojaPaginaPublica(shop);
+    const loja = {
+      ...lojaPaginaPublica(shop),
+      /** Data de registo da loja na plataforma (para «Na plataforma desde» na PDP). */
+      membroDesde: shop.createdAt.toISOString(),
+    };
     const cred = loja.credibilidade;
 
     return {

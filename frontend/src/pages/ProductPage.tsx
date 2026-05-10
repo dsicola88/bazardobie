@@ -45,6 +45,27 @@ type Delivery = {
   logisticsPartner?: { id: string; name: string } | null;
 };
 
+/** Resposta de `/shops/:id/sobre` — apenas campos usados no cartão inline da PDP. */
+type ShopSobreForPdp = {
+  loja: {
+    id: string;
+    name: string;
+    province: string;
+    city: string;
+    logoUrl?: string | null;
+    membroDesde?: string;
+  };
+  metricas: {
+    avaliacaoAspectos: {
+      produto: number | null;
+      comunicacao: number | null;
+      entrega: number | null;
+    } | null;
+    totalAvaliacoes: number;
+    avaliacaoMedia: number | null;
+  };
+};
+
 type ProductDetail = {
   id: string;
   name: string;
@@ -110,6 +131,18 @@ type PdpReviewItem = ProductDetail["reviews"][number];
 type Tab = "overview" | "reviews" | "ship";
 
 const PDP_REVIEWS_PAGE_SIZE = 20;
+
+function formatShopMemberSincePt(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("pt-AO", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(iso));
+  } catch {
+    return "";
+  }
+}
 
 /** Barras compactas estilo AliExpress (descrição, comunicação, envio). */
 function PdpReviewAspectBars(props: {
@@ -294,6 +327,9 @@ export default function ProductPage() {
   }>({ loading: false, loadingMore: false, items: [], total: 0, error: null });
   const [helpfulBusyId, setHelpfulBusyId] = useState<string | null>(null);
   const [reviewPhotoLb, setReviewPhotoLb] = useState<null | { urls: string[]; index: number }>(null);
+  const [shopSobre, setShopSobre] = useState<ShopSobreForPdp | null>(null);
+  const [shopSobreLoading, setShopSobreLoading] = useState(false);
+  const [shopSobreFailed, setShopSobreFailed] = useState(false);
   const pdpReviewsRef = useRef(pdpReviews);
   pdpReviewsRef.current = pdpReviews;
   const mainSwipeRef = useRef<{ x: number; y: number } | null>(null);
@@ -314,6 +350,39 @@ export default function ProductPage() {
       })
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "Referência indisponível."));
   }, [id]);
+
+  useEffect(() => {
+    const shopId = product?.shop?.id;
+    if (!shopId) {
+      setShopSobre(null);
+      setShopSobreLoading(false);
+      setShopSobreFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setShopSobre(null);
+    setShopSobreFailed(false);
+    setShopSobreLoading(true);
+    void apiFetch<ShopSobreForPdp>(`/shops/${encodeURIComponent(shopId)}/sobre`)
+      .then((r) => {
+        if (!cancelled) {
+          setShopSobre(r);
+          setShopSobreFailed(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setShopSobre(null);
+          setShopSobreFailed(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setShopSobreLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.shop?.id]);
 
   useEffect(() => {
     setReviewSort("recent");
@@ -1121,26 +1190,124 @@ export default function ProductPage() {
             </div>
 
             {product.shop ? (
-              <p className="ae-muted" style={{ fontSize: 12 }}>
-                Loja parceira: <strong>{product.shop.name}</strong>
-                {product.shop.id ? (
-                  <>
-                    {" · "}
-                    <Link to={`/loja/${product.shop.id}/sobre`} className="ae-linkbtn" style={{ fontSize: "inherit" }}>
-                      Sobre a loja
-                    </Link>
-                  </>
-                ) : null}
+              <section className="ae-pdp-shop-card" aria-labelledby="ae-pdp-shop-heading">
+                <h3 id="ae-pdp-shop-heading" className="ae-pdp-shop-card__kicker">
+                  Vendido por
+                </h3>
+                <div className="ae-pdp-shop-card__grid">
+                  <div className="ae-pdp-shop-card__col ae-pdp-shop-card__col--info">
+                    <div className="ae-pdp-shop-card__head">
+                      {(() => {
+                        const rawLogo = (shopSobre?.loja.logoUrl ?? product.shop.logoUrl) ?? "";
+                        const logoSrc = rawLogo.trim() ? resolveMediaUrl(rawLogo) : "";
+                        return logoSrc.trim() ? (
+                          <img
+                            className="ae-pdp-shop-card__logo"
+                            src={logoSrc}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : null;
+                      })()}
+                      <div className="ae-pdp-shop-card__info-text">
+                        <p className="ae-pdp-shop-card__name">{product.shop.name}</p>
+                        <dl className="ae-pdp-shop-card__dl">
+                          <div className="ae-pdp-shop-card__dl-row">
+                            <dt>Ref. da loja</dt>
+                            <dd title={product.shop.id} className="ae-pdp-shop-card__id">
+                              {product.shop.id}
+                            </dd>
+                          </div>
+                          <div className="ae-pdp-shop-card__dl-row">
+                            <dt>Localização</dt>
+                            <dd>
+                              {product.shop.city}, {product.shop.province}
+                            </dd>
+                          </div>
+                          {shopSobre?.loja.membroDesde ? (
+                            <div className="ae-pdp-shop-card__dl-row">
+                              <dt>Na plataforma desde</dt>
+                              <dd>{formatShopMemberSincePt(shopSobre.loja.membroDesde)}</dd>
+                            </div>
+                          ) : shopSobreLoading ? (
+                            <div className="ae-pdp-shop-card__dl-row">
+                              <dt>Na plataforma desde</dt>
+                              <dd className="ae-muted">…</dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      </div>
+                    </div>
+                    {product.shop.id ? (
+                      <p className="ae-pdp-shop-card__more">
+                        <Link to={`/loja/${product.shop.id}/sobre`} className="ae-linkbtn">
+                          Informações completas da loja
+                        </Link>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="ae-pdp-shop-card__col ae-pdp-shop-card__col--ratings">
+                    <h4 className="ae-pdp-shop-card__subhead">Avaliações do vendedor</h4>
+                    {shopSobreLoading ? (
+                      <p className="ae-muted ae-pdp-shop-card__hint">A carregar métricas…</p>
+                    ) : shopSobreFailed ? (
+                      <p className="ae-muted ae-pdp-shop-card__hint">
+                        Não foi possível carregar as médias agregadas da loja. Utilize o link acima para a página «Sobre».
+                      </p>
+                    ) : shopSobre && shopSobre.metricas.totalAvaliacoes > 0 ? (
+                      <>
+                        <p className="ae-pdp-shop-card__hint">
+                          Com base em {shopSobre.metricas.totalAvaliacoes.toLocaleString("pt-PT")}{" "}
+                          {shopSobre.metricas.totalAvaliacoes === 1
+                            ? "avaliação verificada"
+                            : "avaliações verificadas"}{" "}
+                          em toda a loja (não só neste artigo).
+                        </p>
+                        {shopSobre.metricas.avaliacaoAspectos ? (
+                          <ul className="ae-pdp-shop-card__aspects">
+                            <li>
+                              <span className="ae-pdp-shop-card__aspect-label">Produto conforme descrito</span>
+                              <strong className="ae-pdp-shop-card__aspect-val">
+                                {shopSobre.metricas.avaliacaoAspectos.produto != null
+                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.produto)
+                                  : "—"}
+                              </strong>
+                            </li>
+                            <li>
+                              <span className="ae-pdp-shop-card__aspect-label">Comunicação</span>
+                              <strong className="ae-pdp-shop-card__aspect-val">
+                                {shopSobre.metricas.avaliacaoAspectos.comunicacao != null
+                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.comunicacao)
+                                  : "—"}
+                              </strong>
+                            </li>
+                            <li>
+                              <span className="ae-pdp-shop-card__aspect-label">Velocidade de entrega</span>
+                              <strong className="ae-pdp-shop-card__aspect-val">
+                                {shopSobre.metricas.avaliacaoAspectos.entrega != null
+                                  ? formatRating(shopSobre.metricas.avaliacaoAspectos.entrega)
+                                  : "—"}
+                              </strong>
+                            </li>
+                          </ul>
+                        ) : (
+                          <p className="ae-muted ae-pdp-shop-card__hint">
+                            As médias por aspecto são publicadas após um volume mínimo de avaliações na loja.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="ae-muted ae-pdp-shop-card__hint">
+                        Esta loja ainda não tem avaliações públicas suficientes para médias agregadas.
+                      </p>
+                    )}
+                  </div>
+                </div>
                 {guarantees?.textoChips?.length ? (
-                  <span className="ae-pdp-trust-inline" title={guarantees.textoChips.join(" ")}>
-                    {" "}
-                    · {guarantees.textoChips[0]}
-                    {guarantees.textoChips.length > 1 ? " (+info na visão geral)" : ""}
-                  </span>
+                  <p className="ae-pdp-shop-card__guarantees ae-muted">{guarantees.textoChips.join(" · ")}</p>
                 ) : null}
-                {" · "}
-                {product.shop.city}, {product.shop.province}
-              </p>
+              </section>
             ) : null}
 
             {needVariant ? (
@@ -1439,7 +1606,7 @@ export default function ProductPage() {
                 <header className="ae-pdp-reviews-page-head">
                   <h2 className="ae-pdp-reviews-page-head__title">Opiniões de clientes</h2>
                   <p className="ae-pdp-reviews-page-head__sub ae-muted">
-                    Classificações verificadas · conta na plataforma · compra concluída e entregue
+                    Só clientes com encomenda deste artigo no estado «Entregue» podem publicar opinião verificada.
                   </p>
                 </header>
                 <div className="ae-pdp-reviews-hero">
@@ -1467,23 +1634,17 @@ export default function ProductPage() {
                         <span className="ae-pdp-reviews-hero__pending">—</span>
                         <p className="ae-pdp-reviews-hero__pending-copy ae-muted">
                           {product.ratingTrustHintPt ??
-                            "A média global só é mostrada depois de um número mínimo de opiniões verificadas — protege compradores contra médias pouco representativas."}
+                            "Média global oculta até volume mínimo de opiniões verificadas."}
                         </p>
                         <p className="ae-pdp-reviews-hero__meta ae-muted">
-                          Já existem{" "}
                           <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
-                          {product.reviewCount === 1 ? "opinião publicada" : "opiniões publicadas"} — histograma à direita
-                          reflecte todas.
+                          {product.reviewCount === 1 ? "opinião verificada" : "opiniões verificadas"}
                         </p>
                       </>
                     )}
-                    <p className="ae-pdp-reviews-hero__verified">
-                      Inclui apenas clientes com pedido entregue neste artigo. Fotos e texto são da experiência real de
-                      compra.
-                    </p>
                   </div>
                   <div className="ae-pdp-reviews-bars-wrap">
-                    <p className="ae-pdp-reviews-bars-caption">Histograma global · por número de estrelas</p>
+                    <p className="ae-pdp-reviews-bars-caption">Distribuição por estrelas</p>
                     <div className="ae-pdp-reviews-bars" role="list" aria-label="Distribuição das opiniões por estrelas">
                       {[5, 4, 3, 2, 1].map((star) => {
                         const idx = 5 - star;
