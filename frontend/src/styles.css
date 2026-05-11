@@ -6277,6 +6277,35 @@ a:hover {
   gap: 10px;
   margin: 12px 0 16px;
 }
+.ae-buybox__marketplace {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--ae-radius-card, 10px);
+  border: 1px solid rgb(203 213 225 / 0.85);
+  background: linear-gradient(165deg, #f8fafc 0%, #ffffff 55%);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+.ae-buybox__marketplace-store {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ae-accent-nav, #2563eb);
+  text-decoration: none;
+}
+.ae-buybox__marketplace-store:hover {
+  text-decoration: underline;
+}
+.ae-buybox__marketplace-name {
+  font-weight: 800;
+  color: #0f172a;
+}
+.ae-buybox__marketplace-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #475569;
+}
 .ae-buybox__chip {
   font-size: 12px;
   font-weight: 600;
@@ -7600,6 +7629,7 @@ a:hover {
   letter-spacing: -0.015em;
   color: #1e293b;
   line-height: 1.35;
+  word-break: break-word;
   background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
   border: 1px solid rgb(226 232 240 / 0.98);
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);

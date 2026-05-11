@@ -7,7 +7,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { CartThumbWithZoom } from "../components/CartThumbWithZoom.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
-import { variantDisplaySummary } from "../utils/variantDisplay.js";
+import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
 
 type CartItem = {
   id: string;
@@ -51,8 +51,10 @@ function cartLineUnitPrice(item: CartItem): number {
   return variantEffectiveUnitKz(productForPrice, item.variant ?? null);
 }
 
-function cartVariantLine(variant: NonNullable<CartItem["variant"]>): string {
-  return variantDisplaySummary(variant);
+function cartVariantLine(item: CartItem): string {
+  const v = item.variant;
+  if (!v) return "";
+  return variantDisplayBuyerLine(v, item.product.name);
 }
 
 export default function CartPage() {
@@ -346,7 +348,7 @@ export default function CartPage() {
                           {item.variant ? (
                             <div className="ae-cart-line__variant">
                               <span className="ae-cart-line__variant-kicker">Variante</span>
-                              <span className="ae-cart-line__variant-val">{cartVariantLine(item.variant)}</span>
+                              <span className="ae-cart-line__variant-val">{cartVariantLine(item)}</span>
                             </div>
                           ) : null}
                           <div className="ae-cart-line__ship">

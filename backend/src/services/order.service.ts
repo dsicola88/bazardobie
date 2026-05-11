@@ -24,7 +24,7 @@ import {
 import { freightDistanceService } from "./freightDistance.service.js";
 import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
-import { variantDisplaySummary } from "../utils/variantDisplay.js";
+import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
 import { variantUnitPrice } from "../utils/variantPricing.js";
 import { mapOrderWithItemsMedia } from "../utils/publicMediaUrl.js";
 import { enqueueOrderConfirmationEmail } from "../emails/orderConfirmed.email.js";
@@ -415,7 +415,7 @@ export const orderService = {
             unitPrice: unit.toString(),
             deliveryCost: item.productDeliveryOption.custoEntrega.toString(),
             productNameSnapshot: product.name,
-            variantNameSnapshot: variantRow ? variantDisplaySummary(variantRow) : null,
+            variantNameSnapshot: variantRow ? variantDisplayBuyerLine(variantRow, product.name) : null,
             deliveryTipo: item.productDeliveryOption.tipoEntrega,
             deliveryDays: item.productDeliveryOption.prazoEstimado,
             areaProvincia: item.productDeliveryOption.areaProvincia,

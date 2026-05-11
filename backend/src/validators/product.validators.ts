@@ -94,6 +94,29 @@ export const createProductSchema = createProductShape
         path: ["conditionDetail"],
       });
     }
+    if (d.variants?.length) {
+      const parentSku = d.sku.trim().toLowerCase();
+      const seen = new Set<string>();
+      for (let i = 0; i < d.variants.length; i++) {
+        const key = d.variants[i].sku.trim().toLowerCase();
+        if (!key) continue;
+        if (seen.has(key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Cada variante precisa de um SKU distinto nesta ficha.",
+            path: ["variants", i, "sku"],
+          });
+        }
+        seen.add(key);
+        if (key === parentSku) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "O SKU da variante não pode coincidir com o SKU principal da ficha-mãe.",
+            path: ["variants", i, "sku"],
+          });
+        }
+      }
+    }
   });
 
 /** Rascunho mínimo — completar ficha no editor antes de activar venda. */
@@ -164,6 +187,29 @@ export const updateProductSchema = createProductShape
         message: "O preço promocional tem de ser inferior ao preço normal.",
         path: ["promoPrice"],
       });
+    }
+    if (data.variants !== undefined && data.variants.length > 0) {
+      const parentSku = (data.sku !== undefined ? String(data.sku) : "").trim().toLowerCase();
+      const seen = new Set<string>();
+      for (let i = 0; i < data.variants.length; i++) {
+        const key = data.variants[i].sku.trim().toLowerCase();
+        if (!key) continue;
+        if (seen.has(key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Cada variante precisa de um SKU distinto nesta ficha.",
+            path: ["variants", i, "sku"],
+          });
+        }
+        seen.add(key);
+        if (parentSku && key === parentSku) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "O SKU da variante não pode coincidir com o SKU principal da ficha-mãe.",
+            path: ["variants", i, "sku"],
+          });
+        }
+      }
     }
   });
 

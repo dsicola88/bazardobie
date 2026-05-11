@@ -103,6 +103,23 @@ const emptyDel = (prov: string, city: string): DelForm => ({
   logisticsPartnerId: "",
 });
 
+function validateVariantSkus(parentSkuRaw: string, rows: VarForm[]): string | null {
+  const parent = parentSkuRaw.trim().toLowerCase();
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const k = row.sku.trim().toLowerCase();
+    if (!k) continue;
+    if (seen.has(k)) {
+      return "Cada variante precisa de um SKU distinto. Corrija linhas com o mesmo SKU.";
+    }
+    seen.add(k);
+    if (parent && k === parent) {
+      return "O SKU de uma variante não pode ser igual ao SKU principal do artigo.";
+    }
+  }
+  return null;
+}
+
 export default function VendorProductEditor() {
   const { token } = useAuth();
   const { content } = useSiteContent();
@@ -344,6 +361,11 @@ export default function VendorProductEditor() {
   async function saveDraftProgress() {
     if (!token || shopOk !== true || !productId) return;
     setErr(null);
+    const skuErr = validateVariantSkus(sku, variants);
+    if (skuErr) {
+      setErr(skuErr);
+      return;
+    }
     setSaving(true);
     try {
       await apiFetch(`/vendor/products/${productId}`, {
@@ -377,6 +399,11 @@ export default function VendorProductEditor() {
     }
     if (body.deliveryOptions.some((d) => d.areaProvincia.length < 2 || d.areaCidade.length < 2)) {
       setErr("Em cada modalidade de envio, indique província e cidade com a ortografia correcta (mínimo 2 caracteres por campo).");
+      return;
+    }
+    const skuErr = validateVariantSkus(sku, variants);
+    if (skuErr) {
+      setErr(skuErr);
       return;
     }
 
@@ -740,8 +767,18 @@ export default function VendorProductEditor() {
                 required
               />
               <p className="ae-field-hint">
-                Se definir variantes infra, o controlo de existências passa a ser feito por SKU de variante; este campo
-                mantém-se como stock base quando não há variantes.
+                {variants.some((v) => v.sku.trim()) ? (
+                  <>
+                    Com variantes activas, o stock do artigo no catálogo corresponde à <strong>soma</strong> dos stocks
+                    por SKU (actualizado no servidor). O valor acima deve acompanhar essa soma para evitar confusão ao
+                    editar.
+                  </>
+                ) : (
+                  <>
+                    Se definir variantes abaixo, o stock passa a ser controlado por SKU de variante; este campo serve
+                    como stock total quando não há variantes.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -750,8 +787,9 @@ export default function VendorProductEditor() {
         <section className="ae-v-prod-sec ae-panel">
           <h2 className="ae-v-prod-sec__h">04 · Variantes (opcional)</h2>
           <p className="ae-v-prod-sec__lede">
-            Cada variante tem o seu SKU e stock. Defina um <strong>preço final próprio</strong> por variante (recomendado,
-            escolher uma tarifa por zona em Kz com prazo em dias úteis (definição comum em grandes vitrinas online). A opção «ajuste ±» permanece só por compatibilidade com fichas antigas.
+            Cada variante tem o seu <strong>SKU</strong> e <strong>stock</strong>. O método preferido é definir um{" "}
+            <strong>preço final (Kz)</strong> por variante; o campo «ajuste ±» mantém-se só para fichas antigas compatíveis.
+            As opções de envio do artigo (taxa, prazo, zona) continuam a ser as da secção 05.
           </p>
           <p className="ae-field-hint" style={{ marginBottom: 14 }}>
             Se várias variantes partilham a mesma <strong>cor</strong>, preencha sempre{" "}

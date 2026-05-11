@@ -7,7 +7,7 @@ import { formatKz, formatFreteKz, formatBusinessDaysPt } from "../utils/format.j
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantEffectiveUnitKz } from "../utils/variantPrice.js";
-import { variantDisplaySummary } from "../utils/variantDisplay.js";
+import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
 
 type CheckoutCartItem = {
   id: string;
@@ -1059,7 +1059,9 @@ export default function CheckoutPage() {
                               : "plataforma (BAZAR DO BIÉ)"
                             : "loja parceira"}{" "}
                           · {formatBusinessDaysPt(it.productDeliveryOption.prazoEstimado)}
-                          {it.variant ? ` · ${variantDisplaySummary(it.variant)}` : ""}
+                          {it.variant
+                            ? ` · ${variantDisplayBuyerLine(it.variant, it.product.name)}`
+                            : ""}
                         </div>
                         <div className="ae-checkout-sum-line__pr">
                           <span>{formatKz(line)}</span>

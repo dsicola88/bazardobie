@@ -13,7 +13,7 @@ import { productConditionLabel } from "../utils/productCondition.js";
 import { useSeo } from "../seo/useSeo.js";
 import { variantCompareAtUnitKz, variantEffectiveUnitKz } from "../utils/variantPrice.js";
 import {
-  variantDisplaySummary,
+  variantDisplayBuyerLine,
   variantSecondaryAxisHeading,
   variantSecondaryChipLabel,
 } from "../utils/variantDisplay.js";
@@ -226,8 +226,8 @@ function buildSizeOnlyOrder(variants: Variant[]): Variant[] | null {
 function pdpMainAlt(productName: string, variant: Variant | null): string {
   const n = productName.trim();
   if (!variant) return n || "Artigo à venda";
-  const vl = variantDisplaySummary(variant);
-  if (!vl || vl === n) return n;
+  const vl = variantDisplayBuyerLine(variant, n);
+  if (!vl || vl === n || vl === "Variante") return n;
   return `${n} — ${vl}`;
 }
 
@@ -831,10 +831,11 @@ export default function ProductPage() {
   }, [heroImgBroken, mainResolved]);
   const variantGallery = useMemo(() => {
     if (!product) return [];
+    const pname = product.name.trim();
     return product.variants
       .map((v) => ({
         ...v,
-        label: variantDisplaySummary(v),
+        label: variantDisplayBuyerLine(v, pname),
       }))
       .filter((v, ix, arr) => arr.findIndex((x) => x.id === v.id) === ix);
   }, [product]);
@@ -1222,11 +1223,24 @@ export default function ProductPage() {
               ) : null}
             </div>
 
+            {product.shop ? (
+              <div className="ae-buybox__marketplace">
+                <Link className="ae-buybox__marketplace-store" to={`/loja/${encodeURIComponent(product.shop.id)}`}>
+                  Loja <span className="ae-buybox__marketplace-name">{product.shop.name.trim()}</span>
+                </Link>
+                <p className="ae-buybox__marketplace-note">
+                  Encomenda com seguimento no Bazar do Bié — mesmo vendedor, processo único na plataforma.
+                </p>
+              </div>
+            ) : null}
+
             {needVariant ? (
               <div className="ae-field ae-pdp-variant-field">
                 <div className="ae-pdp-variant-head">
                   Variante seleccionada:{" "}
-                  <strong>{selectedVariant ? variantDisplaySummary(selectedVariant) : "— escolha abaixo —"}</strong>
+                  <strong>
+                    {selectedVariant ? variantDisplayBuyerLine(selectedVariant, product.name) : "— escolha abaixo —"}
+                  </strong>
                 </div>
                 {colorSizeMatrix && colorUiGroups ? (
                   <>
@@ -1280,7 +1294,7 @@ export default function ProductPage() {
                               type="button"
                               role="radio"
                               aria-checked={variantId === v.id}
-                              title={`${variantDisplaySummary(v)} · stock ${v.stock}`}
+                              title={`${variantDisplayBuyerLine(v, product.name)} · stock ${v.stock}`}
                               className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
                               disabled={v.stock <= 0}
                               onClick={() => setVariantId(v.id)}
@@ -1312,7 +1326,7 @@ export default function ProductPage() {
                           type="button"
                           role="radio"
                           aria-checked={variantId === v.id}
-                          title={`${variantDisplaySummary(v)} · stock ${v.stock}`}
+                          title={`${variantDisplayBuyerLine(v, product.name)} · stock ${v.stock}`}
                           className={`ae-variant-size-chip ${variantId === v.id ? "ae-on" : ""}`}
                           disabled={v.stock <= 0}
                           onClick={() => setVariantId(v.id)}

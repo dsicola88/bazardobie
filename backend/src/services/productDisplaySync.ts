@@ -20,6 +20,23 @@ export async function syncProductDisplayFromVariants(
   });
 }
 
+/** Com pelo menos uma variante, `product.stock` deve ser a soma dos stocks das variantes. */
+export async function syncProductStockFromVariants(
+  tx: Prisma.TransactionClient,
+  productId: string
+): Promise<void> {
+  const count = await tx.productVariant.count({ where: { productId } });
+  if (count === 0) return;
+  const agg = await tx.productVariant.aggregate({
+    where: { productId },
+    _sum: { stock: true },
+  });
+  await tx.product.update({
+    where: { id: productId },
+    data: { stock: agg._sum.stock ?? 0 },
+  });
+}
+
 export async function syncProductDisplayFromVariantsStandalone(productId: string): Promise<void> {
   await prisma.$transaction(async (tx) => syncProductDisplayFromVariants(tx, productId));
 }

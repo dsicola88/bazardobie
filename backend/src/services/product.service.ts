@@ -23,7 +23,7 @@ import { env } from "../config/env.js";
 import { mapProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
 import { mergePublicRatingFields } from "../utils/ratingTrust.js";
 import { mapEmbeddedReviewsForApi } from "./review.service.js";
-import { syncProductDisplayFromVariants } from "./productDisplaySync.js";
+import { syncProductDisplayFromVariants, syncProductStockFromVariants } from "./productDisplaySync.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
 
 const deliveryOptionsPublicInclude = {
@@ -34,6 +34,28 @@ type CreateProduct = z.infer<typeof createProductSchema>;
 type CreateProductDraft = z.infer<typeof createProductDraftSchema>;
 type UpdateProduct = z.infer<typeof updateProductSchema>;
 type ProductListQuery = z.infer<typeof productListQuerySchema>;
+
+function assertVariantSkuIntegrity(params: {
+  variants: NonNullable<UpdateProduct["variants"]>;
+  parentSkuLower: string;
+}) {
+  const { variants, parentSkuLower } = params;
+  const seen = new Set<string>();
+  for (const v of variants) {
+    const k = v.sku.trim().toLowerCase();
+    if (!k) continue;
+    if (seen.has(k)) {
+      throw new HttpError(400, "Cada variante precisa de um SKU distinto nesta ficha.");
+    }
+    seen.add(k);
+    if (parentSkuLower && k === parentSkuLower) {
+      throw new HttpError(
+        400,
+        "O SKU de uma variante não pode ser igual ao SKU principal do artigo. Altere o SKU da variante ou o SKU mãe.",
+      );
+    }
+  }
+}
 
 const TERM_SYNONYMS: Record<string, string[]> = {
   telemovel: ["celular", "smartphone", "telefone", "iphone", "android"],
@@ -192,6 +214,11 @@ export const productService = {
     await assertDeliveryPartnersRegistered(input.deliveryOptions);
 
     const displayPrice = displayPriceFrom(input.price, input.promoPrice ?? undefined);
+    const variantBlocks = input.variants?.length ? input.variants : undefined;
+    const stockForProduct =
+      variantBlocks && variantBlocks.length > 0
+        ? variantBlocks.reduce((sum, v) => sum + v.stock, 0)
+        : input.stock;
 
     const data: Prisma.ProductCreateInput = {
       shop: { connect: { id: shop.id } },
@@ -205,7 +232,7 @@ export const productService = {
       promoPrice:
         input.promoPrice != null && input.promoPrice > 0 ? String(input.promoPrice) : undefined,
       displayPrice,
-      stock: input.stock,
+      stock: stockForProduct,
       moderationStatus: "PENDING",
       isFeatured: false,
       ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
@@ -215,9 +242,9 @@ export const productService = {
           sortOrder: i,
         })),
       },
-      variants: input.variants?.length
+      variants: variantBlocks?.length
         ? {
-            create: input.variants.map((v) => ({
+            create: variantBlocks.map((v) => ({
               sku: v.sku,
               name: v.name,
               color: v.color,
@@ -253,6 +280,7 @@ export const productService = {
     });
     await prisma.$transaction(async (tx) => {
       await syncProductDisplayFromVariants(tx, created.id);
+      await syncProductStockFromVariants(tx, created.id);
     });
     return mapProductMediaForApi(
       await prisma.product.findFirstOrThrow({
@@ -355,7 +383,7 @@ export const productService = {
 
     let existing = await prisma.product.findFirst({
       where: { id: productId, shopId: shop.id },
-      include: { images: true, deliveryOptions: true },
+      include: { images: true, deliveryOptions: true, variants: true },
     });
     if (!existing) throw new HttpError(404, "Produto não encontrado");
 
@@ -374,7 +402,7 @@ export const productService = {
       });
       existing = await prisma.product.findFirstOrThrow({
         where: { id: productId, shopId: shop.id },
-        include: { images: true, deliveryOptions: true },
+        include: { images: true, deliveryOptions: true, variants: true },
       });
     }
 
@@ -397,6 +425,11 @@ export const productService = {
     if (patchInput.sku && patchInput.sku !== existing.sku) {
       const taken = await productRepo().findBySkuShop(shop.id, patchInput.sku);
       if (taken) throw new HttpError(409, "SKU já existente nesta loja");
+    }
+
+    if (patchInput.variants !== undefined && patchInput.variants.length > 0) {
+      const parentSkuLower = (patchInput.sku ?? existing.sku).toString().trim().toLowerCase();
+      assertVariantSkuIntegrity({ variants: patchInput.variants, parentSkuLower });
     }
 
     const priceNext = patchInput.price ?? existing.price.toNumber();
@@ -460,21 +493,52 @@ export const productService = {
         }
       }
       if (patchInput.variants !== undefined) {
-        await tx.productVariant.deleteMany({ where: { productId } });
-        for (const v of patchInput.variants) {
-          await tx.productVariant.create({
-            data: {
+        const incoming = patchInput.variants;
+        if (incoming.length === 0) {
+          await tx.productVariant.deleteMany({ where: { productId } });
+        } else {
+          await tx.productVariant.deleteMany({
+            where: {
               productId,
-              sku: v.sku,
-              name: v.name,
-              color: v.color,
-              size: v.size,
-              salePrice: v.salePrice != null ? String(v.salePrice) : undefined,
-              priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : undefined,
-              stock: v.stock,
-              imageUrl: v.imageUrl?.trim() ? v.imageUrl : undefined,
+              sku: { notIn: incoming.map((v) => v.sku) },
             },
           });
+          for (const v of incoming) {
+            const found = await tx.productVariant.findFirst({
+              where: { productId, sku: v.sku },
+            });
+            const salePrice = v.salePrice != null ? String(v.salePrice) : undefined;
+            const priceAdjust = v.priceAdjust != null ? String(v.priceAdjust) : undefined;
+            const imageUrl = v.imageUrl?.trim() ? v.imageUrl : undefined;
+            if (found) {
+              await tx.productVariant.update({
+                where: { id: found.id },
+                data: {
+                  name: v.name,
+                  color: v.color,
+                  size: v.size,
+                  salePrice,
+                  priceAdjust,
+                  stock: v.stock,
+                  imageUrl,
+                },
+              });
+            } else {
+              await tx.productVariant.create({
+                data: {
+                  productId,
+                  sku: v.sku,
+                  name: v.name,
+                  color: v.color,
+                  size: v.size,
+                  salePrice,
+                  priceAdjust,
+                  stock: v.stock,
+                  imageUrl,
+                },
+              });
+            }
+          }
         }
       }
       if (patchInput.deliveryOptions !== undefined) {
@@ -520,6 +584,7 @@ export const productService = {
         data: scalarData,
       });
       await syncProductDisplayFromVariants(tx, productId);
+      await syncProductStockFromVariants(tx, productId);
     });
 
     const fresh = await prisma.product.findFirst({

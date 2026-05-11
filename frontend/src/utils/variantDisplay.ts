@@ -11,11 +11,34 @@ function norm(s: string | null | undefined): string {
   return (s ?? "").trim();
 }
 
-/** Linha única «cor · medida · nome …» ou SKU (usado em PDP e carrinho). */
+/** Linha única «cor · medida · nome …» ou SKU (legado compacto, SEO, compatibilidade). */
 export function variantDisplaySummary(v: VariantDisplayFields): string {
   const parts = [norm(v.color), norm(v.size), norm(v.name)].filter(Boolean);
   if (parts.length) return parts.join(" · ");
   return norm(v.sku) || "Variante";
+}
+
+/**
+ * Linha para o comprador com rótulos explícitos (estilo vitrine profissional).
+ * Ordem: Cor → Tamanho → Modelo; só SKU quando não há atributos.
+ * `productName` evita repetir o nome da ficha em «Modelo».
+ */
+export function variantDisplayBuyerLine(v: VariantDisplayFields, productName?: string): string {
+  const c = norm(v.color);
+  const s = norm(v.size);
+  let n = norm(v.name);
+  const pn = norm(productName);
+  if (n && pn && n.toLowerCase() === pn.toLowerCase()) {
+    n = "";
+  }
+  const sku = norm(v.sku);
+  const parts: string[] = [];
+  if (c) parts.push(`Cor: ${c}`);
+  if (s) parts.push(`Tamanho: ${s}`);
+  if (n) parts.push(`Modelo: ${n}`);
+  if (parts.length) return parts.join(" · ");
+  if (sku) return `SKU: ${sku}`;
+  return "Variante";
 }
 
 /**
@@ -54,11 +77,12 @@ export function variantSecondaryAxisHeading(variants: VariantDisplayFields[]): s
 export function orderItemVariantSubtitle(it: {
   variantNameSnapshot?: string | null;
   variant?: VariantDisplayFields | null;
+  productNameSnapshot?: string | null;
 }): string | null {
   const snap = norm(it.variantNameSnapshot);
   if (snap) return snap;
   if (it.variant) {
-    const line = variantDisplaySummary(it.variant);
+    const line = variantDisplayBuyerLine(it.variant, norm(it.productNameSnapshot));
     return line === "Variante" ? null : line;
   }
   return null;
