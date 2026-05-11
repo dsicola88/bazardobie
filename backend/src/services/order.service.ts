@@ -25,6 +25,7 @@ import { freightDistanceService } from "./freightDistance.service.js";
 import { getFreightPricingMode } from "./freightMode.service.js";
 import { freightZoneService } from "./freightZone.service.js";
 import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 import { variantUnitPrice } from "../utils/variantPricing.js";
 import { mapOrderWithItemsMedia } from "../utils/publicMediaUrl.js";
 import { enqueueOrderConfirmationEmail } from "../emails/orderConfirmed.email.js";
@@ -332,7 +333,7 @@ export const orderService = {
         for (const item of lines) {
           const product = await tx.product.findUnique({
             where: { id: item.productId },
-            include: { variants: true },
+            include: { variants: { include: variantWithPropertiesInclude } },
           });
           if (!product || !product.isActive || product.isDraft || product.archivedAt != null || product.moderationStatus !== "APPROVED") {
             throw new HttpError(400, "Produto indisponível no carrinho");
@@ -394,6 +395,7 @@ export const orderService = {
             if (!item.variantId) throw new HttpError(400, "Variação em falta");
             variantRow = await tx.productVariant.findFirst({
               where: { id: item.variantId, productId: product.id },
+              include: variantWithPropertiesInclude,
             });
             if (!variantRow || variantRow.stock < item.quantity) throw new HttpError(400, "Stock insuficiente");
           } else if (item.variantId) {
@@ -634,7 +636,13 @@ export const orderService = {
     const order = await prisma.order.findFirst({
       where: { id: orderId, userId },
       include: {
-        items: { include: { shop: true, product: true, variant: true } },
+        items: {
+          include: {
+            shop: true,
+            product: true,
+            variant: { include: variantWithPropertiesInclude },
+          },
+        },
         logisticsPartner: { select: { id: true, name: true, phone: true } },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 8 },
@@ -686,7 +694,10 @@ export const orderService = {
         include: {
           items: {
             where: { shopId: shop.id },
-            include: { product: { include: { images: true } } },
+            include: {
+              product: { include: { images: true } },
+              variant: { include: variantWithPropertiesInclude },
+            },
           },
           user: { select: { id: true, name: true, email: true, phone: true } },
           shippingPickupPoint: { select: { id: true, namePt: true, refCode: true } },
@@ -934,7 +945,13 @@ export const orderService = {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: { include: { shop: true, product: true } },
+        items: {
+          include: {
+            shop: true,
+            product: true,
+            variant: { include: variantWithPropertiesInclude },
+          },
+        },
         user: { select: { id: true, email: true, name: true, phone: true } },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 12 },
@@ -951,7 +968,7 @@ export const orderService = {
       },
     });
     if (!order) throw new HttpError(404, "Pedido não encontrado");
-    return order;
+    return mapOrderWithItemsMedia(order);
   },
 
   async adminSetLogisticsPartner(orderId: string, logisticsPartnerId: string | null) {
@@ -979,7 +996,13 @@ export const orderService = {
     const full = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: { include: { shop: true, product: true } },
+        items: {
+          include: {
+            shop: true,
+            product: true,
+            variant: { include: variantWithPropertiesInclude },
+          },
+        },
         user: { select: { id: true, email: true, name: true, phone: true } },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" }, take: 12 },
@@ -996,6 +1019,6 @@ export const orderService = {
       },
     });
     if (!full) throw new HttpError(404, "Pedido não encontrado");
-    return full;
+    return mapOrderWithItemsMedia(full);
   },
 };

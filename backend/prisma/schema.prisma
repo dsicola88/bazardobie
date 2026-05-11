@@ -343,8 +343,113 @@ model Category {
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("CategoryTree")
   products Product[]
+  attributes CategoryAttribute[]
+  attributeAliases CategoryAttributeAlias[]
+  attributePresets   CategoryAttributePreset[]
 
   @@index([parentId])
+}
+
+enum CategoryAttributeInputType {
+  TEXT
+  NUMBER
+  SELECT
+}
+
+/// Atributos do catálogo definidos por categoria (ex.: Moda → Género; Telemóveis → RAM).
+model CategoryAttribute {
+  id          String                     @id @default(cuid())
+  categoryId  String
+  /// Chave estável (`genero`, `polegadas`) — única na categoria.
+  key         String
+  label       String
+  inputType   CategoryAttributeInputType @default(TEXT)
+  /// JSON array para SELECT: `["128GB","256GB"]`
+  optionsJson String?
+  helpText    String?
+  isRequired  Boolean                    @default(false)
+  sortOrder   Int                        @default(0)
+  /// Unidade normalizada (catálogo `standardUnits`) quando `inputType` = NUMBER — ex.: cm, kg, W.
+  unitCode     String?
+  /// Incluir nas facetas da pesquisa pública (só valores em `VariantStructuredValue`).
+  facetEnabled Boolean @default(false)
+  /// Destaque em resumos / PDP: maior = mais importante (0 = não destacar).
+  primaryRank  Int     @default(0)
+  /// Sugerido automaticamente no editor quando o vendedor escolhe a categoria.
+  autoSuggest  Boolean @default(false)
+
+  category        Category                  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  structuredValues VariantStructuredValue[]
+  aliases          CategoryAttributeAlias[]
+  presetItems      CategoryAttributePresetItem[]
+
+  @@unique([categoryId, key])
+  @@index([categoryId])
+  @@index([categoryId, facetEnabled])
+}
+
+/// Sinónimos / aliases de um atributo (evita duplicar conceitos com chaves diferentes na mesma categoria).
+model CategoryAttributeAlias {
+  id          String @id @default(cuid())
+  categoryId  String
+  attributeId String
+  label       String
+  /// Forma normalizada única por categoria (dedupe e lookup).
+  normalized  String
+
+  category  Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attribute CategoryAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, normalized])
+  @@index([attributeId])
+}
+
+/// Preset de atributos por categoria (ex.: «Smartphone», «Ténis») para onboarding de vendedores.
+model CategoryAttributePreset {
+  id         String @id @default(cuid())
+  categoryId String
+  name       String
+  slug       String
+  sortOrder  Int    @default(0)
+  isDefault  Boolean @default(false)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items    CategoryAttributePresetItem[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
+}
+
+model CategoryAttributePresetItem {
+  id          String @id @default(cuid())
+  presetId    String
+  attributeId String
+  sortOrder   Int    @default(0)
+
+  preset    CategoryAttributePreset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  attribute CategoryAttribute     @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([presetId, attributeId])
+  @@index([presetId, sortOrder])
+}
+
+/// Valores por variante para atributos estruturados da categoria.
+model VariantStructuredValue {
+  id          String @id @default(cuid())
+  variantId   String
+  attributeId String
+  value       String @db.VarChar(500)
+  /// Preenchido para `NUMBER` — comparações e facetas por intervalo.
+  numericValue Decimal? @db.Decimal(18, 6)
+
+  variant   ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attribute CategoryAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, attributeId])
+  @@index([variantId])
+  @@index([attributeId])
+  @@index([attributeId, value])
+  @@index([attributeId, numericValue])
 }
 
 model Product {
@@ -540,6 +645,20 @@ model ProductVariant {
 
   @@unique([productId, sku])
   @@index([productId])
+  properties ProductVariantProperty[]
+  variantStructuredValues VariantStructuredValue[]
+}
+
+model ProductVariantProperty {
+  id        String   @id @default(cuid())
+  variantId String
+  label     String
+  value     String
+  sortOrder Int      @default(0)
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
 }
 
 /// Opções de envio configuráveis por produto (obrigatório na criação de produto pelo vendedor)

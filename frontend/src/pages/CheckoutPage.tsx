@@ -21,6 +21,17 @@ type CheckoutCartItem = {
     salePrice?: string | null;
     priceAdjust?: string | null;
     imageUrl?: string | null;
+    properties?: { label: string; value: string }[];
+    variantStructuredValues?: {
+      value: string;
+      attribute: {
+        label: string;
+        sortOrder?: number;
+        primaryRank?: number;
+        inputType?: string;
+        unitCode?: string | null;
+      };
+    }[];
   } | null;
   product: {
     id: string;

@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "../lib/prisma.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import { env } from "../config/env.js";
 import { notificationService } from "./notification.service.js";
@@ -240,7 +241,9 @@ export async function buyerConfirmReceipt(orderId: string, buyerUserId: string) 
     const out = await tx.order.findUnique({
       where: { id: orderId },
       include: {
-        items: { include: { shop: true, product: true, variant: true } },
+        items: {
+          include: { shop: true, product: true, variant: { include: variantWithPropertiesInclude } },
+        },
         ledgerEntries: { orderBy: { createdAt: "asc" } },
         disputes: { orderBy: { createdAt: "desc" } },
       },

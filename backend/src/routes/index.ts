@@ -75,10 +75,13 @@ r.patch("/auth/profile", requireAuth, authController.patchProfile);
 r.post("/auth/become-vendor", requireAuth, requireRoles("CLIENTE"), authController.becomeVendor);
 
 r.get("/categories", catalogController.categories);
+r.get("/categories/:id/attributes", catalogController.categoryAttributesPublic);
+r.get("/categories/:id/attribute-presets", catalogController.categoryAttributePresets);
 r.get("/categories/suggest", catalogController.suggestCategories);
 r.get("/homepage/product-groups", homepageGroupController.listPublic);
 r.get("/homepage/spotlights", homeSpotlightController.listPublic);
 r.get("/banners", catalogController.banners);
+r.get("/catalog/standard-units", catalogController.standardUnits);
 r.get("/site-content", siteSettingsController.publicBundle);
 r.get("/freight/meta", freightController.meta);
 r.post("/freight/quote", freightController.quote);
@@ -97,6 +100,7 @@ r.get("/shops/:id", shopController.publicGet);
 
 r.get("/products", productController.search);
 r.get("/products/facet-categories", productController.facetCategories);
+r.get("/products/facet-structured-attributes", productController.facetStructuredAttributes);
 r.get("/products/suggest", productController.suggest);
 r.post("/products/visual-search", visualSearchLimiter, runImageSearchUpload, productController.visualSearch);
 r.get("/products/:id/related", productController.related);
@@ -273,6 +277,16 @@ admin.patch("/shops/:id/approve", shopController.adminApprove);
 admin.get("/shops/credibility/queues", shopController.adminCredibilityQueues);
 admin.patch("/shops/:id/credibility", shopController.adminApplyCredibility);
 
+admin.get("/categories/:id/attributes", requirePlatformAdmin, catalogController.categoryAttributesAdmin);
+admin.post("/categories/:id/attributes", requirePlatformAdmin, catalogController.createCategoryAttribute);
+admin.patch("/category-attributes/:attributeId", requirePlatformAdmin, catalogController.patchCategoryAttribute);
+admin.delete("/category-attributes/:attributeId", requirePlatformAdmin, catalogController.deleteCategoryAttribute);
+admin.post("/category-attributes/:attributeId/aliases", requirePlatformAdmin, catalogController.addCategoryAttributeAlias);
+admin.delete("/category-attribute-aliases/:aliasId", requirePlatformAdmin, catalogController.deleteCategoryAttributeAlias);
+admin.get("/categories/:id/catalog-fill-stats", requirePlatformAdmin, catalogController.categoryFillStats);
+admin.post("/categories/:id/attribute-presets", requirePlatformAdmin, catalogController.createCategoryPreset);
+admin.patch("/category-attribute-presets/:presetId", requirePlatformAdmin, catalogController.patchCategoryPreset);
+admin.delete("/category-attribute-presets/:presetId", requirePlatformAdmin, catalogController.deleteCategoryPreset);
 admin.get("/categories", requirePlatformAdmin, catalogController.listCategoriesAdmin);
 admin.post("/categories", requirePlatformAdmin, catalogController.createCategory);
 admin.patch("/categories/:id", requirePlatformAdmin, catalogController.patchCategory);

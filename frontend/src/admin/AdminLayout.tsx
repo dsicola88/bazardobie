@@ -52,8 +52,13 @@ export default function AdminLayout() {
 
           <NavSep>Catálogo</NavSep>
           {fullAdmin ? (
-            <NavLink to="/admin/categories" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+            <NavLink end to="/admin/categories" className={({ isActive }) => (isActive ? "ae-on" : "")}>
               Categorias
+            </NavLink>
+          ) : null}
+          {fullAdmin ? (
+            <NavLink to="/admin/categories/catalog" className={({ isActive }) => (isActive ? "ae-on" : "")}>
+              Ficha técnica
             </NavLink>
           ) : null}
           <NavLink to="/admin/products" className={({ isActive }) => (isActive ? "ae-on" : "")}>

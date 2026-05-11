@@ -14,9 +14,11 @@ import { useSeo } from "../seo/useSeo.js";
 import { variantCompareAtUnitKz, variantEffectiveUnitKz } from "../utils/variantPrice.js";
 import {
   variantDisplayBuyerLine,
+  variantPdpSpecRows,
   variantSecondaryAxisHeading,
   variantSecondaryChipLabel,
 } from "../utils/variantDisplay.js";
+import { listingBadgeClassList } from "../utils/listingBadgeClass.js";
 import {
   formatReviewerDisplayName,
   formatReviewDatePt,
@@ -35,6 +37,17 @@ type Variant = {
   imageUrl?: string | null;
   salePrice?: string | null;
   priceAdjust?: string | null;
+  properties?: { label: string; value: string }[];
+  variantStructuredValues?: {
+    value: string;
+    attribute: {
+      label: string;
+      sortOrder: number;
+      primaryRank?: number;
+      inputType?: string;
+      unitCode?: string | null;
+    };
+  }[];
 };
 type Delivery = {
   id: string;
@@ -85,6 +98,8 @@ type ProductDetail = {
   ratingTrustHintPt?: string | null;
   ratingTrustShortPt?: string | null;
   images: Img[];
+  /** Selos de qualidade do anúncio (backend). */
+  listingBadges?: { id: string; label: string }[];
   variants: Variant[];
   deliveryOptions: Delivery[];
   category?: { id: string; name: string } | null;
@@ -1109,6 +1124,15 @@ export default function ProductPage() {
                   ) : null}
                   <h1 className="ae-buybox__title">{product.name}</h1>
                 </div>
+                {product.listingBadges?.length ? (
+                  <div className="ae-pdp-listing-badges" aria-label="Selos de qualidade do anúncio">
+                    {product.listingBadges.map((b) => (
+                      <span key={b.id} className={listingBadgeClassList(b.id, false)}>
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
             <p className="ae-buybox__sku" aria-label="Referência do artigo">
               Referência:{" "}
               <strong>{needVariant && selectedVariant ? selectedVariant.sku : product.sku ?? "—"}</strong>
@@ -1365,6 +1389,23 @@ export default function ProductPage() {
                 ? "Sem stock disponível no momento."
                 : `Stock disponível: ${stockAvailable} ${stockAvailable === 1 ? "unidade" : "unidades"}.`}
             </p>
+            {needVariant && selectedVariant ? (() => {
+              const rows = variantPdpSpecRows(selectedVariant, product.name);
+              if (rows.length === 0) return null;
+              return (
+                <section className="ae-pdp-specs" aria-label="Características desta variante">
+                  <h3 className="ae-pdp-specs__h">Características</h3>
+                  <div className="ae-pdp-specs__grid">
+                    {rows.map((row) => (
+                      <div key={`${row.label}-${row.value}`} className="ae-pdp-specs__row">
+                        <span className="ae-pdp-specs__dt">{row.label}</span>
+                        <span className="ae-pdp-specs__dd">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })() : null}
               </div>
 
               <aside className="ae-pdp-purchase-rail ae-pdp-rail" aria-label="Compra e envio">

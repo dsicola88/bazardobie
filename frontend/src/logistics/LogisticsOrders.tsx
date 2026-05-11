@@ -3,7 +3,7 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { OrderTrackingEditor } from "../components/OrderTrackingEditor.js";
 import { formatKz } from "../utils/format.js";
-import { orderItemVariantSubtitle } from "../utils/variantDisplay.js";
+import { orderItemVariantSubtitle, type VariantDisplayFields } from "../utils/variantDisplay.js";
 import { etiquetaEstadoPedidoCliente } from "../utils/buyerOrderFilters.js";
 import { etiquetaGateway, etiquetaPagamento } from "../utils/paymentLabels.js";
 import { logisticsSelectableStatuses } from "../utils/vendorOrderStatuses.js";
@@ -27,6 +27,7 @@ type Row = {
     variantNameSnapshot?: string | null;
     quantity: number;
     shop?: { name: string; city: string; province: string } | null;
+    variant?: VariantDisplayFields | null;
   }[];
   trackingCarrier?: string | null;
   trackingCode?: string | null;

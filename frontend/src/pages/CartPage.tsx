@@ -32,6 +32,17 @@ type CartItem = {
     imageUrl?: string | null;
     salePrice?: string | null;
     priceAdjust?: string | null;
+    properties?: { label: string; value: string }[];
+    variantStructuredValues?: {
+      value: string;
+      attribute: {
+        label: string;
+        sortOrder?: number;
+        primaryRank?: number;
+        inputType?: string;
+        unitCode?: string | null;
+      };
+    }[];
   } | null;
   productDeliveryOption: {
     tipoEntrega: string;

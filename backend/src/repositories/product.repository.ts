@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
+import type { StructuredFacetClause } from "../utils/structuredFacetQuery.js";
 
 export interface ProductListFilters {
   q?: string;
@@ -15,6 +17,8 @@ export interface ProductListFilters {
   shopId?: string;
   /** Com `public.allow_seller_delivery` desactivado: só produtos com envio pela plataforma. */
   requirePlatformDelivery?: boolean;
+  /** Facetas só sobre `VariantStructuredValue` (atributos com `facetEnabled`). */
+  structuredFacets?: StructuredFacetClause[];
 }
 
 export type ProductSortKey =
@@ -65,6 +69,38 @@ function expandedTerms(q: string): string[][] {
   });
 }
 
+function structuredFacetWhereClause(f: StructuredFacetClause): Prisma.ProductWhereInput {
+  if (f.kind === "discrete") {
+    return {
+      variants: {
+        some: {
+          variantStructuredValues: {
+            some: {
+              attributeId: f.attributeId,
+              value: { in: f.values },
+            },
+          },
+        },
+      },
+    };
+  }
+  const numericValue: Prisma.DecimalNullableFilter = {};
+  if (f.min != null) numericValue.gte = f.min;
+  if (f.max != null) numericValue.lte = f.max;
+  return {
+    variants: {
+      some: {
+        variantStructuredValues: {
+          some: {
+            attributeId: f.attributeId,
+            numericValue,
+          },
+        },
+      },
+    },
+  };
+}
+
 function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {
     isActive: true,
@@ -91,6 +127,29 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
             { sku: { contains: term, mode: "insensitive" as const } },
             { category: { is: { name: { contains: term, mode: "insensitive" as const } } } },
             { shop: { is: { name: { contains: term, mode: "insensitive" as const } } } },
+            {
+              variants: {
+                some: {
+                  OR: [
+                    {
+                      variantStructuredValues: {
+                        some: { value: { contains: term, mode: "insensitive" as const } },
+                      },
+                    },
+                    {
+                      properties: {
+                        some: {
+                          OR: [
+                            { value: { contains: term, mode: "insensitive" as const } },
+                            { label: { contains: term, mode: "insensitive" as const } },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
           ]),
         ],
       }));
@@ -107,7 +166,24 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   if (filters.requirePlatformDelivery) {
     where.deliveryOptions = { some: { tipoEntrega: "PLATAFORMA" } };
   }
+  const facetClauses: Prisma.ProductWhereInput[] = [];
+  if (filters.structuredFacets?.length) {
+    for (const sf of filters.structuredFacets) facetClauses.push(structuredFacetWhereClause(sf));
+  }
+  if (facetClauses.length > 0) {
+    const existingAnd = where.AND;
+    const mergedAnd = [
+      ...(Array.isArray(existingAnd) ? existingAnd : existingAnd ? [existingAnd] : []),
+      ...facetClauses,
+    ];
+    where.AND = mergedAnd;
+  }
   return where;
+}
+
+/** Expõe o mesmo predicado da listagem pública (ex.: agregação de facetas estruturadas). */
+export function buildPublicProductListWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
+  return buildWhere(filters);
 }
 
 /** Ordenação principal + prioridade das lojas (nível 3 / verificado na `searchRankBoost`). */
@@ -157,7 +233,7 @@ export function productRepo() {
           category: true,
           images: { orderBy: { sortOrder: "asc" } },
           deliveryOptions: { include: { logisticsPartner: { select: { id: true, name: true } } } },
-          variants: true,
+          variants: { include: variantWithPropertiesInclude },
           _count: { select: { reviews: true } },
         },
       });
@@ -165,9 +241,9 @@ export function productRepo() {
     countPublic(filters: ProductListFilters) {
       return prisma.product.count({ where: buildWhere(filters) });
     },
-    /** Agrega contagens por `categoryId` com os mesmos filtros da vitrina (sem filtro de categoria). */
-    facetCategoryAggregation(filters: Omit<ProductListFilters, "categoryId">) {
-      const where = buildWhere(filters as ProductListFilters);
+    /** Agrega contagens por `categoryId` com os mesmos filtros da vitrina. */
+    facetCategoryAggregation(filters: ProductListFilters) {
+      const where = buildWhere(filters);
       const extentFilters: ProductListFilters = {
         q: filters.q,
         condition: filters.condition,
@@ -176,6 +252,8 @@ export function productRepo() {
         onSaleOnly: filters.onSaleOnly,
         shopId: filters.shopId,
         requirePlatformDelivery: filters.requirePlatformDelivery,
+        ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+        ...(filters.structuredFacets?.length ? { structuredFacets: filters.structuredFacets } : {}),
       };
       const whereExtent = buildWhere(extentFilters);
       return Promise.all([
@@ -224,6 +302,29 @@ export function productRepo() {
                 { sku: { contains: t, mode: "insensitive" as const } },
                 { category: { is: { name: { contains: t, mode: "insensitive" as const } } } },
                 { shop: { is: { name: { contains: t, mode: "insensitive" as const } } } },
+                {
+                  variants: {
+                    some: {
+                      OR: [
+                        {
+                          variantStructuredValues: {
+                            some: { value: { contains: t, mode: "insensitive" as const } },
+                          },
+                        },
+                        {
+                          properties: {
+                            some: {
+                              OR: [
+                                { value: { contains: t, mode: "insensitive" as const } },
+                                { label: { contains: t, mode: "insensitive" as const } },
+                              ],
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
               ]),
             }
           : {}),
@@ -241,6 +342,13 @@ export function productRepo() {
           category: { select: { name: true } },
           shop: { select: { name: true } },
           images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
+          variants: {
+            take: 4,
+            select: {
+              variantStructuredValues: { take: 20, select: { value: true } },
+              properties: { take: 12, select: { label: true, value: true } },
+            },
+          },
         },
       });
     },

@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { parseQueryPriceParam } from "../utils/queryPrice.js";
+import {
+  structuredFacetArraySchema,
+  type StructuredFacetClause,
+} from "../utils/structuredFacetQuery.js";
 
 const tipoEntrega = z.enum(["VENDEDOR", "PLATAFORMA"]);
 const absoluteHttpUrl = z.string().url().refine((v) => /^https?:\/\//i.test(v), {
@@ -12,6 +16,16 @@ const publicDemoAssetUrl = z.string().regex(/^\/demo\/[^\s]+\.(svg|png|jpe?g|web
   message: "Asset público: use /demo/... (SVG, PNG, JPG, WEBP ou GIF).",
 });
 const mediaUrlSchema = z.union([absoluteHttpUrl, uploadRelativeUrl, publicDemoAssetUrl]);
+
+const variantPropertyEntrySchema = z.object({
+  label: z.string().trim().min(1).max(64),
+  value: z.string().trim().min(1).max(240),
+});
+
+const categoryAttributeValueEntrySchema = z.object({
+  attributeId: z.string().cuid(),
+  value: z.string().max(500),
+});
 const productConditionSchema = z.enum([
   "NEW",
   "USED",
@@ -51,19 +65,39 @@ export const deliveryOptionSchema = z
     }
   });
 
-export const productVariantSchema = z.object({
-  sku: z.string().min(1),
-  name: z.string().optional(),
-  color: z.string().optional(),
-  size: z.string().optional(),
-  salePrice: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    z.coerce.number().positive().optional()
-  ),
-  priceAdjust: z.coerce.number().optional(),
-  stock: z.coerce.number().int().nonnegative(),
-  imageUrl: mediaUrlSchema.optional().or(z.literal("")),
-});
+export const productVariantSchema = z
+  .object({
+    sku: z.string().min(1),
+    name: z.string().optional(),
+    color: z.string().optional(),
+    size: z.string().optional(),
+    salePrice: z.preprocess(
+      (v) => (v === "" || v === null || v === undefined ? undefined : v),
+      z.coerce.number().positive().optional()
+    ),
+    priceAdjust: z.coerce.number().optional(),
+    stock: z.coerce.number().int().nonnegative(),
+    imageUrl: mediaUrlSchema.optional().or(z.literal("")),
+    /** Características livres (Género, Material, capacidade, etc.), até 24 por variante. */
+    properties: z.array(variantPropertyEntrySchema).max(24).optional(),
+    /** Atributos estruturados definidos pela categoria comercial (catálogo). */
+    categoryAttributeValues: z.array(categoryAttributeValueEntrySchema).max(48).optional(),
+  })
+  .superRefine((v, ctx) => {
+    const cats = v.categoryAttributeValues;
+    if (!cats?.length) return;
+    const seen = new Set<string>();
+    for (let j = 0; j < cats.length; j++) {
+      if (seen.has(cats[j].attributeId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Cada atributo de categoria só pode aparecer uma vez por variante.",
+          path: ["categoryAttributeValues", j, "attributeId"],
+        });
+      }
+      seen.add(cats[j].attributeId);
+    }
+  });
 
 const createProductShape = z.object({
   categoryId: z.union([z.string().min(1), z.null()]).optional(),
@@ -114,6 +148,21 @@ export const createProductSchema = createProductShape
             message: "O SKU da variante não pode coincidir com o SKU principal da ficha-mãe.",
             path: ["variants", i, "sku"],
           });
+        }
+        const props = d.variants[i].properties;
+        if (props?.length) {
+          const seenLabels = new Set<string>();
+          for (let j = 0; j < props.length; j++) {
+            const lk = props[j].label.trim().toLowerCase();
+            if (seenLabels.has(lk)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Cada característica precisa de um nome (rótulo) distinto nesta variante.",
+                path: ["variants", i, "properties", j, "label"],
+              });
+            }
+            seenLabels.add(lk);
+          }
         }
       }
     }
@@ -209,6 +258,21 @@ export const updateProductSchema = createProductShape
             path: ["variants", i, "sku"],
           });
         }
+        const props = data.variants[i].properties;
+        if (props?.length) {
+          const seenLabels = new Set<string>();
+          for (let j = 0; j < props.length; j++) {
+            const lk = props[j].label.trim().toLowerCase();
+            if (seenLabels.has(lk)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Cada característica precisa de um nome (rótulo) distinto nesta variante.",
+                path: ["variants", i, "properties", j, "label"],
+              });
+            }
+            seenLabels.add(lk);
+          }
+        }
       }
     }
   });
@@ -218,7 +282,36 @@ function preprocessOptionalQueryPrice(v: unknown): unknown {
   return n === undefined ? undefined : n;
 }
 
-export const productListQuerySchema = z.object({
+function preprocessQuerySingleton(v: unknown): unknown {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function transformStructuredFacetsQuery<T extends { structuredFacets?: string | undefined }>(
+  data: T
+): Omit<T, "structuredFacets"> & { structuredFacets?: StructuredFacetClause[] } {
+  const { structuredFacets: sfRaw, ...rest } = data;
+  let structuredFacets: StructuredFacetClause[] | undefined;
+  if (sfRaw?.trim()) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(sfRaw);
+    } catch {
+      throw new z.ZodError([
+        {
+          code: "custom",
+          message: "structuredFacets: JSON inválido",
+          path: ["structuredFacets"],
+        },
+      ]);
+    }
+    structuredFacets = structuredFacetArraySchema.parse(parsed);
+  }
+  return { ...rest, structuredFacets } as Omit<T, "structuredFacets"> & {
+    structuredFacets?: StructuredFacetClause[];
+  };
+}
+
+const productListQueryFields = z.object({
   q: z.string().optional(),
   categoryId: z.string().optional(),
   minPrice: z.preprocess(preprocessOptionalQueryPrice, z.number().nonnegative().max(1e15).optional()),
@@ -234,12 +327,40 @@ export const productListQuerySchema = z.object({
     .optional(),
   skip: z.coerce.number().int().nonnegative().optional(),
   take: z.coerce.number().int().positive().max(100).optional(),
+  /**
+   * JSON (array) de facetas estruturadas: `[{"attributeId","kind":"discrete","values":[]}]` ou `kind":"range"`.
+   * Requer `categoryId` na mesma pesquisa.
+   */
+  structuredFacets: z.preprocess(preprocessQuerySingleton, z.string().max(12000).optional()),
 });
 
+export const productListQuerySchema = productListQueryFields.transform(transformStructuredFacetsQuery);
+
 /** Mesmos critérios que a listagem pública, sem `categoryId` — contagens por categoria para facetas. */
-export const categoryFacetQuerySchema = productListQuerySchema.omit({
-  categoryId: true,
-  skip: true,
-  take: true,
-  sort: true,
-});
+export const categoryFacetQuerySchema = productListQueryFields
+  .omit({
+    categoryId: true,
+    skip: true,
+    take: true,
+    sort: true,
+  })
+  .transform(transformStructuredFacetsQuery);
+
+/** Facetas estruturadas numa categoria (requer `categoryId`). */
+export const structuredAttributeFacetQuerySchema = productListQueryFields
+  .pick({
+    q: true,
+    minPrice: true,
+    maxPrice: true,
+    minRating: true,
+    featured: true,
+    onSale: true,
+    condition: true,
+    shopId: true,
+    structuredFacets: true,
+    categoryId: true,
+  })
+  .extend({
+    categoryId: z.string().min(1),
+  })
+  .transform(transformStructuredFacetsQuery);

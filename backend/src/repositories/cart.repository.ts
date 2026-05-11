@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 
 const cartWithItemsInclude = {
   items: {
@@ -7,11 +8,11 @@ const cartWithItemsInclude = {
       product: {
         include: {
           images: { orderBy: { sortOrder: "asc" as const }, take: 8 },
-          variants: true,
+          variants: { include: variantWithPropertiesInclude },
           deliveryOptions: true,
         },
       },
-      variant: true,
+      variant: { include: variantWithPropertiesInclude },
       productDeliveryOption: {
         include: {
           logisticsPartner: { select: { id: true, name: true } },
@@ -62,7 +63,7 @@ export function cartRepo() {
         include: {
           cart: true,
           product: true,
-          variant: true,
+          variant: { include: variantWithPropertiesInclude },
           productDeliveryOption: {
             include: {
               logisticsPartner: { select: { id: true, name: true } },

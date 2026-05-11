@@ -202,6 +202,9 @@ export default function AdminCategories() {
             gera-se a partir do nome (URL técnica). Subcategorias usam um <strong>categoria pai</strong>.
           </p>
         </div>
+        <Link to="/admin/categories/catalog" className="btn">
+          Ficha técnica e facetas
+        </Link>
       </header>
 
       {err ? (

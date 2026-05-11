@@ -1,11 +1,13 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import type { Prisma, TipoEntrega } from "@prisma/client";
+import { CategoryAttributeInputType } from "@prisma/client";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
 import sharp from "sharp";
 import { productRepo } from "../repositories/product.repository.js";
-import type { ProductSortKey } from "../repositories/product.repository.js";
+import type { ProductListFilters, ProductSortKey } from "../repositories/product.repository.js";
+import { buildPublicProductListWhere } from "../repositories/product.repository.js";
 import { shopRepo } from "../repositories/shop.repository.js";
 import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
@@ -15,6 +17,7 @@ import {
   updateProductSchema,
   productListQuerySchema,
   categoryFacetQuerySchema,
+  structuredAttributeFacetQuerySchema,
 } from "../validators/product.validators.js";
 import { lojaResumoProduto } from "../utils/shopCredibility.js";
 import { siteSettingsService } from "./siteSettings.service.js";
@@ -25,6 +28,11 @@ import { mergePublicRatingFields } from "../utils/ratingTrust.js";
 import { mapEmbeddedReviewsForApi } from "./review.service.js";
 import { syncProductDisplayFromVariants, syncProductStockFromVariants } from "./productDisplaySync.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
+import type { StructuredFacetClause } from "../utils/structuredFacetQuery.js";
+import { normalizeCatalogToken } from "../utils/catalogTokens.js";
+import { computeListingQuality, computePublicListingBadges, toListingQualityInput } from "../utils/listingQuality.js";
+import { categoryAttrDefsMap } from "../utils/categoryAttrDefsMap.js";
 
 const deliveryOptionsPublicInclude = {
   include: { logisticsPartner: { select: { id: true, name: true } } },
@@ -34,6 +42,173 @@ type CreateProduct = z.infer<typeof createProductSchema>;
 type CreateProductDraft = z.infer<typeof createProductDraftSchema>;
 type UpdateProduct = z.infer<typeof updateProductSchema>;
 type ProductListQuery = z.infer<typeof productListQuerySchema>;
+
+function parseOptionsJsonArray(json: string | null | undefined): string[] | null {
+  if (!json?.trim()) return null;
+  try {
+    const p = JSON.parse(json) as unknown;
+    return Array.isArray(p) && p.every((x) => typeof x === "string") ? (p as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function assertVariantCategoryBindings(
+  categoryId: string | null,
+  variants: Array<{
+    sku: string;
+    categoryAttributeValues?: { attributeId: string; value: string }[];
+    properties?: { label: string; value: string }[];
+  }>
+) {
+  if (!variants.length) return;
+  if (!categoryId) {
+    for (const v of variants) {
+      if (v.categoryAttributeValues?.length) {
+        throw new HttpError(400, "Seleccione uma categoria comercial na ficha para usar atributos do catálogo.");
+      }
+    }
+    return;
+  }
+
+  const defs = await prisma.categoryAttribute.findMany({
+    where: { categoryId },
+    orderBy: [{ sortOrder: "asc" }, { label: "asc" }],
+  });
+  const aliasRows = await prisma.categoryAttributeAlias.findMany({
+    where: { categoryId },
+    select: { normalized: true },
+  });
+  const defIds = new Set(defs.map((d) => d.id));
+  const requiredIds = new Set(defs.filter((d) => d.isRequired).map((d) => d.id));
+  const defById = new Map(defs.map((d) => [d.id, d]));
+
+  const reserved = new Set<string>();
+  for (const d of defs) {
+    reserved.add(d.key);
+    reserved.add(normalizeCatalogToken(d.label));
+  }
+  for (const a of aliasRows) reserved.add(a.normalized);
+
+  for (const v of variants) {
+    for (const p of v.properties ?? []) {
+      const token = normalizeCatalogToken(p.label);
+      if (reserved.has(token)) {
+        throw new HttpError(
+          400,
+          `O rótulo «${p.label.trim()}» coincide com um atributo oficial da categoria. Use a ficha técnica estruturada em vez de duplicar em «características livres».`
+        );
+      }
+    }
+  }
+
+  for (const v of variants) {
+    const raw = v.categoryAttributeValues ?? [];
+    const seenAttr = new Set<string>();
+    for (const e of raw) {
+      const aid = e.attributeId.trim();
+      if (!defIds.has(aid)) {
+        throw new HttpError(400, `Atributo de catálogo inválido para esta categoria (variante ${v.sku}).`);
+      }
+      if (seenAttr.has(aid)) {
+        throw new HttpError(400, `Atributo repetido na variante ${v.sku}.`);
+      }
+      seenAttr.add(aid);
+      const val = e.value.trim();
+      if (!val) {
+        throw new HttpError(400, `Preencha todos os atributos seleccionados (variante ${v.sku}).`);
+      }
+      const def = defById.get(aid)!;
+      if (def.inputType === CategoryAttributeInputType.SELECT) {
+        const opts = parseOptionsJsonArray(def.optionsJson) ?? [];
+        if (!opts.includes(val)) {
+          throw new HttpError(400, `Valor inválido para «${def.label}» na variante ${v.sku}.`);
+        }
+      }
+      if (def.inputType === CategoryAttributeInputType.NUMBER) {
+        const n = Number(val.replace(",", "."));
+        if (!Number.isFinite(n)) {
+          throw new HttpError(400, `«${def.label}» tem de ser um número (variante ${v.sku}).`);
+        }
+      }
+    }
+    for (const rid of requiredIds) {
+      if (!seenAttr.has(rid)) {
+        const label = defById.get(rid)?.label ?? rid;
+        throw new HttpError(400, `O atributo «${label}» é obrigatório na variante ${v.sku}.`);
+      }
+    }
+  }
+}
+
+function structuredPayloadFromVariant(v: {
+  categoryAttributeValues?: { attributeId: string; value: string }[];
+}) {
+  return (v.categoryAttributeValues ?? [])
+    .map((x) => ({ attributeId: x.attributeId.trim(), value: x.value.trim() }))
+    .filter((x) => x.value.length > 0)
+    .map((x) => ({ attributeId: x.attributeId, value: x.value.slice(0, 500) }));
+}
+
+function structuredRowsForPersist(
+  entries: { attributeId: string; value: string }[],
+  defById: Map<string, { inputType: CategoryAttributeInputType }>
+) {
+  return entries.map((e) => {
+    const def = defById.get(e.attributeId);
+    if (def?.inputType === CategoryAttributeInputType.NUMBER) {
+      const n = Number(e.value.replace(",", "."));
+      return {
+        attributeId: e.attributeId,
+        value: e.value,
+        numericValue: new Decimal(String(n)),
+      };
+    }
+    return { attributeId: e.attributeId, value: e.value, numericValue: null as null };
+  });
+}
+
+async function prepareStructuredFacetsForListing(
+  categoryId: string | undefined,
+  clauses: StructuredFacetClause[] | undefined
+): Promise<{ categoryId: string | undefined; structuredFacets: StructuredFacetClause[] | undefined }> {
+  if (!clauses?.length) return { categoryId, structuredFacets: undefined };
+  const ids = [...new Set(clauses.map((c) => c.attributeId))];
+  const attrs = await prisma.categoryAttribute.findMany({
+    where: { id: { in: ids }, facetEnabled: true },
+  });
+  if (attrs.length !== ids.length) {
+    throw new HttpError(400, "Uma ou mais facetas de atributo são inválidas ou não estão activas para filtro.");
+  }
+  const cats = new Set(attrs.map((a) => a.categoryId));
+  if (cats.size !== 1) {
+    throw new HttpError(400, "Combine apenas facetas de atributos da mesma categoria comercial.");
+  }
+  const implied = attrs[0].categoryId;
+  if (categoryId && categoryId !== implied) {
+    throw new HttpError(400, "O parâmetro categoryId não corresponde às facetas estruturadas indicadas.");
+  }
+  const map = new Map(attrs.map((a) => [a.id, a]));
+  for (const c of clauses) {
+    const a = map.get(c.attributeId)!;
+    if (c.kind === "discrete") {
+      if (a.inputType === CategoryAttributeInputType.NUMBER) {
+        throw new HttpError(400, `Use intervalo numérico para a faceta «${a.label}».`);
+      }
+      if (a.inputType === CategoryAttributeInputType.SELECT) {
+        const opts = parseOptionsJsonArray(a.optionsJson) ?? [];
+        for (const val of c.values) {
+          if (!opts.includes(val)) {
+            throw new HttpError(400, `Valor inválido na faceta «${a.label}».`);
+          }
+        }
+      }
+    } else if (a.inputType !== CategoryAttributeInputType.NUMBER) {
+      throw new HttpError(400, `A faceta «${a.label}» não suporta intervalo numérico.`);
+    }
+  }
+  return { categoryId: categoryId ?? implied, structuredFacets: clauses };
+}
 
 function assertVariantSkuIntegrity(params: {
   variants: NonNullable<UpdateProduct["variants"]>;
@@ -215,6 +390,17 @@ export const productService = {
 
     const displayPrice = displayPriceFrom(input.price, input.promoPrice ?? undefined);
     const variantBlocks = input.variants?.length ? input.variants : undefined;
+    if (variantBlocks?.length) {
+      await assertVariantCategoryBindings(input.categoryId ?? null, variantBlocks);
+    }
+    let defByIdForCreate = new Map<string, { inputType: CategoryAttributeInputType }>();
+    if (input.categoryId && variantBlocks?.length) {
+      const defs = await prisma.categoryAttribute.findMany({
+        where: { categoryId: input.categoryId },
+        select: { id: true, inputType: true },
+      });
+      defByIdForCreate = new Map(defs.map((d) => [d.id, d]));
+    }
     const stockForProduct =
       variantBlocks && variantBlocks.length > 0
         ? variantBlocks.reduce((sum, v) => sum + v.stock, 0)
@@ -244,16 +430,43 @@ export const productService = {
       },
       variants: variantBlocks?.length
         ? {
-            create: variantBlocks.map((v) => ({
-              sku: v.sku,
-              name: v.name,
-              color: v.color,
-              size: v.size,
-              salePrice: v.salePrice != null ? String(v.salePrice) : undefined,
-              priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : undefined,
-              stock: v.stock,
-              imageUrl: v.imageUrl?.trim() ? v.imageUrl : undefined,
-            })),
+            create: variantBlocks.map((v) => {
+              const props = (v.properties ?? []).filter((p) => p.label.trim() && p.value.trim());
+              const structIn = structuredPayloadFromVariant(v);
+              const structRows = structIn.length ? structuredRowsForPersist(structIn, defByIdForCreate) : [];
+              return {
+                sku: v.sku,
+                name: v.name,
+                color: v.color,
+                size: v.size,
+                salePrice: v.salePrice != null ? String(v.salePrice) : undefined,
+                priceAdjust: v.priceAdjust != null ? String(v.priceAdjust) : undefined,
+                stock: v.stock,
+                imageUrl: v.imageUrl?.trim() ? v.imageUrl : undefined,
+                ...(props.length
+                  ? {
+                      properties: {
+                        create: props.map((p, i) => ({
+                          label: p.label.trim(),
+                          value: p.value.trim(),
+                          sortOrder: i,
+                        })),
+                      },
+                    }
+                  : {}),
+                ...(structRows.length
+                  ? {
+                      variantStructuredValues: {
+                        create: structRows.map((x) => ({
+                          attributeId: x.attributeId,
+                          value: x.value,
+                          numericValue: x.numericValue,
+                        })),
+                      },
+                    }
+                  : {}),
+              };
+            }),
           }
         : undefined,
       deliveryOptions: {
@@ -272,7 +485,7 @@ export const productService = {
       data,
       include: {
         images: true,
-        variants: true,
+        variants: { include: variantWithPropertiesInclude },
         deliveryOptions: deliveryOptionsPublicInclude,
         category: true,
         shop: true,
@@ -287,7 +500,7 @@ export const productService = {
         where: { id: created.id },
         include: {
           images: true,
-          variants: true,
+          variants: { include: variantWithPropertiesInclude },
           deliveryOptions: deliveryOptionsPublicInclude,
           category: true,
           shop: true,
@@ -331,7 +544,7 @@ export const productService = {
       },
       include: {
         images: true,
-        variants: true,
+        variants: { include: variantWithPropertiesInclude },
         deliveryOptions: deliveryOptionsPublicInclude,
         category: true,
         shop: true,
@@ -345,7 +558,7 @@ export const productService = {
         where: { id: created.id },
         include: {
           images: true,
-          variants: true,
+          variants: { include: variantWithPropertiesInclude },
           deliveryOptions: deliveryOptionsPublicInclude,
           category: true,
           shop: true,
@@ -363,7 +576,7 @@ export const productService = {
       where: { id: productId, shopId: shop.id },
       include: {
         images: { orderBy: { sortOrder: "asc" } },
-        variants: true,
+        variants: { include: variantWithPropertiesInclude },
         deliveryOptions: deliveryOptionsPublicInclude,
         category: true,
       },
@@ -383,7 +596,7 @@ export const productService = {
 
     let existing = await prisma.product.findFirst({
       where: { id: productId, shopId: shop.id },
-      include: { images: true, deliveryOptions: true, variants: true },
+      include: { images: true, deliveryOptions: true, variants: { include: variantWithPropertiesInclude } },
     });
     if (!existing) throw new HttpError(404, "Produto não encontrado");
 
@@ -402,7 +615,7 @@ export const productService = {
       });
       existing = await prisma.product.findFirstOrThrow({
         where: { id: productId, shopId: shop.id },
-        include: { images: true, deliveryOptions: true, variants: true },
+        include: { images: true, deliveryOptions: true, variants: { include: variantWithPropertiesInclude } },
       });
     }
 
@@ -417,7 +630,7 @@ export const productService = {
       return mapProductMediaForApi(
         await prisma.product.findFirstOrThrow({
           where: { id: productId },
-          include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+          include: { images: true, variants: { include: variantWithPropertiesInclude }, deliveryOptions: deliveryOptionsPublicInclude, category: true },
         })
       );
     }
@@ -430,6 +643,22 @@ export const productService = {
     if (patchInput.variants !== undefined && patchInput.variants.length > 0) {
       const parentSkuLower = (patchInput.sku ?? existing.sku).toString().trim().toLowerCase();
       assertVariantSkuIntegrity({ variants: patchInput.variants, parentSkuLower });
+      const effectiveCategoryId =
+        patchInput.categoryId !== undefined ? patchInput.categoryId : existing.categoryId;
+      await assertVariantCategoryBindings(effectiveCategoryId ?? null, patchInput.variants);
+    }
+
+    let defByIdForVariants = new Map<string, { inputType: CategoryAttributeInputType }>();
+    if (patchInput.variants !== undefined && patchInput.variants.length > 0) {
+      const effectiveCategoryId =
+        patchInput.categoryId !== undefined ? patchInput.categoryId : existing.categoryId;
+      if (effectiveCategoryId) {
+        const defs = await prisma.categoryAttribute.findMany({
+          where: { categoryId: effectiveCategoryId },
+          select: { id: true, inputType: true },
+        });
+        defByIdForVariants = new Map(defs.map((d) => [d.id, d]));
+      }
     }
 
     const priceNext = patchInput.price ?? existing.price.toNumber();
@@ -510,6 +739,7 @@ export const productService = {
             const salePrice = v.salePrice != null ? String(v.salePrice) : undefined;
             const priceAdjust = v.priceAdjust != null ? String(v.priceAdjust) : undefined;
             const imageUrl = v.imageUrl?.trim() ? v.imageUrl : undefined;
+            let variantId: string;
             if (found) {
               await tx.productVariant.update({
                 where: { id: found.id },
@@ -523,8 +753,9 @@ export const productService = {
                   imageUrl,
                 },
               });
+              variantId = found.id;
             } else {
-              await tx.productVariant.create({
+              const created = await tx.productVariant.create({
                 data: {
                   productId,
                   sku: v.sku,
@@ -536,6 +767,32 @@ export const productService = {
                   stock: v.stock,
                   imageUrl,
                 },
+              });
+              variantId = created.id;
+            }
+            await tx.productVariantProperty.deleteMany({ where: { variantId } });
+            const props = (v.properties ?? []).filter((p) => p.label.trim() && p.value.trim());
+            if (props.length) {
+              await tx.productVariantProperty.createMany({
+                data: props.map((p, i) => ({
+                  variantId,
+                  label: p.label.trim(),
+                  value: p.value.trim(),
+                  sortOrder: i,
+                })),
+              });
+            }
+            await tx.variantStructuredValue.deleteMany({ where: { variantId } });
+            const structIn = structuredPayloadFromVariant(v);
+            if (structIn.length) {
+              const structRows = structuredRowsForPersist(structIn, defByIdForVariants);
+              await tx.variantStructuredValue.createMany({
+                data: structRows.map((x) => ({
+                  variantId,
+                  attributeId: x.attributeId,
+                  value: x.value,
+                  numericValue: x.numericValue,
+                })),
               });
             }
           }
@@ -603,7 +860,7 @@ export const productService = {
     return mapProductMediaForApi(
       await prisma.product.findFirstOrThrow({
         where: { id: productId },
-        include: { images: true, variants: true, deliveryOptions: deliveryOptionsPublicInclude, category: true },
+        include: { images: true, variants: { include: variantWithPropertiesInclude }, deliveryOptions: deliveryOptionsPublicInclude, category: true },
       })
     );
   },
@@ -647,7 +904,7 @@ export const productService = {
         take,
         include: {
           images: true,
-          variants: true,
+          variants: { include: variantWithPropertiesInclude },
           deliveryOptions: deliveryOptionsPublicInclude,
           category: true,
           _count: { select: { orderItems: true } },
@@ -655,13 +912,45 @@ export const productService = {
       }),
       prisma.product.count({ where }),
     ]);
+    const catIds = [...new Set(items.map((p) => p.categoryId).filter((x): x is string => !!x))];
+    const allDefs =
+      catIds.length > 0
+        ? await prisma.categoryAttribute.findMany({
+            where: { categoryId: { in: catIds } },
+            select: { id: true, categoryId: true, inputType: true, isRequired: true },
+          })
+        : [];
+    const defsByCat = new Map<string, { id: string; inputType: CategoryAttributeInputType; isRequired: boolean }[]>();
+    for (const d of allDefs) {
+      if (!defsByCat.has(d.categoryId)) defsByCat.set(d.categoryId, []);
+      defsByCat.get(d.categoryId)!.push(d);
+    }
     return {
       items: items.map((p) => {
         const { _count, ...rest } = p;
+        const defs = p.categoryId ? defsByCat.get(p.categoryId) ?? [] : [];
+        const listingQuality = computeListingQuality(
+          {
+            name: p.name,
+            description: p.description,
+            categoryId: p.categoryId,
+            images: p.images,
+            demoVideoUrl: p.demoVideoUrl,
+            condition: p.condition,
+            conditionDetail: p.conditionDetail,
+            isDraft: p.isDraft,
+            variants: p.variants.map((v) => ({
+              variantStructuredValues: v.variantStructuredValues,
+              properties: v.properties,
+            })),
+          },
+          defs
+        );
         return {
           ...mapProductMediaForApi(rest),
           orderItemsCount: _count.orderItems,
           canDelete: _count.orderItems === 0,
+          listingQuality,
         };
       }),
       total,
@@ -683,7 +972,7 @@ export const productService = {
         shop: true,
         category: true,
         images: { orderBy: { sortOrder: "asc" } },
-        variants: true,
+        variants: { include: variantWithPropertiesInclude },
         deliveryOptions: deliveryOptionsPublicInclude,
         reviews: {
           take: 20,
@@ -720,12 +1009,17 @@ export const productService = {
       averageRating: product.averageRating,
       reviewCount: product.reviewCount,
     });
+    const defs = product.categoryId
+      ? (await categoryAttrDefsMap([product.categoryId])).get(product.categoryId) ?? []
+      : [];
+    const listingBadges = computePublicListingBadges(toListingQualityInput(product), defs);
     return {
       ...withReviews,
       ...ratingPub,
       deliveryOptions,
       shop: lojaResumoProduto(product.shop),
       ratingDistribution,
+      listingBadges,
     };
   },
 
@@ -733,9 +1027,13 @@ export const productService = {
     const skip = query.skip ?? 0;
     const take = query.take ?? 24;
     const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
-    const filters = {
+    const { categoryId: resolvedCategoryId, structuredFacets } = await prepareStructuredFacetsForListing(
+      query.categoryId,
+      query.structuredFacets
+    );
+    const filters: ProductListFilters = {
       q: query.q,
-      categoryId: query.categoryId,
+      categoryId: resolvedCategoryId,
       condition: query.condition,
       minPrice: query.minPrice ?? undefined,
       maxPrice: query.maxPrice ?? undefined,
@@ -745,6 +1043,7 @@ export const productService = {
       shopId: query.shopId,
       /** Sem envio pela loja, a vitrinha só pode mostrar anúncios com envio BAZAR DO BIÉ (PLATAFORMA). */
       requirePlatformDelivery: !allowSeller,
+      structuredFacets,
     };
     const sort = query.sort as ProductSortKey | undefined;
     const repo = productRepo();
@@ -762,6 +1061,14 @@ export const productService = {
             const cat = (p.category?.name ?? "").toLowerCase();
             const shop = (p.shop?.name ?? "").toLowerCase();
             const text = `${name} ${sku} ${cat} ${shop}`.trim();
+            const structBlob = (p.variants ?? [])
+              .flatMap((v) => v.variantStructuredValues ?? [])
+              .map((sv) => (sv.value ?? "").toLowerCase())
+              .join(" ");
+            const propBlob = (p.variants ?? [])
+              .flatMap((v) => v.properties ?? [])
+              .flatMap((pr) => [`${pr.label} ${pr.value}`.toLowerCase()])
+              .join(" ");
             let s = 0;
             for (const alts of qTermSets) {
               for (const t of alts) {
@@ -775,6 +1082,8 @@ export const productService = {
                 if (cat.includes(t)) s += 18;
                 if (shop.includes(t)) s += 14;
                 if (text.includes(t)) s += 8;
+                if (structBlob.includes(t)) s += 52;
+                if (propBlob.includes(t)) s += 40;
               }
             }
             s += Math.min(40, Math.log10(Number(p.soldCount || 0) + 1) * 16);
@@ -784,18 +1093,22 @@ export const productService = {
           return score(b) - score(a);
         })
       : items;
+    const defsMap = await categoryAttrDefsMap(scored.map((p) => p.categoryId));
     const safe = scored.map((p) => {
       const deliveryOptions = allowSeller
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
-        return {
-          ...mapProductMediaForApi({
-            ...p,
-            deliveryOptions,
-            shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
-          }),
-          ...mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount }),
-        };
+      const defs = p.categoryId ? defsMap.get(p.categoryId) ?? [] : [];
+      const listingBadges = computePublicListingBadges(toListingQualityInput(p), defs);
+      return {
+        ...mapProductMediaForApi({
+          ...p,
+          deliveryOptions,
+          shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
+        }),
+        ...mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount }),
+        listingBadges,
+      };
     });
     return { items: safe, total, skip, take };
   },
@@ -803,8 +1116,13 @@ export const productService = {
   /** Contagens por categoria para facetas na pesquisa (critérios alinhados com `search`, sem `categoryId`). */
   async facetCategories(query: z.infer<typeof categoryFacetQuerySchema>) {
     const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
-    const filters = {
+    const { categoryId, structuredFacets } = await prepareStructuredFacetsForListing(
+      undefined,
+      query.structuredFacets
+    );
+    const filters: ProductListFilters = {
       q: query.q,
+      categoryId,
       condition: query.condition,
       minPrice: query.minPrice ?? undefined,
       maxPrice: query.maxPrice ?? undefined,
@@ -813,8 +1131,99 @@ export const productService = {
       onSaleOnly: query.onSale === "true",
       shopId: query.shopId,
       requirePlatformDelivery: !allowSeller,
+      structuredFacets,
     };
     return productRepo().facetCategoryAggregation(filters);
+  },
+
+  /**
+   * Facetas estruturadas (só atributos com `facetEnabled`) para uma categoria — valores alinhados com a vitrina.
+   */
+  async structuredAttributeFacets(query: z.infer<typeof structuredAttributeFacetQuerySchema>) {
+    const allowSeller = await siteSettingsService.isSellerDeliveryAllowed();
+    const { categoryId, structuredFacets } = await prepareStructuredFacetsForListing(
+      query.categoryId,
+      query.structuredFacets
+    );
+    if (!categoryId) throw new HttpError(400, "categoryId obrigatório");
+    const baseFilters: ProductListFilters = {
+      q: query.q,
+      categoryId,
+      condition: query.condition,
+      minPrice: query.minPrice ?? undefined,
+      maxPrice: query.maxPrice ?? undefined,
+      minRating: query.minRating ?? undefined,
+      featuredOnly: query.featured === "true",
+      onSaleOnly: query.onSale === "true",
+      shopId: query.shopId,
+      requirePlatformDelivery: !allowSeller,
+      structuredFacets,
+    };
+    const productWhere = buildPublicProductListWhere(baseFilters);
+    const variantWhere: Prisma.ProductVariantWhereInput = { product: productWhere };
+    const facetAttrs = await prisma.categoryAttribute.findMany({
+      where: { categoryId, facetEnabled: true },
+      orderBy: [{ primaryRank: "desc" }, { sortOrder: "asc" }, { label: "asc" }],
+    });
+    const facets: Array<
+      | {
+          attributeId: string;
+          key: string;
+          label: string;
+          inputType: CategoryAttributeInputType;
+          unitCode: string | null;
+          facetKind: "range";
+          min: number | null;
+          max: number | null;
+          valueCount: number;
+        }
+      | {
+          attributeId: string;
+          key: string;
+          label: string;
+          inputType: CategoryAttributeInputType;
+          facetKind: "discrete";
+          values: { value: string; count: number }[];
+        }
+    > = [];
+    for (const a of facetAttrs) {
+      if (a.inputType === CategoryAttributeInputType.NUMBER) {
+        const agg = await prisma.variantStructuredValue.aggregate({
+          where: { attributeId: a.id, variant: variantWhere },
+          _min: { numericValue: true },
+          _max: { numericValue: true },
+          _count: { _all: true },
+        });
+        facets.push({
+          attributeId: a.id,
+          key: a.key,
+          label: a.label,
+          inputType: a.inputType,
+          unitCode: a.unitCode,
+          facetKind: "range",
+          min: agg._min.numericValue != null ? Number(agg._min.numericValue) : null,
+          max: agg._max.numericValue != null ? Number(agg._max.numericValue) : null,
+          valueCount: agg._count._all,
+        });
+      } else {
+        const groups = await prisma.variantStructuredValue.groupBy({
+          by: ["value"],
+          where: { attributeId: a.id, variant: variantWhere },
+          _count: { _all: true },
+          orderBy: { _count: { value: "desc" } },
+          take: 48,
+        });
+        facets.push({
+          attributeId: a.id,
+          key: a.key,
+          label: a.label,
+          inputType: a.inputType,
+          facetKind: "discrete",
+          values: groups.map((g) => ({ value: g.value, count: g._count._all })),
+        });
+      }
+    }
+    return { categoryId, facets };
   },
 
   /**
@@ -840,7 +1249,7 @@ export const productService = {
         category: true,
         images: { orderBy: { sortOrder: "asc" } },
         deliveryOptions: deliveryOptionsPublicInclude,
-        variants: true,
+        variants: { include: variantWithPropertiesInclude },
         _count: { select: { reviews: true } },
       },
     });
@@ -850,12 +1259,15 @@ export const productService = {
       const row = byId.get(id);
       if (row) ordered.push(row);
     }
+    const defsMap = await categoryAttrDefsMap(ordered.map((p) => p.categoryId));
     const out = [];
     for (const p of ordered) {
       const deliveryOptions = allowSeller
         ? p.deliveryOptions
         : p.deliveryOptions.filter((d) => d.tipoEntrega === "PLATAFORMA");
       if (deliveryOptions.length === 0) continue;
+      const defs = p.categoryId ? defsMap.get(p.categoryId) ?? [] : [];
+      const listingBadges = computePublicListingBadges(toListingQualityInput(p), defs);
       out.push({
         ...mapProductMediaForApi({
           ...p,
@@ -863,6 +1275,7 @@ export const productService = {
           shop: p.shop ? lojaResumoProduto(p.shop) : p.shop,
         }),
         ...mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount }),
+        listingBadges,
       });
     }
     return out;
@@ -880,6 +1293,14 @@ export const productService = {
         const sku = (r.sku ?? "").toLowerCase();
         const cat = (r.category?.name ?? "").toLowerCase();
         const shop = (r.shop?.name ?? "").toLowerCase();
+        const structBlob = (r.variants ?? [])
+          .flatMap((v) => v.variantStructuredValues ?? [])
+          .map((sv) => (sv.value ?? "").toLowerCase())
+          .join(" ");
+        const propBlob = (r.variants ?? [])
+          .flatMap((v) => v.properties ?? [])
+          .flatMap((pr) => [`${pr.label} ${pr.value}`.toLowerCase()])
+          .join(" ");
         let score = 0;
         for (const alts of termSets) {
           for (const t of alts) {
@@ -892,6 +1313,8 @@ export const productService = {
             if (sku.includes(t)) score += 40;
             if (cat.includes(t)) score += 20;
             if (shop.includes(t)) score += 16;
+            if (structBlob.includes(t)) score += 55;
+            if (propBlob.includes(t)) score += 42;
           }
         }
         score += Math.min(40, Math.log10(Number(r.soldCount || 0) + 1) * 16);

@@ -4,6 +4,7 @@ import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
+import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
 
 type FavoriteRow = {
   id: string;
@@ -23,7 +24,15 @@ type FavoriteRow = {
     images: { url: string }[];
     shop: { id: string; name: string; city: string; province: string } | null;
   };
-  variant: { id: string; name?: string | null; sku: string } | null;
+  variant: {
+    id: string;
+    name?: string | null;
+    sku?: string;
+    color?: string | null;
+    size?: string | null;
+    properties?: { label: string; value: string }[];
+    variantStructuredValues?: { value: string; attribute: { label: string; sortOrder?: number } }[];
+  } | null;
 };
 
 function toCardData(row: FavoriteRow): ProductCardData {
@@ -190,7 +199,8 @@ export default function FavoritesPage() {
             {rows.map((row) => {
               const card = toCardData(row);
               const shop = row.product.shop;
-              const vLabel = row.variant?.name?.trim() || row.variant?.sku;
+              const vLine = row.variant ? variantDisplayBuyerLine(row.variant, row.product.name) : null;
+              const vShow = vLine && vLine !== "Variante" ? vLine : null;
               const saved = new Date(row.createdAt).toLocaleDateString("pt-AO", {
                 day: "numeric",
                 month: "short",
@@ -212,9 +222,9 @@ export default function FavoritesPage() {
                   </div>
                   <ProductCard p={card} className="ae-fav-card__pcard" />
                   <div className="ae-fav-card__foot">
-                    {vLabel ? (
+                    {vShow ? (
                       <span className="ae-fav-card__var">
-                        Variação: <strong>{vLabel}</strong>
+                        Variação: <strong>{vShow}</strong>
                       </span>
                     ) : (
                       <span className="ae-fav-card__var ae-muted">Sem variação específica</span>

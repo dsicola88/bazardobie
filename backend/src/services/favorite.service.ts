@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import type { z } from "zod";
 import type { createFavoriteSchema } from "../validators/favorite.validators.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 import { mapNestedProductMediaForApi, publicMediaUrl } from "../utils/publicMediaUrl.js";
 
 type Fav = z.infer<typeof createFavoriteSchema>;
@@ -25,7 +26,7 @@ export const favoriteService = {
       },
       include: {
         product: { include: { images: { take: 1 } } },
-        variant: true,
+        variant: { include: variantWithPropertiesInclude },
       },
     });
     return {
@@ -55,7 +56,7 @@ export const favoriteService = {
       orderBy: { createdAt: "desc" },
       include: {
         product: { include: { shop: true, images: { take: 1 } } },
-        variant: true,
+        variant: { include: variantWithPropertiesInclude },
       },
     });
     return rows.map((f) => ({

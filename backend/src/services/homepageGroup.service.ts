@@ -7,6 +7,9 @@ import { siteSettingsService } from "./siteSettings.service.js";
 import { publicMediaUrl } from "../utils/publicMediaUrl.js";
 import { mergePublicRatingFields } from "../utils/ratingTrust.js";
 import { productPublicShelfExtras } from "../constants/productPublicShelf.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
+import { computePublicListingBadges, toListingQualityInput, type PublicListingBadge } from "../utils/listingQuality.js";
+import { categoryAttrDefsMap } from "../utils/categoryAttrDefsMap.js";
 
 function isListedProductPublic(
   p: {
@@ -27,19 +30,22 @@ function isListedProductPublic(
   return opts.length > 0;
 }
 
-function cardDto(p: {
-  id: string;
-  name: string;
-  condition: string;
-  conditionDetail?: string | null;
-  price: Decimal;
-  promoPrice: Decimal | null;
-  displayPrice: Decimal;
-  soldCount: number;
-  averageRating: Decimal | null;
-  reviewCount: number;
-  images: { url: string }[];
-}) {
+function cardDto(
+  p: {
+    id: string;
+    name: string;
+    condition: string;
+    conditionDetail?: string | null;
+    price: Decimal;
+    promoPrice: Decimal | null;
+    displayPrice: Decimal;
+    soldCount: number;
+    averageRating: Decimal | null;
+    reviewCount: number;
+    images: { url: string }[];
+  },
+  listingBadges: PublicListingBadge[]
+) {
   const rp = mergePublicRatingFields({ averageRating: p.averageRating, reviewCount: p.reviewCount });
   return {
     id: p.id,
@@ -55,6 +61,7 @@ function cardDto(p: {
     ratingTrustHintPt: rp.ratingTrustHintPt,
     ratingTrustShortPt: rp.ratingTrustShortPt,
     images: p.images.map((img) => ({ url: publicMediaUrl(img.url) })),
+    listingBadges,
   };
 }
 
@@ -76,7 +83,7 @@ export const homepageGroupService = {
                 deliveryOptions: {
                   include: { logisticsPartner: { select: { id: true, name: true } } },
                 },
-                variants: true,
+                variants: { include: variantWithPropertiesInclude },
               },
             },
           },
@@ -84,20 +91,34 @@ export const homepageGroupService = {
       },
     });
 
-    return groups.map((g) => {
+    type EligibleProduct = (typeof groups)[number]["members"][number]["product"];
+    const eligibleByGroup: EligibleProduct[][] = groups.map((g) => {
       const limit = Math.min(Math.max(g.maxDisplay, 1), 48);
-      const items: ReturnType<typeof cardDto>[] = [];
+      const eligible: EligibleProduct[] = [];
       for (const m of g.members) {
         const p = m.product;
         if (!isListedProductPublic(p, allowSeller)) continue;
-        items.push(
-          cardDto({
+        eligible.push(p);
+        if (eligible.length >= limit) break;
+      }
+      return eligible;
+    });
+
+    const defsMap = await categoryAttrDefsMap(eligibleByGroup.flat().map((p) => p.categoryId));
+
+    return groups.map((g, gi) => {
+      const eligible = eligibleByGroup[gi];
+      const items = eligible.map((p) => {
+        const defs = p.categoryId ? defsMap.get(p.categoryId) ?? [] : [];
+        const listingBadges = computePublicListingBadges(toListingQualityInput(p), defs);
+        return cardDto(
+          {
             ...p,
             images: p.images,
-          })
+          },
+          listingBadges
         );
-        if (items.length >= limit) break;
-      }
+      });
       return {
         slug: g.slug,
         title: g.title,

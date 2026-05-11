@@ -5,6 +5,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { StarRating } from "./StarRating.js";
+import { listingBadgeClassList } from "../utils/listingBadgeClass.js";
 
 export type ProductCardData = {
   id: string;
@@ -22,6 +23,8 @@ export type ProductCardData = {
   ratingTrustShortPt?: string | null;
   ratingTrustHintPt?: string | null;
   images: { url: string }[];
+  /** Selos derivados da completude da ficha (API pública). */
+  listingBadges?: { id: string; label: string }[];
 };
 
 function ProductCardInner({
@@ -88,6 +91,15 @@ function ProductCardInner({
       </div>
       <div className="ae-pcard__body">
         <h3 className="ae-pcard__title">{p.name}</h3>
+        {p.listingBadges?.length ? (
+          <div className="ae-pcard__badges">
+            {p.listingBadges.map((b) => (
+              <span key={b.id} className={listingBadgeClassList(b.id, true)}>
+                {b.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="ae-pcard__meta">
           {p.averageRating != null ? (
             <StarRating

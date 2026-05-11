@@ -8,6 +8,7 @@ import {
   updateProductSchema,
   productListQuerySchema,
   categoryFacetQuerySchema,
+  structuredAttributeFacetQuerySchema,
 } from "../validators/product.validators.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 
@@ -87,6 +88,13 @@ export const productController = {
   facetCategories: asyncHandler(async (req, res) => {
     const q = categoryFacetQuerySchema.parse(req.query);
     const out = await productService.facetCategories(q);
+    res.json(out);
+  }),
+
+  /** Facetas só sobre atributos estruturados (`facetEnabled`) dentro de uma categoria. */
+  facetStructuredAttributes: asyncHandler(async (req, res) => {
+    const q = structuredAttributeFacetQuerySchema.parse(req.query);
+    const out = await productService.structuredAttributeFacets(q);
     res.json(out);
   }),
 

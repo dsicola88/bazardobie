@@ -5,6 +5,7 @@ import { getPublicCategories, type PublicCategory } from "../data/publicCategori
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import type { ProductCondition } from "../utils/productCondition.js";
+import { computeListingQualityPreview } from "../utils/listingQualityPreview.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -13,6 +14,40 @@ function allowSellerFromContent(raw: string | undefined): boolean {
 
 type Cat = PublicCategory;
 type ShopMe = { isApproved: boolean; province: string; city: string };
+
+type CategoryAttrDefPublic = {
+  id: string;
+  key: string;
+  label: string;
+  inputType: "TEXT" | "NUMBER" | "SELECT";
+  options: string[] | null;
+  helpText?: string | null;
+  isRequired: boolean;
+  sortOrder: number;
+  unitCode: string | null;
+  unit: { code: string; symbol: string; namePt: string; quantity: string } | null;
+  facetEnabled: boolean;
+  primaryRank: number;
+  autoSuggest: boolean;
+  synonyms: string[];
+};
+
+type CategoryPresetPublic = {
+  id: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  isDefault: boolean;
+  attributes: {
+    id: string;
+    key: string;
+    label: string;
+    inputType: string;
+    autoSuggest: boolean;
+    primaryRank: number;
+    sortOrder: number;
+  }[];
+};
 
 type VarForm = {
   sku: string;
@@ -23,6 +58,9 @@ type VarForm = {
   priceAdjust: string;
   stock: string;
   imageUrl: string;
+  properties: { label: string; value: string }[];
+  /** Valores por id de CategoryAttribute (ficha técnica da categoria). */
+  categoryValues: Record<string, string>;
 };
 
 type DelForm = {
@@ -60,6 +98,8 @@ type ProductLoaded = {
     salePrice?: string | null;
     stock: number;
     imageUrl?: string | null;
+    properties?: { label: string; value: string }[];
+    variantStructuredValues?: { attributeId: string; value: string }[];
   }[];
   deliveryOptions: {
     id?: string;
@@ -92,6 +132,8 @@ const emptyVar = (): VarForm => ({
   priceAdjust: "",
   stock: "0",
   imageUrl: "",
+  properties: [],
+  categoryValues: {},
 });
 
 const emptyDel = (prov: string, city: string): DelForm => ({
@@ -102,6 +144,27 @@ const emptyDel = (prov: string, city: string): DelForm => ({
   areaCidade: city || "Cuito",
   logisticsPartnerId: "",
 });
+
+function categoryAttrSort(a: CategoryAttrDefPublic, b: CategoryAttrDefPublic): number {
+  const pr = (b.primaryRank ?? 0) - (a.primaryRank ?? 0);
+  if (pr !== 0) return pr;
+  if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+  return a.label.localeCompare(b.label, "pt");
+}
+
+function categoryAttrFieldLabel(a: CategoryAttrDefPublic): string {
+  if (a.inputType === "NUMBER") {
+    if (a.unit?.symbol) return `${a.label} (${a.unit.symbol})`;
+    if (a.unitCode) return `${a.label} (${a.unitCode})`;
+  }
+  return a.label;
+}
+
+/** Sufixo de classe CSS seguro (evita acentos em selectors). */
+function listingGradeCssClass(grade: "baixo" | "médio" | "alto" | "excelente"): string {
+  if (grade === "médio") return "medio";
+  return grade;
+}
 
 function validateVariantSkus(parentSkuRaw: string, rows: VarForm[]): string | null {
   const parent = parentSkuRaw.trim().toLowerCase();
@@ -115,6 +178,21 @@ function validateVariantSkus(parentSkuRaw: string, rows: VarForm[]): string | nu
     seen.add(k);
     if (parent && k === parent) {
       return "O SKU de uma variante não pode ser igual ao SKU principal do artigo.";
+    }
+  }
+  return null;
+}
+
+function validateVariantProperties(rows: VarForm[]): string | null {
+  for (const row of rows) {
+    const seen = new Set<string>();
+    for (const p of row.properties ?? []) {
+      const k = p.label.trim().toLowerCase();
+      if (!k) continue;
+      if (seen.has(k)) {
+        return "Cada característica precisa de um nome (rótulo) distinto dentro da mesma variante.";
+      }
+      seen.add(k);
     }
   }
   return null;
@@ -144,6 +222,9 @@ export default function VendorProductEditor() {
   const [condition, setCondition] = useState<ProductCondition>("NEW");
   const [conditionDetail, setConditionDetail] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [categoryAttrs, setCategoryAttrs] = useState<CategoryAttrDefPublic[]>([]);
+  const [categoryPresets, setCategoryPresets] = useState<CategoryPresetPublic[]>([]);
+  const [presetSortId, setPresetSortId] = useState("");
   const [price, setPrice] = useState("");
   const [promoPrice, setPromoPrice] = useState("");
   const [stock, setStock] = useState("0");
@@ -160,6 +241,48 @@ export default function VendorProductEditor() {
 
   const catOptions = useMemo(() => flattenCats(cats), [cats]);
 
+  const categoryAttrsSorted = useMemo(() => {
+    const base = [...categoryAttrs];
+    if (!presetSortId) return base.sort(categoryAttrSort);
+    const preset = categoryPresets.find((p) => p.id === presetSortId);
+    if (!preset) return base.sort(categoryAttrSort);
+    const order = new Map(preset.attributes.map((a, i) => [a.id, i] as const));
+    return base.sort((a, b) => {
+      const ia = order.has(a.id) ? order.get(a.id)! : 10_000;
+      const ib = order.has(b.id) ? order.get(b.id)! : 10_000;
+      if (ia !== ib) return ia - ib;
+      return categoryAttrSort(a, b);
+    });
+  }, [categoryAttrs, categoryPresets, presetSortId]);
+
+  const listingPreview = useMemo(
+    () =>
+      computeListingQualityPreview({
+        name,
+        description,
+        categoryId,
+        images,
+        demoVideoUrl,
+        condition,
+        conditionDetail,
+        isDraft: listingMeta.isDraft,
+        variants,
+        categoryAttrs: categoryAttrs.map((a) => ({ id: a.id, isRequired: a.isRequired })),
+      }),
+    [
+      name,
+      description,
+      categoryId,
+      images,
+      demoVideoUrl,
+      condition,
+      conditionDetail,
+      listingMeta.isDraft,
+      variants,
+      categoryAttrs,
+    ],
+  );
+
   useEffect(() => {
     void getPublicCategories().then(setCats);
   }, []);
@@ -169,6 +292,55 @@ export default function VendorProductEditor() {
       .then(setShippingCarriers)
       .catch(() => setShippingCarriers([]));
   }, []);
+
+  useEffect(() => {
+    if (!categoryId.trim()) {
+      setCategoryAttrs([]);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<CategoryAttrDefPublic[]>(`/categories/${encodeURIComponent(categoryId.trim())}/attributes`)
+      .then((rows) => {
+        if (!cancelled) setCategoryAttrs(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryAttrs([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId]);
+
+  useEffect(() => {
+    if (!categoryId.trim()) {
+      setCategoryPresets([]);
+      setPresetSortId("");
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<{ items: CategoryPresetPublic[] }>(
+      `/categories/${encodeURIComponent(categoryId.trim())}/attribute-presets`,
+    )
+      .then((r) => {
+        if (cancelled) return;
+        const items = r.items ?? [];
+        setCategoryPresets(items);
+        const def = items.find((p) => p.isDefault);
+        setPresetSortId((prev) => {
+          if (prev && items.some((p) => p.id === prev)) return prev;
+          return def?.id ?? "";
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCategoryPresets([]);
+          setPresetSortId("");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId]);
 
   useEffect(() => {
     if (!token) return;
@@ -222,6 +394,13 @@ export default function VendorProductEditor() {
                       : "",
                 stock: String(v.stock),
                 imageUrl: v.imageUrl ?? "",
+                properties: (v.properties ?? []).map((pr) => ({
+                  label: pr.label ?? "",
+                  value: pr.value ?? "",
+                })),
+                categoryValues: Object.fromEntries(
+                  (v.variantStructuredValues ?? []).map((sv) => [sv.attributeId, sv.value]),
+                ),
               }))
             : [],
         );
@@ -289,21 +468,35 @@ export default function VendorProductEditor() {
 
     const varPayload = variants
       .filter((v) => v.sku.trim())
-      .map((v) => ({
-        sku: v.sku.trim(),
-        name: v.name.trim() || undefined,
-        color: v.color.trim() || undefined,
-        size: v.size.trim() || undefined,
-        salePrice: v.salePrice.trim() === "" ? undefined : Number(v.salePrice),
-        priceAdjust:
-          v.salePrice.trim() !== ""
-            ? undefined
-            : v.priceAdjust.trim() === ""
+      .map((v) => {
+        const props =
+          v.properties
+            ?.map((p) => ({ label: p.label.trim(), value: p.value.trim() }))
+            .filter((p) => p.label && p.value) ?? [];
+        const catVals =
+          categoryId.trim() === ""
+            ? []
+            : Object.entries(v.categoryValues ?? {})
+                .map(([attributeId, value]) => ({ attributeId, value: value.trim() }))
+                .filter((x) => x.value.length > 0);
+        return {
+          sku: v.sku.trim(),
+          name: v.name.trim() || undefined,
+          color: v.color.trim() || undefined,
+          size: v.size.trim() || undefined,
+          salePrice: v.salePrice.trim() === "" ? undefined : Number(v.salePrice),
+          priceAdjust:
+            v.salePrice.trim() !== ""
               ? undefined
-              : Number(v.priceAdjust),
-        stock: Number(v.stock) || 0,
-        imageUrl: v.imageUrl.trim() || undefined,
-      }));
+              : v.priceAdjust.trim() === ""
+                ? undefined
+                : Number(v.priceAdjust),
+          stock: Number(v.stock) || 0,
+          imageUrl: v.imageUrl.trim() || undefined,
+          ...(props.length ? { properties: props } : {}),
+          ...(catVals.length ? { categoryAttributeValues: catVals } : {}),
+        };
+      });
 
     const delPayload = deliveries.map((d) => {
       const base = {
@@ -366,6 +559,11 @@ export default function VendorProductEditor() {
       setErr(skuErr);
       return;
     }
+    const propErr = validateVariantProperties(variants);
+    if (propErr) {
+      setErr(propErr);
+      return;
+    }
     setSaving(true);
     try {
       await apiFetch(`/vendor/products/${productId}`, {
@@ -404,6 +602,11 @@ export default function VendorProductEditor() {
     const skuErr = validateVariantSkus(sku, variants);
     if (skuErr) {
       setErr(skuErr);
+      return;
+    }
+    const propErr = validateVariantProperties(variants);
+    if (propErr) {
+      setErr(propErr);
       return;
     }
 
@@ -610,7 +813,16 @@ export default function VendorProductEditor() {
           ) : null}
           <div>
             <label htmlFor="pcat">Categoria comercial</label>
-            <select id="pcat" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <select
+              id="pcat"
+              value={categoryId}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === categoryId) return;
+                setCategoryId(next);
+                setVariants((prev) => prev.map((row) => ({ ...row, categoryValues: {} })));
+              }}
+            >
               <option value="">Seleccionar categoria…</option>
               {catOptions.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -796,6 +1008,53 @@ export default function VendorProductEditor() {
             <strong>tamanho / medida</strong> ou uma <strong>designação</strong> diferente por SKU — assim os botões na
             página do produto mostram texto legível em vez de pastilhas vazias.
           </p>
+          <div className="ae-listing-quality-preview" role="status">
+            <strong>Qualidade do anúncio (pré-visualização)</strong>
+            <span className="ae-listing-quality-preview__score">
+              {listingPreview.score}
+              <span className="ae-muted"> / 100</span>
+            </span>
+            <span
+              className={`ae-badge ae-listing-quality-preview__grade ae-listing-quality-preview__grade--${listingGradeCssClass(listingPreview.grade)}`}
+            >
+              {listingPreview.grade}
+            </span>
+            {listingPreview.hints.length > 0 ? (
+              <ul className="ae-listing-quality-preview__hints">
+                {listingPreview.hints.map((h, hi) => (
+                  <li key={hi}>{h}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
+                Bom equilíbrio entre texto, media e ficha. Continue a refinar antes de publicar.
+              </p>
+            )}
+          </div>
+          {categoryAttrs.length > 0 && categoryPresets.length > 0 ? (
+            <div className="ae-v-preset-row" style={{ marginBottom: 16 }}>
+              <label htmlFor="preset-sort" style={{ display: "block", marginBottom: 6 }}>
+                Modelo de ficha (ordena os atributos sugeridos para esta categoria)
+              </label>
+              <select
+                id="preset-sort"
+                value={presetSortId}
+                onChange={(e) => setPresetSortId(e.target.value)}
+              >
+                <option value="">Ordem padrão (destaque da categoria)</option>
+                {categoryPresets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                    {p.isDefault ? " (predefinido)" : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="ae-field-hint" style={{ marginTop: 6 }}>
+                Não altera valores já escritos — só a ordem dos campos por variante, para seguir o modelo escolhido na
+                administração.
+              </p>
+            </div>
+          ) : null}
           {variants.map((v, ix) => (
             <div key={ix} className="ae-v-prod-variant-block">
               <div className="ae-field-grid-2">
@@ -888,6 +1147,163 @@ export default function VendorProductEditor() {
                     {uploadingVariantIx === ix ? "A importar…" : "Carregar ficheiro"}
                   </label>
                 </div>
+              </div>
+              {categoryAttrs.length > 0 ? (
+                <div style={{ marginTop: 12 }}>
+                  <p className="ae-field-hint" style={{ marginBottom: 10 }}>
+                    <strong>Ficha técnica da categoria</strong> — campos alinhados ao catálogo «
+                    {catOptions.find((c) => c.id === categoryId)?.label ?? "…"}». Os marcados com * são
+                    obrigatórios quando assim definidos na administração da plataforma.
+                  </p>
+                  {categoryAttrsSorted.map((a) => (
+                      <div key={a.id} style={{ marginBottom: 12 }}>
+                        <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                          <span>
+                            {categoryAttrFieldLabel(a)}
+                            {a.isRequired ? " *" : ""}
+                          </span>
+                          {a.autoSuggest ? (
+                            <span className="ae-badge ae-badge--feat" style={{ fontSize: 10, fontWeight: 600 }}>
+                              Sugerido
+                            </span>
+                          ) : null}
+                        </label>
+                        {a.synonyms?.length ? (
+                          <p className="ae-field-hint" style={{ margin: "4px 0 6px" }}>
+                            Também conhecido por: {a.synonyms.join(", ")}
+                          </p>
+                        ) : null}
+                        {a.inputType === "SELECT" && a.options && a.options.length > 0 ? (
+                          <select
+                            value={v.categoryValues[a.id] ?? ""}
+                            onChange={(e) =>
+                              setVariants((p) =>
+                                p.map((x, i) =>
+                                  i === ix
+                                    ? {
+                                        ...x,
+                                        categoryValues: { ...x.categoryValues, [a.id]: e.target.value },
+                                      }
+                                    : x,
+                                ),
+                              )
+                            }
+                          >
+                            <option value="">— seleccionar —</option>
+                            {a.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            inputMode={a.inputType === "NUMBER" ? "decimal" : "text"}
+                            value={v.categoryValues[a.id] ?? ""}
+                            onChange={(e) =>
+                              setVariants((p) =>
+                                p.map((x, i) =>
+                                  i === ix
+                                    ? {
+                                        ...x,
+                                        categoryValues: { ...x.categoryValues, [a.id]: e.target.value },
+                                      }
+                                    : x,
+                                ),
+                              )
+                            }
+                            placeholder={a.inputType === "NUMBER" ? "Ex.: 8" : ""}
+                          />
+                        )}
+                        {a.helpText ? <p className="ae-field-hint">{a.helpText}</p> : null}
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+              <div className="ae-v-prod-variant-props">
+                <p className="ae-field-hint" style={{ marginBottom: 10 }}>
+                  <strong>Características desta variante</strong> (opcional): defina pares nome do atributo + valor (ex.{" "}
+                  <em>Género</em> / <em>Homem</em>, <em>Material</em> / <em>Algodão</em>). Rótulos repetidos na mesma
+                  variante não são permitidos.
+                </p>
+                {(v.properties ?? []).map((prop, pi) => (
+                  <div key={pi} className="ae-field-grid-2" style={{ marginBottom: 10 }}>
+                    <div>
+                      <label>Atributo</label>
+                      <input
+                        value={prop.label}
+                        placeholder="Ex.: Género"
+                        onChange={(e) =>
+                          setVariants((p) =>
+                            p.map((x, i) =>
+                              i === ix
+                                ? {
+                                    ...x,
+                                    properties: (x.properties ?? []).map((q, qi) =>
+                                      qi === pi ? { ...q, label: e.target.value } : q,
+                                    ),
+                                  }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label>Valor</label>
+                      <input
+                        value={prop.value}
+                        placeholder="Ex.: Homem"
+                        onChange={(e) =>
+                          setVariants((p) =>
+                            p.map((x, i) =>
+                              i === ix
+                                ? {
+                                    ...x,
+                                    properties: (x.properties ?? []).map((q, qi) =>
+                                      qi === pi ? { ...q, value: e.target.value } : q,
+                                    ),
+                                  }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <button
+                        type="button"
+                        className="ae-mini-btn"
+                        onClick={() =>
+                          setVariants((p) =>
+                            p.map((x, i) =>
+                              i === ix
+                                ? { ...x, properties: (x.properties ?? []).filter((_, qi) => qi !== pi) }
+                                : x,
+                            ),
+                          )
+                        }
+                      >
+                        Remover linha
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ marginTop: 4 }}
+                  onClick={() =>
+                    setVariants((p) =>
+                      p.map((x, i) =>
+                        i === ix ? { ...x, properties: [...(x.properties ?? []), { label: "", value: "" }] } : x,
+                      ),
+                    )
+                  }
+                >
+                  + Adicionar característica
+                </button>
               </div>
               <button type="button" className="ae-mini-btn" onClick={() => setVariants((p) => p.filter((_, i) => i !== ix))}>
                 Eliminar variante

@@ -18,8 +18,16 @@ export function variantDisplaySummary(v: VariantDisplayFields): string {
   return norm(v.sku) || "Variante";
 }
 
-/** Igual ao frontend: Cor / Tamanho / Modelo com rótulos, para snapshots e emails. */
-export function variantDisplayBuyerLine(v: VariantDisplayFields, productName?: string): string {
+/** Igual ao frontend: Cor / Tamanho / Modelo, atributos de categoria, características livres, SKU — para snapshots e emails. */
+export function variantDisplayBuyerLine(
+  v: VariantDisplayFields & {
+    properties?: { label: string; value: string }[] | null;
+    variantStructuredValues?:
+      | { value: string; attribute: { label: string; sortOrder: number } }[]
+      | null;
+  },
+  productName?: string
+): string {
   const c = norm(v.color);
   const s = norm(v.size);
   let n = norm(v.name);
@@ -32,6 +40,19 @@ export function variantDisplayBuyerLine(v: VariantDisplayFields, productName?: s
   if (c) parts.push(`Cor: ${c}`);
   if (s) parts.push(`Tamanho: ${s}`);
   if (n) parts.push(`Modelo: ${n}`);
+  const structured = [...(v.variantStructuredValues ?? [])].sort(
+    (a, b) => a.attribute.sortOrder - b.attribute.sortOrder
+  );
+  for (const sv of structured) {
+    const lab = norm(sv.attribute.label);
+    const val = norm(sv.value);
+    if (lab && val) parts.push(`${lab}: ${val}`);
+  }
+  for (const p of v.properties ?? []) {
+    const lab = norm(p.label);
+    const val = norm(p.value);
+    if (lab && val) parts.push(`${lab}: ${val}`);
+  }
   if (parts.length) return parts.join(" · ");
   if (sku) return `SKU: ${sku}`;
   return "Variante";

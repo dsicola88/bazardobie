@@ -1,11 +1,45 @@
 /** Textos consistentes para variantes em PDP, carrinho e fluxos relacionados. */
 
+export type VariantPropertyPublic = { label: string; value: string };
+
+export type VariantStructuredValuePublic = {
+  value: string;
+  attribute: {
+    label: string;
+    sortOrder?: number;
+    primaryRank?: number;
+    inputType?: string;
+    unitCode?: string | null;
+  };
+};
+
 export type VariantDisplayFields = {
   sku?: string | null;
   name?: string | null;
   color?: string | null;
   size?: string | null;
+  /** Características adicionais definidas pelo vendedor (Género, Material, …). */
+  properties?: VariantPropertyPublic[] | null;
+  /** Atributos do catálogo (categoria) — `primaryRank` e depois `sortOrder`. */
+  variantStructuredValues?: VariantStructuredValuePublic[] | null;
 };
+
+function sortStructured(a: VariantStructuredValuePublic, b: VariantStructuredValuePublic): number {
+  const pr = (b.attribute.primaryRank ?? 0) - (a.attribute.primaryRank ?? 0);
+  if (pr !== 0) return pr;
+  return (a.attribute.sortOrder ?? 0) - (b.attribute.sortOrder ?? 0);
+}
+
+function formatStructuredCell(sv: VariantStructuredValuePublic): string {
+  const v = norm(sv.value);
+  if (!v) return "";
+  const t = sv.attribute.inputType;
+  const u = norm(sv.attribute.unitCode ?? undefined);
+  if (t === "NUMBER" && u && !v.toLowerCase().includes(u.toLowerCase())) {
+    return `${v} ${u}`;
+  }
+  return v;
+}
 
 function norm(s: string | null | undefined): string {
   return (s ?? "").trim();
@@ -20,8 +54,7 @@ export function variantDisplaySummary(v: VariantDisplayFields): string {
 
 /**
  * Linha para o comprador com rótulos explícitos (estilo vitrine profissional).
- * Ordem: Cor → Tamanho → Modelo; só SKU quando não há atributos.
- * `productName` evita repetir o nome da ficha em «Modelo».
+ * Ordem: Cor → Tamanho → Modelo → atributos da categoria → características livres; só SKU quando não há atributos.
  */
 export function variantDisplayBuyerLine(v: VariantDisplayFields, productName?: string): string {
   const c = norm(v.color);
@@ -36,9 +69,49 @@ export function variantDisplayBuyerLine(v: VariantDisplayFields, productName?: s
   if (c) parts.push(`Cor: ${c}`);
   if (s) parts.push(`Tamanho: ${s}`);
   if (n) parts.push(`Modelo: ${n}`);
+  const structured = [...(v.variantStructuredValues ?? [])].sort(sortStructured);
+  for (const sv of structured) {
+    const lab = norm(sv.attribute.label);
+    const val = formatStructuredCell(sv);
+    if (lab && val) parts.push(`${lab}: ${val}`);
+  }
+  for (const p of v.properties ?? []) {
+    const lab = norm(p.label);
+    const val = norm(p.value);
+    if (lab && val) parts.push(`${lab}: ${val}`);
+  }
   if (parts.length) return parts.join(" · ");
   if (sku) return `SKU: ${sku}`;
   return "Variante";
+}
+
+/** Linhas para tabela «Ficha técnica» na PDP (duas colunas). */
+export function variantPdpSpecRows(
+  v: VariantDisplayFields,
+  productName?: string,
+): { label: string; value: string }[] {
+  let n = norm(v.name);
+  const pn = norm(productName);
+  if (n && pn && n.toLowerCase() === pn.toLowerCase()) {
+    n = "";
+  }
+  const rows: { label: string; value: string }[] = [];
+  if (norm(v.color)) rows.push({ label: "Cor", value: norm(v.color) });
+  if (norm(v.size)) rows.push({ label: "Tamanho", value: norm(v.size) });
+  if (n) rows.push({ label: "Modelo", value: n });
+  const structured = [...(v.variantStructuredValues ?? [])].sort(sortStructured);
+  for (const sv of structured) {
+    const lab = norm(sv.attribute.label);
+    const val = formatStructuredCell(sv);
+    if (lab && val) rows.push({ label: lab, value: val });
+  }
+  for (const p of v.properties ?? []) {
+    const lab = norm(p.label);
+    const val = norm(p.value);
+    if (lab && val) rows.push({ label: lab, value: val });
+  }
+  if (rows.length === 0 && norm(v.sku)) rows.push({ label: "SKU", value: norm(v.sku) });
+  return rows;
 }
 
 /**

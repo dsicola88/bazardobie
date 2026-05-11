@@ -9,6 +9,14 @@ import { buildSearchPath } from "../buildSearchPath.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
 import { useSeo } from "../seo/useSeo.js";
 import { parsePriceFilterInput } from "../utils/priceFilter.js";
+import {
+  getRangeFacet,
+  parseStructuredFacetsParam,
+  serializeStructuredFacets,
+  toggleDiscreteValue,
+  upsertRangeFacet,
+  isDiscreteValueSelected,
+} from "../utils/structuredFacetsUrl.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
@@ -23,6 +31,27 @@ type CatalogFacetPayload = {
   priceFloor?: number;
   priceCeiling?: number;
 };
+
+type StructuredFacetApiDiscrete = {
+  attributeId: string;
+  key: string;
+  label: string;
+  inputType: string;
+  facetKind: "discrete";
+  values: { value: string; count: number }[];
+};
+type StructuredFacetApiRange = {
+  attributeId: string;
+  key: string;
+  label: string;
+  inputType: string;
+  unitCode: string | null;
+  facetKind: "range";
+  min: number | null;
+  max: number | null;
+  valueCount: number;
+};
+type StructuredFacetApiPayload = { categoryId: string; facets: (StructuredFacetApiDiscrete | StructuredFacetApiRange)[] };
 
 const CONDITION_FILTER_OPTIONS: { value: string; label: string; hint: string }[] = [
   { value: "", label: "Todas as condições", hint: "Novo, usado e recondicionado" },
@@ -105,6 +134,89 @@ function sumSubtreeCounts(
     n += sumSubtreeCounts(ch.id, childrenByParent, counts);
   }
   return n;
+}
+
+function StructuredNumericFacetFilter({
+  facet,
+  structuredFacetsParam,
+  params,
+  setParams,
+}: {
+  facet: StructuredFacetApiRange;
+  structuredFacetsParam: string;
+  params: URLSearchParams;
+  setParams: (next: URLSearchParams) => void;
+}) {
+  const clauses = useMemo(() => parseStructuredFacetsParam(structuredFacetsParam), [structuredFacetsParam]);
+  const active = getRangeFacet(clauses, facet.attributeId);
+  const [lo, setLo] = useState(() => (active?.min != null ? String(active.min) : ""));
+  const [hi, setHi] = useState(() => (active?.max != null ? String(active.max) : ""));
+  useEffect(() => {
+    const a = getRangeFacet(parseStructuredFacetsParam(structuredFacetsParam), facet.attributeId);
+    setLo(a?.min != null ? String(a.min) : "");
+    setHi(a?.max != null ? String(a.max) : "");
+  }, [structuredFacetsParam, facet.attributeId]);
+
+  function apply() {
+    const n = new URLSearchParams(params);
+    const prev = parseStructuredFacetsParam(n.get("structuredFacets"));
+    const minN = lo.trim() === "" ? undefined : Number(lo.replace(",", "."));
+    const maxN = hi.trim() === "" ? undefined : Number(hi.replace(",", "."));
+    const minOk = minN !== undefined && Number.isFinite(minN) ? minN : undefined;
+    const maxOk = maxN !== undefined && Number.isFinite(maxN) ? maxN : undefined;
+    if (minOk == null && maxOk == null) return;
+    const next = upsertRangeFacet(prev, facet.attributeId, minOk, maxOk);
+    n.set("structuredFacets", serializeStructuredFacets(next));
+    setParams(n);
+  }
+
+  function clearRange() {
+    const n = new URLSearchParams(params);
+    const prev = parseStructuredFacetsParam(n.get("structuredFacets"));
+    const next = prev.filter((c) => !(c.kind === "range" && c.attributeId === facet.attributeId));
+    if (next.length === 0) n.delete("structuredFacets");
+    else n.set("structuredFacets", serializeStructuredFacets(next));
+    setParams(n);
+  }
+
+  const unitHint = facet.unitCode ? ` (${facet.unitCode})` : "";
+
+  return (
+    <div className="ae-struct-facet-range">
+      <div className="ae-struct-facet-range__inputs">
+        <label>
+          Mín{unitHint}
+          <input
+            type="text"
+            inputMode="decimal"
+            value={lo}
+            onChange={(e) => setLo(e.target.value)}
+            placeholder={facet.min != null ? String(facet.min) : "—"}
+          />
+        </label>
+        <label>
+          Máx{unitHint}
+          <input
+            type="text"
+            inputMode="decimal"
+            value={hi}
+            onChange={(e) => setHi(e.target.value)}
+            placeholder={facet.max != null ? String(facet.max) : "—"}
+          />
+        </label>
+      </div>
+      <div className="ae-struct-facet-range__actions">
+        <button type="button" className="btn" onClick={() => apply()}>
+          Aplicar
+        </button>
+        {active ? (
+          <button type="button" className="btn" onClick={() => clearRange()}>
+            Limpar
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 type CategoryFacetNavProps = {
@@ -192,7 +304,7 @@ function CategoryFacetNav({ params, cats, categoryId, facet, facetLoading, visua
             <span className="ae-cat-tree__expand ae-cat-tree__expand--spacer" aria-hidden />
           )}
           <Link
-            to={buildSearchPath("/search", params, { categoryId: cat.id })}
+            to={buildSearchPath("/search", params, { categoryId: cat.id, structuredFacets: null })}
             className={`ae-cat-tree__link${categoryId === cat.id ? " ae-on" : ""}`}
           >
             <span className="ae-cat-tree__name">{cat.name}</span>
@@ -215,7 +327,7 @@ function CategoryFacetNav({ params, cats, categoryId, facet, facetLoading, visua
   return (
     <nav className="ae-cat-tree" aria-label="Categorias do catálogo">
       <Link
-        to={buildSearchPath("/search", params, { categoryId: null })}
+        to={buildSearchPath("/search", params, { categoryId: null, structuredFacets: null })}
         className={`ae-cat-tree__all${!categoryId ? " ae-on" : ""}`}
       >
         <span>Todas as categorias</span>
@@ -265,6 +377,16 @@ export default function SearchPage() {
   const [debouncedQ, setDebouncedQ] = useState(q);
   const [facet, setFacet] = useState<CatalogFacetPayload | null>(null);
   const [facetLoading, setFacetLoading] = useState(false);
+  const structuredFacetsParam = params.get("structuredFacets") ?? "";
+  const structuredClausesParsed = useMemo(
+    () => parseStructuredFacetsParam(structuredFacetsParam),
+    [structuredFacetsParam],
+  );
+
+  const [structuredAttrFacets, setStructuredAttrFacets] = useState<(StructuredFacetApiDiscrete | StructuredFacetApiRange)[] | null>(
+    null,
+  );
+  const [structuredFacetLoading, setStructuredFacetLoading] = useState(false);
 
   const seoTitle = q.trim()
     ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
@@ -320,8 +442,63 @@ export default function SearchPage() {
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
     if (shopId) p.set("shopId", shopId);
+    if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
     return p.toString();
-  }, [debouncedQ, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId]);
+  }, [debouncedQ, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId, structuredFacetsParam]);
+
+  const structuredFacetApiQuery = useMemo(() => {
+    if (!categoryId || visualMode) return "";
+    const p = new URLSearchParams();
+    p.set("categoryId", categoryId);
+    const qt = debouncedQ.trim();
+    if (qt) p.set("q", qt);
+    if (condition) p.set("condition", condition);
+    const mn = Number(minRating);
+    if (mn >= 1 && mn <= 5) p.set("minRating", String(mn));
+    const minP = parsePriceFilterInput(minPriceParam);
+    const maxP = parsePriceFilterInput(maxPriceParam);
+    if (minP != null) p.set("minPrice", String(minP));
+    if (maxP != null) p.set("maxPrice", String(maxP));
+    if (featured) p.set("featured", "true");
+    if (onSale) p.set("onSale", "true");
+    if (shopId) p.set("shopId", shopId);
+    if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
+    return p.toString();
+  }, [
+    categoryId,
+    visualMode,
+    debouncedQ,
+    condition,
+    minRating,
+    minPriceParam,
+    maxPriceParam,
+    featured,
+    onSale,
+    shopId,
+    structuredFacetsParam,
+  ]);
+
+  useEffect(() => {
+    if (!structuredFacetApiQuery) {
+      setStructuredAttrFacets(null);
+      return;
+    }
+    let cancelled = false;
+    setStructuredFacetLoading(true);
+    void apiFetch<StructuredFacetApiPayload>(`/products/facet-structured-attributes?${structuredFacetApiQuery}`)
+      .then((r) => {
+        if (!cancelled) setStructuredAttrFacets(r.facets ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setStructuredAttrFacets(null);
+      })
+      .finally(() => {
+        if (!cancelled) setStructuredFacetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [structuredFacetApiQuery]);
 
   useEffect(() => {
     if (visualMode) return;
@@ -382,9 +559,22 @@ export default function SearchPage() {
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
     if (shopId) p.set("shopId", shopId);
+    if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
     p.set("take", String(PAGE_SIZE));
     return p.toString();
-  }, [q, categoryId, sort, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId]);
+  }, [
+    q,
+    categoryId,
+    sort,
+    condition,
+    minRating,
+    minPriceParam,
+    maxPriceParam,
+    featured,
+    onSale,
+    shopId,
+    structuredFacetsParam,
+  ]);
 
   useEffect(() => {
     if (!visualMode) return;
@@ -546,6 +736,11 @@ export default function SearchPage() {
       out.push({ label: `Preço ${bit} Kz`, patch: { minPrice: null, maxPrice: null } });
     }
     if (shopId) out.push({ label: shopLabel ? `Loja: ${shopLabel}` : "Loja filtrada", patch: { shopId: null } });
+    if (structuredClausesParsed.length > 0)
+      out.push({
+        label: `Ficha técnica (${structuredClausesParsed.length})`,
+        patch: { structuredFacets: null },
+      });
     if (sort !== "recentes") {
       const sl = sorts.find((s) => s.k === sort)?.label ?? sort;
       out.push({ label: `Ordenação: ${sl}`, patch: { sort: null } });
@@ -563,6 +758,7 @@ export default function SearchPage() {
     shopId,
     shopLabel,
     sort,
+    structuredClausesParsed.length,
   ]);
 
   /** Texto explicativo quando a lista filtrada está vazia (filtros restritivos ≠ erro do site). */
@@ -579,6 +775,7 @@ export default function SearchPage() {
     if (featured) constraints.push("só artigos em destaque");
     if (onSale) constraints.push("só artigos em promoção");
     if (shopId) constraints.push("uma loja específica");
+    if (structuredClausesParsed.length > 0) constraints.push("ficha técnica (atributos)");
 
     let combo = "";
     if (constraints.length === 1) combo = constraints[0];
@@ -603,6 +800,7 @@ export default function SearchPage() {
     featured,
     onSale,
     shopId,
+    structuredClausesParsed.length,
   ]);
 
   const showLoadMore =
@@ -744,6 +942,76 @@ export default function SearchPage() {
               facetLoading={facetLoading}
               visualMode={visualMode}
             />
+          </div>
+          <div className="ae-filters__group">
+            <strong>Ficha técnica (categoria)</strong>
+            <p className="ae-filters__facet-hint ae-muted">
+              Valores normalizados do catálogo — só com categorias que tenham atributos marcados para filtro na
+              administração.
+            </p>
+            {visualMode ? (
+              <p className="ae-muted" style={{ fontSize: 13 }}>
+                Não disponível na pesquisa por imagem.
+              </p>
+            ) : !categoryId ? (
+              <p className="ae-muted" style={{ fontSize: 13 }}>
+                Escolha uma categoria na árvore acima para ver as facetas disponíveis.
+              </p>
+            ) : structuredFacetLoading ? (
+              <p className="ae-muted">A carregar atributos…</p>
+            ) : !structuredAttrFacets || structuredAttrFacets.length === 0 ? (
+              <p className="ae-muted" style={{ fontSize: 13 }}>
+                Sem facetas activas para esta categoria.
+              </p>
+            ) : (
+              <div className="ae-struct-facets">
+                {structuredAttrFacets.map((f) =>
+                  f.facetKind === "discrete" ? (
+                    <div key={f.attributeId} className="ae-struct-facet-block">
+                      <div className="ae-struct-facet-block__title">{f.label}</div>
+                      <div className="ae-filters__checks ae-struct-facet-checks">
+                        {f.values.slice(0, 40).map((row) => (
+                          <label key={row.value} className="ae-filters__check">
+                            <input
+                              type="checkbox"
+                              checked={isDiscreteValueSelected(structuredClausesParsed, f.attributeId, row.value)}
+                              onChange={(e) => {
+                                const n = new URLSearchParams(params);
+                                const prev = parseStructuredFacetsParam(n.get("structuredFacets"));
+                                const next = toggleDiscreteValue(prev, f.attributeId, row.value, e.target.checked);
+                                if (next.length === 0) n.delete("structuredFacets");
+                                else n.set("structuredFacets", serializeStructuredFacets(next));
+                                setParams(n);
+                              }}
+                            />
+                            <span>
+                              {row.value}{" "}
+                              <span className="ae-muted">({row.count.toLocaleString("pt-AO")})</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={f.attributeId} className="ae-struct-facet-block">
+                      <div className="ae-struct-facet-block__title">
+                        {f.label}
+                        {f.unitCode ? <span className="ae-muted"> ({f.unitCode})</span> : null}
+                        {f.valueCount > 0 ? (
+                          <span className="ae-muted"> · {f.valueCount.toLocaleString("pt-AO")} valores</span>
+                        ) : null}
+                      </div>
+                      <StructuredNumericFacetFilter
+                        facet={f}
+                        structuredFacetsParam={structuredFacetsParam}
+                        params={params}
+                        setParams={setParams}
+                      />
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
           </div>
           <div className="ae-filters__group">
             <strong>Condição do artigo</strong>

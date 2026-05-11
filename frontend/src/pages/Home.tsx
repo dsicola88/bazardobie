@@ -12,10 +12,11 @@ import { useSeo } from "../seo/useSeo.js";
 import { useFlashDealCountdown } from "../home/useFlashDealCountdown.js";
 import { HomeGroupShowcase, resolveHomeGroupCta, type HomeGroupPublicBlock } from "../home/HomeGroupShowcase.js";
 import { HomeSpotlightBlocks, type HomeSpotlightPublicSection } from "../home/HomeSpotlightBlocks.js";
+import { listingBadgeClassList } from "../utils/listingBadgeClass.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = PublicCategory;
-type MegaProduct = { id: string; name: string; images?: { url: string }[] };
+type MegaProduct = ProductCardData;
 type HomeGroupBlock = {
   slug: string;
   title: string;
@@ -516,7 +517,18 @@ export default function Home() {
                       <span className="ae-home-mega__product-thumb">
                         <img src={resolveMediaUrl(p.images?.[0]?.url)} alt="" loading="lazy" decoding="async" />
                       </span>
-                      <span className="ae-home-mega__product-copy">{p.name}</span>
+                      <span className="ae-home-mega__product-main">
+                        <span className="ae-home-mega__product-copy">{p.name}</span>
+                        {p.listingBadges?.length ? (
+                          <span className="ae-home-mega__badges">
+                            {p.listingBadges.map((b) => (
+                              <span key={b.id} className={listingBadgeClassList(b.id, true)}>
+                                {b.label}
+                              </span>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
                     </Link>
                   ))}
                 </div>

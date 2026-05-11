@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 import { cartRepo } from "../repositories/cart.repository.js";
 import { HttpError } from "../middlewares/errorHandler.js";
 import { siteSettingsService } from "./siteSettings.service.js";
@@ -90,7 +91,7 @@ export const cartService = {
         ...productPublicShelfExtras,
         shop: { isApproved: true, tier1CompletedAt: { not: null } },
       },
-      include: { variants: true, deliveryOptions: true },
+      include: { variants: { include: variantWithPropertiesInclude }, deliveryOptions: true },
     });
     if (!product) throw new HttpError(404, "Produto não disponível");
 
@@ -146,7 +147,7 @@ export const cartService = {
         },
         include: {
           product: { include: { images: true } },
-          variant: true,
+          variant: { include: variantWithPropertiesInclude },
           productDeliveryOption: {
             include: {
               logisticsPartner: { select: { id: true, name: true } },
@@ -166,7 +167,7 @@ export const cartService = {
       },
       include: {
         product: { include: { images: true } },
-        variant: true,
+        variant: { include: variantWithPropertiesInclude },
         productDeliveryOption: {
           include: {
             logisticsPartner: { select: { id: true, name: true } },
@@ -192,7 +193,7 @@ export const cartService = {
 
     const product = await prisma.product.findUnique({
       where: { id: item.productId },
-      include: { variants: true },
+      include: { variants: { include: variantWithPropertiesInclude } },
     });
     if (!product) throw new HttpError(404, "Produto não encontrado");
     if (

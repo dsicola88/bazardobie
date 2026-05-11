@@ -21,6 +21,7 @@ const AdminHomeSpotlights = lazy(() => import("./admin/AdminHomeSpotlights.js"))
 const AdminHomeGroups = lazy(() => import("./admin/AdminHomeGroups.js"));
 const AdminCredibility = lazy(() => import("./admin/AdminCredibility.js"));
 const AdminCategories = lazy(() => import("./admin/AdminCategories.js"));
+const AdminCategoryCatalog = lazy(() => import("./admin/AdminCategoryCatalog.js"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard.js"));
 const AdminDisputes = lazy(() => import("./admin/AdminDisputes.js"));
 const AdminFinance = lazy(() => import("./admin/AdminFinance.js"));
@@ -92,6 +93,14 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route
+            path="categories/catalog"
+            element={
+              <RequirePlatformAdmin>
+                <AdminCategoryCatalog />
+              </RequirePlatformAdmin>
+            }
+          />
           <Route
             path="categories"
             element={

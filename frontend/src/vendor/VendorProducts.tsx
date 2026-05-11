@@ -22,6 +22,11 @@ type Row = {
   images: { url: string }[];
   orderItemsCount?: number;
   canDelete?: boolean;
+  listingQuality?: {
+    score: number;
+    grade: string;
+    hints: string[];
+  };
 };
 
 type MineList = { items: Row[]; total: number; skip: number; take: number };
@@ -318,6 +323,7 @@ export default function VendorProducts() {
               <th>Existências</th>
               <th>Vendas</th>
               <th>Validação</th>
+              <th>Qualidade</th>
               <th>Estado</th>
               <th />
             </tr>
@@ -342,6 +348,19 @@ export default function VendorProducts() {
                 <td>{p.soldCount}</td>
                 <td>
                   <span className={`ae-badge ${modClass(p.moderationStatus)}`}>{modLabel(p.moderationStatus)}</span>
+                </td>
+                <td>
+                  {p.listingQuality ? (
+                    <span
+                      className="ae-badge ae-badge--pend"
+                      style={{ cursor: "help" }}
+                      title={[...p.listingQuality.hints].slice(0, 4).join(" · ")}
+                    >
+                      {p.listingQuality.score} · {p.listingQuality.grade}
+                    </span>
+                  ) : (
+                    <span className="ae-muted">—</span>
+                  )}
                 </td>
                 <td>
                   <span className={`ae-badge ${p.isActive ? "ae-badge--live" : "ae-badge--off"}`}>

@@ -1,6 +1,7 @@
 import type { OrderStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { variantWithPropertiesInclude } from "../constants/variantInclude.js";
 
 export function orderRepo() {
   return {
@@ -8,7 +9,7 @@ export function orderRepo() {
       return prisma.order.create({
         data: orderData,
         include: {
-          items: { include: { shop: true, product: true, variant: true } },
+          items: { include: { shop: true, product: true, variant: { include: variantWithPropertiesInclude } } },
           user: { select: { id: true, email: true, name: true } },
         },
       });
@@ -18,7 +19,7 @@ export function orderRepo() {
         where: { id: orderId, userId },
         include: {
           items: {
-            include: { shop: true, product: { include: { images: true } }, variant: true },
+            include: { shop: true, product: { include: { images: true } }, variant: { include: variantWithPropertiesInclude } },
           },
         },
       });

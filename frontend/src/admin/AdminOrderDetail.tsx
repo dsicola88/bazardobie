@@ -15,7 +15,7 @@ import {
   etiquetaPagamento,
 } from "../utils/paymentLabels.js";
 import { formatKz } from "../utils/format.js";
-import { orderItemVariantSubtitle } from "../utils/variantDisplay.js";
+import { orderItemVariantSubtitle, type VariantDisplayFields } from "../utils/variantDisplay.js";
 import { orderLogisticsFromItems } from "../utils/vendorOrderStatuses.js";
 
 const ORDER_STATUSES = [
@@ -65,6 +65,7 @@ type AdminOrder = {
     unitPrice: string;
     deliveryTipo?: string;
     shop?: { id: string; name: string } | null;
+    variant?: VariantDisplayFields | null;
   }[];
   ledgerEntries?: LedgerRow[];
   disputes?: DisputeRow[];
