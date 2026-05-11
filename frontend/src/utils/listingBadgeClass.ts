@@ -1,10 +1,12 @@
 const KNOWN_MODIFIERS = new Set(["ficha_completa", "produto_detalhado", "especificacoes_verificadas"]);
 
+export type ListingBadgeModifier = "ficha_completa" | "produto_detalhado" | "especificacoes_verificadas" | "default";
+
 /**
  * Modificador BEM seguro para selos vindos da API (`listingBadges[].id`).
  */
-export function listingBadgeModifier(id: string): string {
-  return KNOWN_MODIFIERS.has(id) ? id : "default";
+export function listingBadgeModifier(id: string): ListingBadgeModifier {
+  return KNOWN_MODIFIERS.has(id) ? (id as ListingBadgeModifier) : "default";
 }
 
 export function listingBadgeClassList(id: string, compact: boolean): string {

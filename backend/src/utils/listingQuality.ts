@@ -221,16 +221,31 @@ export function computePublicListingBadges(product: ProductLite, defs: AttrDef[]
     badges.push({ id: "produto_detalhado", label: "Produto detalhado" });
   }
 
-  const filledStructuredSlots = variants.reduce((acc, v) => {
-    return acc + (v.variantStructuredValues ?? []).filter((sv) => (sv.value || "").trim().length > 0).length;
-  }, 0);
-  const hasRichSpecs = filledStructuredSlots >= 3 || variants.some((v) => {
-    const n = (v.variantStructuredValues ?? []).filter((sv) => (sv.value || "").trim().length > 0).length;
-    return n >= 3;
-  });
+  /** Selo rígido: obrigatórios em todas as variantes, mín. de ficha estruturada, imagens e score. */
+  const VERIFIED_MIN_SCORE = 82;
+  const VERIFIED_MIN_IMAGES = 3;
+  const VERIFIED_MIN_STRUCTURED_PER_VARIANT = 4;
 
-  if (quality.score >= 76 && quality.factors.fichaTecnica >= 20 && (hasRichSpecs || quality.factors.fichaTecnica >= 24)) {
-    badges.push({ id: "especificacoes_verificadas", label: "Especificações verificadas" });
+  if (defs.length > 0 && variants.length > 0 && quality.score >= VERIFIED_MIN_SCORE && nImg >= VERIFIED_MIN_IMAGES) {
+    const allRequiredFilledVerified =
+      required.length === 0 ||
+      required.every((d) =>
+        variants.every((vv) =>
+          (vv.variantStructuredValues ?? []).some(
+            (sv) => sv.attributeId === d.id && (sv.value || "").trim().length > 0
+          )
+        )
+      );
+    const minStructured = Math.min(VERIFIED_MIN_STRUCTURED_PER_VARIANT, defs.length);
+    const everyVariantHasStructured =
+      minStructured === 0 ||
+      variants.every((vv) => {
+        const n = (vv.variantStructuredValues ?? []).filter((sv) => (sv.value || "").trim().length > 0).length;
+        return n >= minStructured;
+      });
+    if (allRequiredFilledVerified && everyVariantHasStructured) {
+      badges.push({ id: "especificacoes_verificadas", label: "Especificações verificadas" });
+    }
   }
 
   return badges;

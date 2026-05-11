@@ -10,6 +10,7 @@ import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { NotificationsBell } from "./NotificationsBell.js";
 import type { ProductCardData } from "./ProductCard.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { getCompareIds } from "../utils/compareSelection.js";
 
 function triStatePromoFlag(raw: string | undefined): boolean | null {
   const v = (raw ?? "").trim().toLowerCase();
@@ -79,7 +80,7 @@ export function Header() {
   const [catSuggestLoading, setCatSuggestLoading] = useState(false);
   const [searchCatId, setSearchCatId] = useState<string>("");
   const [catOpen, setCatOpen] = useState(false);
-  const [imgSearchBusy, setImgSearchBusy] = useState(false);
+  const [compareN, setCompareN] = useState(0);
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const catMenuRef = useRef<HTMLDivElement | null>(null);
@@ -113,6 +114,13 @@ export function Header() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+
+  useEffect(() => {
+    const sync = () => setCompareN(getCompareIds().length);
+    sync();
+    window.addEventListener("compare-updated", sync);
+    return () => window.removeEventListener("compare-updated", sync);
+  }, []);
 
   async function refreshCart() {
     try {
@@ -736,6 +744,23 @@ export function Header() {
           </div>
 
           <div className="ae-mainhead__actions">
+            <Link
+              to="/compare"
+              className="ae-ico-link ae-ico-link--compare"
+              aria-label={
+                compareN > 0
+                  ? `Comparador de produtos, ${compareN} artigo${compareN === 1 ? "" : "s"}`
+                  : "Comparador de produtos"
+              }
+            >
+              <span className="ae-ico ae-ico--inline-svg" aria-hidden>
+                <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.75">
+                  <path strokeLinecap="round" d="M7 4v16M7 4l3 3M7 4L4 7M17 20V4M17 20l-3-3M17 20l3-3" />
+                </svg>
+              </span>
+              <span className="ae-ico-link__lbl">Comparar</span>
+              {compareN > 0 ? <span className="ae-cart-badge">{compareN}</span> : null}
+            </Link>
             <NotificationsBell />
             {user?.role === "CLIENTE" && (
               <>

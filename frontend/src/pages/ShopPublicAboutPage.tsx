@@ -125,7 +125,7 @@ export default function ShopPublicAboutPage() {
     metricas.taxaRespostaPercent != null
       ? `${metricas.taxaRespostaPercent}% (amostra: ${metricas.taxaRespostaBaseConversas} conversas com comprador)`
       : metricas.taxaRespostaBaseConversas > 0
-        ? `Em consolidação (${metricas.taxaRespostaBaseConversas} conversas; mínimo 3 para percentagem)`
+        ? `Amostra ainda pequena (${metricas.taxaRespostaBaseConversas} conversas; mínimo 3 para percentagem)`
         : "Ainda sem amostra suficiente nas conversas recentes";
 
   return (
@@ -182,7 +182,7 @@ export default function ShopPublicAboutPage() {
               <span className="ae-buybox__chip">Nível {resumoReputacao.nivelConfianca} / 3</span>
               {metricas.novoVendedor ? (
                 <span className="ae-buybox__chip" title={metricas.reputacaoHintPt ?? undefined}>
-                  Novo vendedor · reputação em formação
+                  Novo parceiro — histórico breve na plataforma
                 </span>
               ) : null}
             </div>

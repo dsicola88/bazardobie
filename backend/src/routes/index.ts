@@ -102,6 +102,7 @@ r.get("/products", productController.search);
 r.get("/products/facet-categories", productController.facetCategories);
 r.get("/products/facet-structured-attributes", productController.facetStructuredAttributes);
 r.get("/products/suggest", productController.suggest);
+r.get("/products/compare", productController.compare);
 r.post("/products/visual-search", visualSearchLimiter, runImageSearchUpload, productController.visualSearch);
 r.get("/products/:id/related", productController.related);
 r.get("/products/:productId/reviews", optionalAuth, reviewController.list);

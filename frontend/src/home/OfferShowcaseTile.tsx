@@ -57,7 +57,7 @@ function OfferShowcaseTileInner({
             </>
           ) : p.reviewCount > 0 ? (
             <span className="ae-offer-tile__sold ae-muted" title={p.ratingTrustHintPt ?? undefined}>
-              {p.ratingTrustShortPt ?? "Reputação em formação"} · {p.soldCount.toLocaleString("pt-AO")}+ vendidos
+              {p.ratingTrustShortPt ?? "Ainda sem avaliações suficientes"} · {p.soldCount.toLocaleString("pt-AO")}+ vendidos
             </span>
           ) : (
             <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>

@@ -46,6 +46,7 @@ const Login = lazy(() => import("./pages/Login.js"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage.js"));
 const OAuthDonePage = lazy(() => import("./pages/OAuthDonePage.js"));
 const ProductPage = lazy(() => import("./pages/ProductPage.js"));
+const ComparePage = lazy(() => import("./pages/ComparePage.js"));
 const ShopPublicOutlet = lazy(() => import("./pages/ShopPublicOutlet.js"));
 const ShopPublicHome = lazy(() => import("./pages/ShopPublicHome.js"));
 const ShopPublicProducts = lazy(() => import("./pages/ShopPublicProducts.js"));
@@ -180,6 +181,7 @@ export default function App() {
           <Route path="quero-vender" element={<BecomeVendorPage />} />
           <Route path="termos-parceiros" element={<TermsPartnersPage />} />
           <Route path="privacidade" element={<PrivacyPage />} />
+          <Route path="compare" element={<ComparePage />} />
           <Route path="product/:id" element={<ProductPage />} />
           <Route path="loja/:shopId" element={<ShopPublicOutlet />}>
             <Route index element={<ShopPublicHome />} />

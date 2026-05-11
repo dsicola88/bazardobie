@@ -1,11 +1,12 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { addCompareId, COMPARE_MAX, getCompareIds, removeCompareId } from "../utils/compareSelection.js";
 import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { StarRating } from "./StarRating.js";
-import { listingBadgeClassList } from "../utils/listingBadgeClass.js";
+import { ListingBadge } from "./ListingBadge.js";
 
 export type ProductCardData = {
   id: string;
@@ -31,12 +32,24 @@ function ProductCardInner({
   p,
   className,
   imagePriority,
+  compareAction = true,
 }: {
   p: ProductCardData;
   className?: string;
   /** Primeiras células da grelha: carregar imagem com prioridade (LCP). */
   imagePriority?: boolean;
+  /** Botão «Comparar» sobre a imagem (pesquisa, vitrines). */
+  compareAction?: boolean;
 }) {
+  const [compareRev, setCompareRev] = useState(0);
+  const [compareTip, setCompareTip] = useState<string | null>(null);
+  useEffect(() => {
+    const fn = () => setCompareRev((x) => x + 1);
+    window.addEventListener("compare-updated", fn);
+    return () => window.removeEventListener("compare-updated", fn);
+  }, []);
+  const inCompare = useMemo(() => getCompareIds().includes(p.id), [p.id, compareRev]);
+
   const img = resolveMediaUrl(p.images[0]?.url);
   const promoRaw = p.promoPrice != null ? String(p.promoPrice).trim() : "";
   const hasPromo = promoRaw !== "" && Number(p.promoPrice) > 0;
@@ -88,15 +101,55 @@ function ProductCardInner({
         ) : hasPromo ? (
           <span className="ae-pcard__badge">Promoção</span>
         ) : null}
+        {compareAction ? (
+          <button
+            type="button"
+            className={`ae-pcard__compare${inCompare ? " ae-pcard__compare--on" : ""}`}
+            title={inCompare ? "Retirar da comparação" : "Adicionar à comparação"}
+            aria-label={
+              inCompare ? `Retirar ${p.name} da comparação` : `Adicionar ${p.name} à comparação (máx. ${COMPARE_MAX})`
+            }
+            aria-pressed={inCompare}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (inCompare) removeCompareId(p.id);
+              else {
+                const r = addCompareId(p.id);
+                if (r === "full") {
+                  setCompareTip(`Máximo ${COMPARE_MAX} artigos na comparação.`);
+                  window.setTimeout(() => setCompareTip(null), 2600);
+                }
+              }
+              setCompareRev((x) => x + 1);
+            }}
+          >
+            <span className="ae-pcard__compare-ico" aria-hidden>
+              {inCompare ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M7 4v16M7 4l3 3M7 4L4 7M17 20V4M17 20l-3-3M17 20l3-3" />
+                </svg>
+              )}
+            </span>
+            <span className="ae-pcard__compare-lbl">{inCompare ? "Na comparação" : "Comparar"}</span>
+          </button>
+        ) : null}
+        {compareTip ? (
+          <span className="ae-pcard__compare-tip" role="status">
+            {compareTip}
+          </span>
+        ) : null}
       </div>
       <div className="ae-pcard__body">
         <h3 className="ae-pcard__title">{p.name}</h3>
         {p.listingBadges?.length ? (
           <div className="ae-pcard__badges">
             {p.listingBadges.map((b) => (
-              <span key={b.id} className={listingBadgeClassList(b.id, true)}>
-                {b.label}
-              </span>
+              <ListingBadge key={b.id} badge={b} compact />
             ))}
           </div>
         ) : null}
@@ -111,7 +164,7 @@ function ProductCardInner({
             />
           ) : p.reviewCount > 0 ? (
             <span className="ae-pcard__rate ae-muted" title={p.ratingTrustHintPt ?? undefined}>
-              {p.ratingTrustShortPt ?? "Reputação em formação"} · {p.reviewCount}{" "}
+              {p.ratingTrustShortPt ?? "Ainda sem avaliações suficientes"} · {p.reviewCount}{" "}
               {p.reviewCount === 1 ? "avaliação" : "avaliações"}
             </span>
           ) : (

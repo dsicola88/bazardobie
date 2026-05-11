@@ -27,11 +27,11 @@ export function mergePublicRatingFields(input: {
   let ratingTrustShortPt: string | null = null;
   if (!eligible) {
     if (rc === 0) {
-      ratingTrustHintPt = "Ainda sem avaliações públicas neste artigo.";
+      ratingTrustHintPt = "Este artigo ainda não tem opiniões de compradores na loja.";
       ratingTrustShortPt = "Sem avaliações";
     } else {
-      ratingTrustHintPt = `Média global oculta até haver pelo menos ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões verificadas.`;
-      ratingTrustShortPt = "Média em consolidação";
+      ratingTrustHintPt = `Mostramos a média em estrelas quando existirem pelo menos ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões verificadas — transparência sem ruído estatístico.`;
+      ratingTrustShortPt = "Ainda sem avaliações suficientes";
     }
   }
   return {

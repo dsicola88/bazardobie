@@ -55,6 +55,34 @@ type PresetRow = {
   attributes: { id: string; label: string }[];
 };
 
+const INPUT_TYPE_LABELS: Record<AttrAdmin["inputType"], string> = {
+  TEXT: "Texto livre",
+  NUMBER: "Número",
+  SELECT: "Lista de opções",
+};
+
+function slugifyAttributeKey(raw: string): string {
+  const s = raw
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  return (s.slice(0, 64) || "atributo").replace(/^_+|_+$/g, "") || "atributo";
+}
+
+type CoverageTier = "na" | "bad" | "mid" | "good";
+
+function coverageTier(c: number | null): CoverageTier {
+  if (c == null) return "na";
+  if (c >= 0.8) return "good";
+  if (c >= 0.5) return "mid";
+  return "bad";
+}
+
 function flattenCatLabels(rows: CatRow[]): { id: string; label: string }[] {
   const byId = new Map(rows.map((c) => [c.id, c] as const));
   return [...rows]
@@ -98,8 +126,19 @@ export default function AdminCategoryCatalog() {
   const [presetName, setPresetName] = useState("");
   const [presetDefault, setPresetDefault] = useState(false);
   const presetSelectRef = useRef<HTMLSelectElement | null>(null);
+  const [newAttrKeyTouched, setNewAttrKeyTouched] = useState(false);
 
   const catOptions = useMemo(() => (cats ? flattenCatLabels(cats) : []), [cats]);
+
+  const coverageSorted = useMemo(() => {
+    if (!fillStats?.byAttribute?.length) return [];
+    return [...fillStats.byAttribute].sort((a, b) => {
+      const ca = a.coverage ?? -1;
+      const cb = b.coverage ?? -1;
+      if (ca !== cb) return ca - cb;
+      return a.label.localeCompare(b.label, "pt");
+    });
+  }, [fillStats]);
 
   const loadCats = useCallback(async () => {
     if (!token) return;
@@ -199,6 +238,7 @@ export default function AdminCategoryCatalog() {
       });
       setMsg("Atributo criado.");
       setNewAttr(emptyAttrForm);
+      setNewAttrKeyTouched(false);
       void loadCategoryDetail();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Falha ao criar atributo");
@@ -344,13 +384,13 @@ export default function AdminCategoryCatalog() {
   }
 
   return (
-    <div className="ae-admin-pro">
+    <div className="ae-admin-pro ae-admin-catcatalog-page">
       <header className="ae-admin-pro__head">
         <div>
           <h1 className="ae-admin-pro__title">Ficha técnica e facetas</h1>
           <p className="ae-admin-pro__sub">
-            Defina atributos estruturados por categoria, aliases para pesquisa, facetas na loja e presets para
-            vendedores. Alinhado à API administrativa existente.
+            Estrutura de catálogo por categoria: <strong>atributos</strong> que o vendedor preenche,{" "}
+            <strong>facetas</strong> que viram filtros na loja e <strong>modelos</strong> que aceleram o cadastro.
           </p>
         </div>
         <Link to="/admin/categories" className="btn">
@@ -369,429 +409,614 @@ export default function AdminCategoryCatalog() {
         </p>
       ) : null}
 
-      <div className="ae-panel ae-admin-catcatalog-pick">
-        <label className="ae-admin-field" style={{ maxWidth: 520 }}>
-          Categoria comercial
-          <select
-            className="ae-input"
-            value={categoryId}
-            onChange={(e) => onPickCategory(e.target.value)}
-          >
-            <option value="">Seleccionar…</option>
-            {catOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <div className="ae-admin-catcatalog-stack">
+        <div className="ae-panel ae-admin-catcatalog__section ae-admin-catcatalog__section--pick">
+          <label className="ae-admin-field" style={{ maxWidth: 560 }}>
+            <span>Categoria comercial</span>
+            <select className="ae-input" value={categoryId} onChange={(e) => onPickCategory(e.target.value)}>
+              <option value="">Seleccionar categoria…</option>
+              {catOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <span className="ae-admin-field-hint">Toda a ficha técnica abaixo aplica-se só a esta categoria.</span>
+          </label>
+        </div>
 
-      {!categoryId.trim() ? (
-        <p className="ae-muted">Escolha uma categoria para gerir a ficha técnica.</p>
-      ) : loading ? (
-        <p className="ae-muted">A carregar…</p>
-      ) : (
-        <>
-          {fillStats ? (
-            <div className="ae-panel ae-admin-catcatalog-stats">
-              <h2 style={{ marginTop: 0 }}>Preenchimento no catálogo</h2>
-              <p className="ae-muted">
-                {fillStats.productsInCategory.toLocaleString("pt-AO")} produtos na categoria ·{" "}
-                {fillStats.productsWithVariants.toLocaleString("pt-AO")} com variantes ·{" "}
-                {fillStats.shareWithAllRequiredAmongVariants != null
-                  ? `${Math.round(fillStats.shareWithAllRequiredAmongVariants * 100)}% com obrigatórios completos`
-                  : "—"}
-              </p>
-              <div className="ae-table-wrap">
-                <table className="ae-data-table">
-                  <thead>
-                    <tr>
-                      <th>Atributo</th>
-                      <th>Cobertura</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {fillStats.byAttribute.map((row) => (
-                      <tr key={row.attributeId}>
-                        <td>
-                          {row.label} <span className="ae-muted">({row.key})</span>
-                        </td>
-                        <td>
-                          {row.coverage != null
-                            ? `${Math.round(row.coverage * 100)}% (${row.filledProducts}/${row.totalProducts})`
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        {!categoryId.trim() ? (
+          <p className="ae-muted">Escolha uma categoria para gerir atributos, facetas e modelos de ficha.</p>
+        ) : loading ? (
+          <p className="ae-muted">A carregar…</p>
+        ) : (
+          <>
+            <div className="ae-admin-callout ae-admin-callout--soft ae-admin-catcatalog-glossary">
+              <strong>Como ler este ecrã</strong>
+              <ul>
+                <li>
+                  <strong>Atributo</strong> — campo que o vendedor preenche (ex.: RAM, marca). O nome visível é o que o
+                  comprador entende.
+                </li>
+                <li>
+                  <strong>Faceta / filtro</strong> — o atributo passa a filtro na pesquisa da loja (como “Marca” ou
+                  “Capacidade”).
+                </li>
+                <li>
+                  <strong>Obrigatório</strong> — sem preencher, o vendedor não conclui a ficha nas variantes afectadas.
+                </li>
+                <li>
+                  <strong>Sugestão em destaque</strong> — aparece em evidência no formulário do vendedor para orientar
+                  o preenchimento.
+                </li>
+                <li>
+                  <strong>Modelo (preset)</strong> — “template” com a ordem dos campos para um tipo de produto (ex.: modelo
+                  smartphone). Acelera o onboarding do vendedor.
+                </li>
+                <li>
+                  <strong>Cobertura</strong> — percentagem de produtos que já têm o atributo preenchido: métrica operacional
+                  para melhorar a qualidade do catálogo.
+                </li>
+              </ul>
             </div>
-          ) : null}
 
-          <div className="ae-panel">
-            <h2 style={{ marginTop: 0 }}>Atributos</h2>
-            <div className="ae-table-wrap">
-              <table className="ae-data-table">
-                <thead>
-                  <tr>
-                    <th>Rótulo</th>
-                    <th>Chave</th>
-                    <th>Tipo</th>
-                    <th>Obrig.</th>
-                    <th>Faceta</th>
-                    <th>Rank</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
+            <section className="ae-panel ae-admin-catcatalog__section ae-admin-catcatalog-stats">
+              <h2 className="ae-admin-catcatalog__head">Preenchimento no catálogo</h2>
+              <p className="ae-admin-catcatalog__lead">
+                Visão rápida da qualidade dos dados nesta categoria. Prioridade: atributos com baixa cobertura (ordenados
+                da menor para a maior).
+              </p>
+              {fillStats ? (
+                <>
+                  <div className="ae-admin-catcatalog-kpis">
+                    <div className="ae-admin-catcatalog-kpi">
+                      <div className="ae-admin-catcatalog-kpi__val">
+                        {fillStats.productsInCategory.toLocaleString("pt-AO")}
+                      </div>
+                      <div className="ae-admin-catcatalog-kpi__lbl">Produtos na categoria</div>
+                    </div>
+                    <div className="ae-admin-catcatalog-kpi">
+                      <div className="ae-admin-catcatalog-kpi__val">
+                        {fillStats.productsWithVariants.toLocaleString("pt-AO")}
+                      </div>
+                      <div className="ae-admin-catcatalog-kpi__lbl">Com variantes</div>
+                    </div>
+                    <div className="ae-admin-catcatalog-kpi">
+                      <div className="ae-admin-catcatalog-kpi__val">
+                        {fillStats.shareWithAllRequiredAmongVariants != null
+                          ? `${Math.round(fillStats.shareWithAllRequiredAmongVariants * 100)}%`
+                          : "—"}
+                      </div>
+                      <div className="ae-admin-catcatalog-kpi__lbl">Variantes com obrigatórios completos</div>
+                    </div>
+                  </div>
+                  <p className="ae-admin-coverage-sort-hint">
+                    Lista ordenada por cobertura crescente (os primeiros são os que mais precisam de atenção).
+                  </p>
+                  {coverageSorted.length === 0 ? (
+                    <p className="ae-muted">Sem atributos definidos ainda — a cobertura aparece depois de criar atributos.</p>
+                  ) : (
+                    <div className="ae-admin-coverage-list">
+                      {coverageSorted.map((row) => {
+                        const tier = coverageTier(row.coverage);
+                        const pct = row.coverage != null ? Math.round(row.coverage * 100) : null;
+                        const rowMod =
+                          tier === "bad" ? " ae-admin-coverage-row--crit" : tier === "mid" ? " ae-admin-coverage-row--warn" : "";
+                        return (
+                          <div key={row.attributeId} className={`ae-admin-coverage-row${rowMod}`}>
+                            <div className="ae-admin-coverage-top">
+                              <div>
+                                <span className="ae-admin-coverage-name">{row.label}</span>
+                                <span className="ae-admin-coverage-key">{row.key}</span>
+                              </div>
+                              <div
+                                className={
+                                  "ae-admin-coverage-pct " +
+                                  (tier === "good"
+                                    ? "ae-admin-coverage-pct--good"
+                                    : tier === "mid"
+                                      ? "ae-admin-coverage-pct--mid"
+                                      : tier === "bad"
+                                        ? "ae-admin-coverage-pct--bad"
+                                        : "ae-admin-coverage-pct--na")
+                                }
+                              >
+                                {pct != null ? `${pct}%` : "—"}
+                              </div>
+                            </div>
+                            <div className="ae-admin-coverage-bar">
+                              <div
+                                className={
+                                  "ae-admin-coverage-bar__fill ae-admin-coverage-bar__fill--" +
+                                  (tier === "na" ? "na" : tier)
+                                }
+                                style={{
+                                  width: row.coverage != null ? `${Math.min(100, Math.max(0, row.coverage * 100))}%` : "0%",
+                                }}
+                              />
+                            </div>
+                            <div className="ae-admin-coverage-foot">
+                              {row.coverage != null
+                                ? `${row.filledProducts.toLocaleString("pt-AO")} de ${row.totalProducts.toLocaleString("pt-AO")} produtos com valor`
+                                : "Sem dados de preenchimento"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="ae-muted" role="status">
+                  Não foi possível carregar as estatísticas de preenchimento. Recarregue a página ou tente mais tarde.
+                </p>
+              )}
+            </section>
+
+            <section className="ae-panel ae-admin-catcatalog__section">
+              <h2 className="ae-admin-catcatalog__head">Atributos da categoria</h2>
+              <p className="ae-admin-catcatalog__lead">
+                Cada bloco é um campo da ficha. Use filtros e destaques para aproximar a experiência de marketplaces
+                grandes — sem expor jargão técnico aos vendedores.
+              </p>
+
+              {attrs.length === 0 ? (
+                <p className="ae-muted">Ainda não há atributos. Crie o primeiro abaixo.</p>
+              ) : (
+                <div className="ae-admin-attr-grid">
                   {attrs.map((a) => (
-                    <tr key={a.id}>
-                      <td>{a.label}</td>
-                      <td>
-                        <code style={{ fontSize: 12 }}>{a.key}</code>
-                      </td>
-                      <td>{a.inputType}</td>
-                      <td>{a.isRequired ? "Sim" : "—"}</td>
-                      <td>{a.facetEnabled ? "Sim" : "—"}</td>
-                      <td>{a.primaryRank}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>
+                    <article key={a.id} className="ae-admin-attr-card">
+                      <h3 className="ae-admin-attr-card__title">{a.label}</h3>
+                      <div className="ae-admin-attr-card__key">{a.key}</div>
+                      <div className="ae-admin-badge-row">
+                        <span className="ae-admin-badge ae-admin-badge--type">{INPUT_TYPE_LABELS[a.inputType]}</span>
+                        {a.isRequired ? <span className="ae-admin-badge ae-admin-badge--ok">Obrigatório</span> : null}
+                        {a.facetEnabled ? <span className="ae-admin-badge ae-admin-badge--facet">Filtro na loja</span> : null}
+                        {a.autoSuggest ? (
+                          <span className="ae-admin-badge ae-admin-badge--suggest">Em destaque p/ vendedor</span>
+                        ) : null}
+                        {!a.isRequired && !a.facetEnabled && !a.autoSuggest ? (
+                          <span className="ae-admin-badge ae-admin-badge--muted">Opcional</span>
+                        ) : null}
+                      </div>
+                      <div className="ae-admin-attr-card__meta">
+                        Ordem no formulário: {a.sortOrder} · Prioridade na ficha pública: {a.primaryRank}
+                        {a.unitCode ? ` · Unidade: ${a.unitCode}` : null}
+                      </div>
+                      <div className="ae-admin-attr-card__actions">
                         <button type="button" className="ae-mini-btn" onClick={() => openEdit(a)}>
                           Editar
-                        </button>{" "}
-                        <button
-                          type="button"
-                          className="ae-mini-btn"
-                          onClick={() => void removeAttr(a.id)}
-                        >
+                        </button>
+                        <button type="button" className="ae-mini-btn" onClick={() => void removeAttr(a.id)}>
                           Eliminar
                         </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </article>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              )}
 
-            {editId ? (
-              <div className="ae-admin-catcatalog-edit ae-panel" style={{ marginTop: 16 }}>
-                {attrs
-                  .filter((a) => a.id === editId)
-                  .map((a) => (
-                    <div key={a.id}>
-                      <h3>Editar — {a.label}</h3>
-                      <div className="ae-admin-form-grid">
-                        <label className="ae-admin-field">
-                          Rótulo
-                          <input
-                            className="ae-input"
-                            value={String(editForm.label ?? "")}
-                            onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
-                          />
-                        </label>
-                        <label className="ae-admin-field">
-                          Tipo
-                          <select
-                            className="ae-input"
-                            value={String(editForm.inputType ?? a.inputType)}
-                            onChange={(e) =>
-                              setEditForm((f) => ({ ...f, inputType: e.target.value as AttrAdmin["inputType"] }))
-                            }
-                          >
-                            <option value="TEXT">TEXT</option>
-                            <option value="NUMBER">NUMBER</option>
-                            <option value="SELECT">SELECT</option>
-                          </select>
-                        </label>
-                        {editForm.inputType === "SELECT" ? (
-                          <label className="ae-admin-field ae-admin-field--wide">
-                            Opções JSON
-                            <textarea
+              {editId ? (
+                <div className="ae-admin-catcatalog-edit-inner">
+                  {attrs
+                    .filter((a) => a.id === editId)
+                    .map((a) => (
+                      <div key={a.id}>
+                        <h3 className="ae-admin-catcatalog__head" style={{ marginBottom: 4 }}>
+                          Editar atributo
+                        </h3>
+                        <p className="ae-admin-catcatalog__lead" style={{ marginBottom: 16 }}>
+                          {a.label}
+                        </p>
+                        <div className="ae-admin-form-stack">
+                          <label className="ae-admin-field">
+                            <span>Nome visível (comprador / vendedor)</span>
+                            <input
                               className="ae-input"
-                              rows={3}
-                              value={String(editForm.optionsJson ?? "")}
-                              onChange={(e) => setEditForm((f) => ({ ...f, optionsJson: e.target.value }))}
+                              value={String(editForm.label ?? "")}
+                              onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
                             />
                           </label>
-                        ) : null}
-                        {editForm.inputType === "NUMBER" ? (
                           <label className="ae-admin-field">
-                            Unidade (standardUnits)
+                            <span>Tipo do atributo</span>
                             <select
                               className="ae-input"
-                              value={String(editForm.unitCode ?? "")}
-                              onChange={(e) => setEditForm((f) => ({ ...f, unitCode: e.target.value }))}
+                              value={String(editForm.inputType ?? a.inputType)}
+                              onChange={(e) =>
+                                setEditForm((f) => ({ ...f, inputType: e.target.value as AttrAdmin["inputType"] }))
+                              }
                             >
-                              <option value="">—</option>
-                              {units.map((u) => (
-                                <option key={u.code} value={u.code}>
-                                  {u.symbol} · {u.namePt}
+                              {(Object.keys(INPUT_TYPE_LABELS) as AttrAdmin["inputType"][]).map((k) => (
+                                <option key={k} value={k}>
+                                  {INPUT_TYPE_LABELS[k]}
                                 </option>
                               ))}
                             </select>
                           </label>
-                        ) : null}
-                        <label className="ae-admin-field">
-                          Texto de ajuda
-                          <input
-                            className="ae-input"
-                            value={String(editForm.helpText ?? "")}
-                            onChange={(e) => setEditForm((f) => ({ ...f, helpText: e.target.value }))}
-                          />
-                        </label>
-                        <label className="ae-admin-field">
-                          Ordem
-                          <input
-                            type="number"
-                            className="ae-input"
-                            value={Number(editForm.sortOrder ?? 0)}
-                            onChange={(e) => setEditForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))}
-                          />
-                        </label>
-                        <label className="ae-admin-field">
-                          Prioridade (rank)
-                          <input
-                            type="number"
-                            className="ae-input"
-                            value={Number(editForm.primaryRank ?? 0)}
-                            onChange={(e) => setEditForm((f) => ({ ...f, primaryRank: Number(e.target.value) }))}
-                          />
-                        </label>
-                        <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(editForm.isRequired)}
-                            onChange={(e) => setEditForm((f) => ({ ...f, isRequired: e.target.checked }))}
-                          />
-                          Obrigatório
-                        </label>
-                        <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(editForm.facetEnabled)}
-                            onChange={(e) => setEditForm((f) => ({ ...f, facetEnabled: e.target.checked }))}
-                          />
-                          Faceta na pesquisa
-                        </label>
-                        <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(editForm.autoSuggest)}
-                            onChange={(e) => setEditForm((f) => ({ ...f, autoSuggest: e.target.checked }))}
-                          />
-                          Sugestão / destaque no formulário do vendedor
-                        </label>
-                      </div>
-                      <p className="ae-muted">Aliases (sinónimos)</p>
-                      <ul className="ae-admin-catcatalog-aliaslist">
-                        {a.aliases.map((al) => (
-                          <li key={al.id}>
-                            {al.label}{" "}
-                            <button type="button" className="ae-mini-btn" onClick={() => void delAlias(al.id)}>
-                              ✕
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-                        <input
-                          className="ae-input"
-                          style={{ flex: "1 1 200px" }}
-                          placeholder="Novo alias"
-                          value={aliasDraft[a.id] ?? ""}
-                          onChange={(e) => setAliasDraft((d) => ({ ...d, [a.id]: e.target.value }))}
-                        />
-                        <button type="button" className="btn" onClick={() => void addAlias(a.id)}>
-                          Adicionar alias
-                        </button>
-                      </div>
-                      <button type="button" className="btn btn-primary" onClick={() => void saveEdit(a.id)}>
-                        Guardar atributo
-                      </button>{" "}
-                      <button type="button" className="btn" onClick={() => setEditId(null)}>
-                        Fechar
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            ) : null}
+                          {editForm.inputType === "NUMBER" ? (
+                            <label className="ae-admin-field">
+                              <span>Unidade (quando aplicável)</span>
+                              <select
+                                className="ae-input"
+                                value={String(editForm.unitCode ?? "")}
+                                onChange={(e) => setEditForm((f) => ({ ...f, unitCode: e.target.value }))}
+                              >
+                                <option value="">Nenhuma</option>
+                                {units.map((u) => (
+                                  <option key={u.code} value={u.code}>
+                                    {u.symbol} · {u.namePt}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          ) : null}
+                          {editForm.inputType === "SELECT" ? (
+                            <label className="ae-admin-field">
+                              <span>Opções da lista (JSON)</span>
+                              <textarea
+                                className="ae-input"
+                                rows={3}
+                                value={String(editForm.optionsJson ?? "")}
+                                onChange={(e) => setEditForm((f) => ({ ...f, optionsJson: e.target.value }))}
+                              />
+                              <span className="ae-admin-field-hint">Formato: lista JSON de texto, ex. [&quot;32 GB&quot;,&quot;64 GB&quot;]</span>
+                            </label>
+                          ) : null}
 
-            <h3>Novo atributo</h3>
-            <div className="ae-admin-form-grid">
-              <label className="ae-admin-field">
-                Chave técnica <code>a-z 0-9 _</code>
-                <input
-                  className="ae-input"
-                  value={newAttr.key}
-                  onChange={(e) => setNewAttr((x) => ({ ...x, key: e.target.value }))}
-                  placeholder="ram_gb"
-                />
-              </label>
-              <label className="ae-admin-field">
-                Rótulo
-                <input
-                  className="ae-input"
-                  value={newAttr.label}
-                  onChange={(e) => setNewAttr((x) => ({ ...x, label: e.target.value }))}
-                />
-              </label>
-              <label className="ae-admin-field">
-                Tipo
-                <select
-                  className="ae-input"
-                  value={newAttr.inputType}
-                  onChange={(e) =>
-                    setNewAttr((x) => ({ ...x, inputType: e.target.value as AttrAdmin["inputType"] }))
-                  }
-                >
-                  <option value="TEXT">TEXT</option>
-                  <option value="NUMBER">NUMBER</option>
-                  <option value="SELECT">SELECT</option>
-                </select>
-              </label>
-              {newAttr.inputType === "SELECT" ? (
-                <label className="ae-admin-field ae-admin-field--wide">
-                  Opções JSON
-                  <textarea
+                          <label className="ae-admin-check--rich">
+                            <div className="ae-admin-check--rich__row">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(editForm.isRequired)}
+                                onChange={(e) => setEditForm((f) => ({ ...f, isRequired: e.target.checked }))}
+                              />
+                              <div className="ae-admin-check--rich__text">
+                                <strong>Obrigatório</strong>
+                                <span>O vendedor tem de preencher este campo nas variantes; reforça a qualidade do catálogo.</span>
+                              </div>
+                            </div>
+                          </label>
+                          <label className="ae-admin-check--rich">
+                            <div className="ae-admin-check--rich__row">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(editForm.facetEnabled)}
+                                onChange={(e) => setEditForm((f) => ({ ...f, facetEnabled: e.target.checked }))}
+                              />
+                              <div className="ae-admin-check--rich__text">
+                                <strong>Usar como filtro na loja (faceta)</strong>
+                                <span>Aparece como critério de filtro na pesquisa para compradores.</span>
+                              </div>
+                            </div>
+                          </label>
+                          <label className="ae-admin-check--rich">
+                            <div className="ae-admin-check--rich__row">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(editForm.autoSuggest)}
+                                onChange={(e) => setEditForm((f) => ({ ...f, autoSuggest: e.target.checked }))}
+                              />
+                              <div className="ae-admin-check--rich__text">
+                                <strong>Destacar no formulário do vendedor</strong>
+                                <span>Sobe a visibilidade do campo no painel do parceiro para guiar o preenchimento.</span>
+                              </div>
+                            </div>
+                          </label>
+
+                          <details className="ae-admin-advanced">
+                            <summary>Configurações avançadas</summary>
+                            <div className="ae-admin-form-grid" style={{ maxWidth: "100%" }}>
+                              <label className="ae-admin-field">
+                                <span>Chave técnica (API / integrações)</span>
+                                <input className="ae-input" value={a.key} readOnly disabled />
+                                <span className="ae-admin-field-hint">Identificador estável; não é editável para não quebrar dados existentes.</span>
+                              </label>
+                              <label className="ae-admin-field">
+                                <span>Ordem no formulário do vendedor</span>
+                                <input
+                                  type="number"
+                                  className="ae-input"
+                                  value={Number(editForm.sortOrder ?? 0)}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))}
+                                />
+                              </label>
+                              <label className="ae-admin-field">
+                                <span>Prioridade na ficha pública (0 = normal)</span>
+                                <input
+                                  type="number"
+                                  className="ae-input"
+                                  value={Number(editForm.primaryRank ?? 0)}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, primaryRank: Number(e.target.value) }))}
+                                />
+                                <span className="ae-admin-field-hint">Valores mais altos tendem a aparecer primeiro na ficha do produto.</span>
+                              </label>
+                              <label className="ae-admin-field ae-admin-field--wide">
+                                <span>Texto de ajuda (opcional)</span>
+                                <input
+                                  className="ae-input"
+                                  value={String(editForm.helpText ?? "")}
+                                  onChange={(e) => setEditForm((f) => ({ ...f, helpText: e.target.value }))}
+                                />
+                              </label>
+                            </div>
+                            <p className="ae-muted" style={{ marginTop: 12, marginBottom: 8 }}>
+                              Sinónimos para pesquisa e matching
+                            </p>
+                            <ul className="ae-admin-catcatalog-aliaslist">
+                              {a.aliases.map((al) => (
+                                <li key={al.id}>
+                                  {al.label}{" "}
+                                  <button type="button" className="ae-mini-btn" onClick={() => void delAlias(al.id)}>
+                                    ✕
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                              <input
+                                className="ae-input"
+                                style={{ flex: "1 1 200px" }}
+                                placeholder="Novo sinónimo"
+                                value={aliasDraft[a.id] ?? ""}
+                                onChange={(e) => setAliasDraft((d) => ({ ...d, [a.id]: e.target.value }))}
+                              />
+                              <button type="button" className="btn" onClick={() => void addAlias(a.id)}>
+                                Adicionar sinónimo
+                              </button>
+                            </div>
+                          </details>
+                        </div>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+                          <button type="button" className="btn btn-primary" onClick={() => void saveEdit(a.id)}>
+                            Guardar alterações
+                          </button>
+                          <button type="button" className="btn" onClick={() => setEditId(null)}>
+                            Fechar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+
+              <h3 className="ae-admin-catcatalog__head" style={{ marginTop: 28 }}>
+                Novo atributo
+              </h3>
+              <p className="ae-admin-catcatalog__lead">
+                Comece pelo nome que compradores e vendedores reconhecem; a chave técnica gera-se automaticamente.
+              </p>
+              <div className="ae-admin-form-stack">
+                <label className="ae-admin-field">
+                  <span>Nome visível</span>
+                  <input
                     className="ae-input"
-                    rows={2}
-                    value={newAttr.optionsJson}
-                    onChange={(e) => setNewAttr((x) => ({ ...x, optionsJson: e.target.value }))}
+                    value={newAttr.label}
+                    onChange={(e) => {
+                      const label = e.target.value;
+                      setNewAttr((x) => ({
+                        ...x,
+                        label,
+                        key: newAttrKeyTouched ? x.key : slugifyAttributeKey(label),
+                      }));
+                    }}
+                    placeholder="Ex.: Memória RAM"
                   />
                 </label>
-              ) : null}
-              {newAttr.inputType === "NUMBER" ? (
                 <label className="ae-admin-field">
-                  Unidade
+                  <span>Tipo do atributo</span>
                   <select
                     className="ae-input"
-                    value={newAttr.unitCode}
-                    onChange={(e) => setNewAttr((x) => ({ ...x, unitCode: e.target.value }))}
+                    value={newAttr.inputType}
+                    onChange={(e) => setNewAttr((x) => ({ ...x, inputType: e.target.value as AttrAdmin["inputType"] }))}
                   >
-                    <option value="">—</option>
-                    {units.map((u) => (
-                      <option key={u.code} value={u.code}>
-                        {u.symbol} · {u.namePt}
+                    {(Object.keys(INPUT_TYPE_LABELS) as AttrAdmin["inputType"][]).map((k) => (
+                      <option key={k} value={k}>
+                        {INPUT_TYPE_LABELS[k]}
                       </option>
                     ))}
                   </select>
                 </label>
-              ) : null}
-              <label className="ae-admin-field">
-                Ordem / rank / flags
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input
-                    type="number"
-                    className="ae-input"
-                    placeholder="sortOrder"
-                    value={newAttr.sortOrder}
-                    onChange={(e) => setNewAttr((x) => ({ ...x, sortOrder: Number(e.target.value) }))}
-                  />
-                  <input
-                    type="number"
-                    className="ae-input"
-                    placeholder="primaryRank"
-                    value={newAttr.primaryRank}
-                    onChange={(e) => setNewAttr((x) => ({ ...x, primaryRank: Number(e.target.value) }))}
-                  />
-                </div>
-              </label>
-              <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={newAttr.isRequired}
-                  onChange={(e) => setNewAttr((x) => ({ ...x, isRequired: e.target.checked }))}
-                />
-                Obrigatório
-              </label>
-              <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={newAttr.facetEnabled}
-                  onChange={(e) => setNewAttr((x) => ({ ...x, facetEnabled: e.target.checked }))}
-                />
-                Faceta
-              </label>
-              <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={newAttr.autoSuggest}
-                  onChange={(e) => setNewAttr((x) => ({ ...x, autoSuggest: e.target.checked }))}
-                />
-                Sugestão (vendedor)
-              </label>
-            </div>
-            <button type="button" className="btn btn-primary" onClick={() => void createAttr()}>
-              Criar atributo
-            </button>
-          </div>
+                {newAttr.inputType === "NUMBER" ? (
+                  <label className="ae-admin-field">
+                    <span>Unidade</span>
+                    <select
+                      className="ae-input"
+                      value={newAttr.unitCode}
+                      onChange={(e) => setNewAttr((x) => ({ ...x, unitCode: e.target.value }))}
+                    >
+                      <option value="">Nenhuma</option>
+                      {units.map((u) => (
+                        <option key={u.code} value={u.code}>
+                          {u.symbol} · {u.namePt}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                {newAttr.inputType === "SELECT" ? (
+                  <label className="ae-admin-field">
+                    <span>Opções da lista (JSON)</span>
+                    <textarea
+                      className="ae-input"
+                      rows={3}
+                      value={newAttr.optionsJson}
+                      onChange={(e) => setNewAttr((x) => ({ ...x, optionsJson: e.target.value }))}
+                    />
+                    <span className="ae-admin-field-hint">Lista de valores permitidos para o vendedor escolher.</span>
+                  </label>
+                ) : null}
 
-          <div className="ae-panel">
-            <h2 style={{ marginTop: 0 }}>Presets de ficha</h2>
-            <p className="ae-muted">
-              Modelos mostrados aos vendedores (ordem dos campos). Seleccione várias linhas com Cmd/Ctrl no Windows —
-              ordem = ordem de clique no Chrome pode variar; prefera seleccionar de cima a baixo.
-            </p>
-            <div className="ae-table-wrap">
-              <table className="ae-data-table">
-                <thead>
-                  <tr>
-                    <th>Nome</th>
-                    <th>Defeito</th>
-                    <th>Atributos</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
+                <label className="ae-admin-check--rich">
+                  <div className="ae-admin-check--rich__row">
+                    <input
+                      type="checkbox"
+                      checked={newAttr.isRequired}
+                      onChange={(e) => setNewAttr((x) => ({ ...x, isRequired: e.target.checked }))}
+                    />
+                    <div className="ae-admin-check--rich__text">
+                      <strong>Obrigatório</strong>
+                      <span>Exige preenchimento nas variantes; útil para atributos críticos (marca, capacidade, etc.).</span>
+                    </div>
+                  </div>
+                </label>
+                <label className="ae-admin-check--rich">
+                  <div className="ae-admin-check--rich__row">
+                    <input
+                      type="checkbox"
+                      checked={newAttr.facetEnabled}
+                      onChange={(e) => setNewAttr((x) => ({ ...x, facetEnabled: e.target.checked }))}
+                    />
+                    <div className="ae-admin-check--rich__text">
+                      <strong>Usar como filtro na loja (faceta)</strong>
+                      <span>O comprador filtra resultados por este atributo na pesquisa.</span>
+                    </div>
+                  </div>
+                </label>
+                <label className="ae-admin-check--rich">
+                  <div className="ae-admin-check--rich__row">
+                    <input
+                      type="checkbox"
+                      checked={newAttr.autoSuggest}
+                      onChange={(e) => setNewAttr((x) => ({ ...x, autoSuggest: e.target.checked }))}
+                    />
+                    <div className="ae-admin-check--rich__text">
+                      <strong>Destacar no formulário do vendedor</strong>
+                      <span>O campo ganha destaque no cadastro para reduzir ficha incompleta.</span>
+                    </div>
+                  </div>
+                </label>
+
+                <details className="ae-admin-advanced">
+                  <summary>Configurações avançadas</summary>
+                  <div className="ae-admin-form-grid" style={{ maxWidth: "100%" }}>
+                    <label className="ae-admin-field">
+                      <span>Chave técnica (API, relatórios)</span>
+                      <input
+                        className="ae-input"
+                        value={newAttr.key}
+                        onChange={(e) => {
+                          setNewAttrKeyTouched(true);
+                          setNewAttr((x) => ({ ...x, key: e.target.value }));
+                        }}
+                        placeholder="gerada automaticamente a partir do nome"
+                      />
+                      <span className="ae-admin-field-hint">Apenas a-z, números e underscore. Deixe em automático salvo integrações específicas.</span>
+                    </label>
+                    <label className="ae-admin-field">
+                      <span>Ordem no formulário do vendedor</span>
+                      <input
+                        type="number"
+                        className="ae-input"
+                        value={newAttr.sortOrder}
+                        onChange={(e) => setNewAttr((x) => ({ ...x, sortOrder: Number(e.target.value) }))}
+                      />
+                    </label>
+                    <label className="ae-admin-field">
+                      <span>Prioridade na ficha pública</span>
+                      <input
+                        type="number"
+                        className="ae-input"
+                        value={newAttr.primaryRank}
+                        onChange={(e) => setNewAttr((x) => ({ ...x, primaryRank: Number(e.target.value) }))}
+                      />
+                    </label>
+                    <label className="ae-admin-field ae-admin-field--wide">
+                      <span>Texto de ajuda (opcional)</span>
+                      <input
+                        className="ae-input"
+                        value={newAttr.helpText}
+                        onChange={(e) => setNewAttr((x) => ({ ...x, helpText: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                </details>
+              </div>
+              <button type="button" className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => void createAttr()}>
+                Criar atributo
+              </button>
+            </section>
+
+            <section className="ae-panel ae-admin-catcatalog__section">
+              <h2 className="ae-admin-catcatalog__head">Modelos de ficha (templates)</h2>
+              <p className="ae-admin-catcatalog__lead">
+                Um modelo é um conjunto e ordem de campos que o vendedor recebe de uma vez — pense em “modelo smartphone”
+                ou “modelo televisão”. O nome deve soar familiar ao parceiro, não como código interno.
+              </p>
+
+              {presets.length === 0 ? (
+                <p className="ae-muted">Nenhum modelo ainda. Crie um abaixo quando tiver atributos definidos.</p>
+              ) : (
+                <div className="ae-admin-preset-grid">
                   {presets.map((pr) => (
-                    <tr key={pr.id}>
-                      <td>{pr.name}</td>
-                      <td>{pr.isDefault ? "Sim" : "—"}</td>
-                      <td>{pr.attributes.map((x) => x.label).join(" · ")}</td>
-                      <td>
-                        <button type="button" className="ae-mini-btn" onClick={() => void deletePreset(pr.id)}>
-                          Eliminar
-                        </button>
-                      </td>
-                    </tr>
+                    <article key={pr.id} className="ae-admin-preset-card">
+                      <div className="ae-admin-preset-card__head">
+                        <h3 className="ae-admin-preset-card__name">{pr.name}</h3>
+                        {pr.isDefault ? <span className="ae-admin-badge ae-admin-badge--ok">Predefinido</span> : null}
+                      </div>
+                      <div className="ae-admin-preset-card__chips">
+                        {pr.attributes.map((x) => (
+                          <span key={x.id} className="ae-admin-preset-chip">
+                            {x.label}
+                          </span>
+                        ))}
+                      </div>
+                      <button type="button" className="ae-mini-btn" onClick={() => void deletePreset(pr.id)}>
+                        Eliminar modelo
+                      </button>
+                    </article>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <label className="ae-admin-field">
-              Nome do novo preset
-              <input
-                className="ae-input"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-              />
-            </label>
-            <label className="ae-admin-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" checked={presetDefault} onChange={(e) => setPresetDefault(e.target.checked)} />
-              Predefinir nesta categoria
-            </label>
-            <label className="ae-admin-field">
-              Atributos (multi-selecção)
-              <select
-                ref={presetSelectRef}
-                multiple
-                className="ae-input ae-admin-catcatalog-multiselect"
-                size={Math.min(12, Math.max(4, attrs.length))}
-              >
-                {attrs.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="btn btn-primary" onClick={() => void createPreset()}>
-              Criar preset
-            </button>
-          </div>
-        </>
-      )}
+                </div>
+              )}
+
+              <h3 className="ae-admin-catcatalog__head" style={{ marginTop: 24 }}>
+                Criar novo modelo
+              </h3>
+              <div className="ae-admin-form-stack" style={{ marginTop: 12 }}>
+                <label className="ae-admin-field">
+                  <span>Nome do modelo</span>
+                  <input
+                    className="ae-input"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    placeholder="Ex.: Modelo smartphone Android"
+                  />
+                  <span className="ae-admin-field-hint">Use linguagem que o vendedor reconhece no dia-a-dia.</span>
+                </label>
+                <label className="ae-admin-check--rich">
+                  <div className="ae-admin-check--rich__row">
+                    <input type="checkbox" checked={presetDefault} onChange={(e) => setPresetDefault(e.target.checked)} />
+                    <div className="ae-admin-check--rich__text">
+                      <strong>Modelo por defeito nesta categoria</strong>
+                      <span>Sugerido primeiro aos vendedores ao escolherem esta categoria.</span>
+                    </div>
+                  </div>
+                </label>
+                <label className="ae-admin-field">
+                  <span>Atributos incluídos (ordem = ordem no modelo)</span>
+                  <select
+                    ref={presetSelectRef}
+                    multiple
+                    className="ae-input ae-admin-catcatalog-multiselect"
+                    size={Math.min(12, Math.max(5, attrs.length || 5))}
+                  >
+                    {attrs.map((at) => (
+                      <option key={at.id} value={at.id}>
+                        {at.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="ae-admin-field-hint">
+                    Segure Ctrl (Windows) ou ⌘ (Mac) para seleccionar vários; prefira seleccionar de cima a baixo na ordem desejada.
+                  </span>
+                </label>
+              </div>
+              <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => void createPreset()}>
+                Criar modelo
+              </button>
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }

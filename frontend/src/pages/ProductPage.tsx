@@ -18,13 +18,19 @@ import {
   variantSecondaryAxisHeading,
   variantSecondaryChipLabel,
 } from "../utils/variantDisplay.js";
-import { listingBadgeClassList } from "../utils/listingBadgeClass.js";
+import { ListingBadge } from "../components/ListingBadge.js";
 import {
   formatReviewerDisplayName,
   formatReviewDatePt,
   helpfulReviewSentence,
   reviewerAvatarInitials,
 } from "../utils/reviewDisplay.js";
+import {
+  addCompareId,
+  COMPARE_MAX,
+  getCompareIds,
+  removeCompareId,
+} from "../utils/compareSelection.js";
 
 type Img = { url: string };
 type Variant = {
@@ -349,11 +355,15 @@ export default function ProductPage() {
   pdpReviewsRef.current = pdpReviews;
   const mainSwipeRef = useRef<{ x: number; y: number } | null>(null);
   const lbTouchRef = useRef<{ x: number; y: number } | null>(null);
-  const seoTitle = product ? `${product.name} — BAZAR DO BIÉ` : "Produto — BAZAR DO BIÉ";
-  const seoDescription = product
-    ? `${product.name} com preço em Kz, envio local e compra segura no BAZAR DO BIÉ`
-    : "Detalhes do produto no marketplace BAZAR DO BIÉ.";
+  const [compareTick, setCompareTick] = useState(0);
+  const [compareNote, setCompareNote] = useState<string | null>(null);
   const seoImage = product?.images[0]?.url ? resolveMediaUrl(product.images[0].url) : undefined;
+
+  useEffect(() => {
+    const fn = () => setCompareTick((t) => t + 1);
+    window.addEventListener("compare-updated", fn);
+    return () => window.removeEventListener("compare-updated", fn);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -619,7 +629,6 @@ export default function ProductPage() {
     () => (needVariant ? product?.variants.find((v) => v.id === variantId) ?? null : null),
     [needVariant, product, variantId]
   );
-  const seoVariant = selectedVariant ?? undefined;
   const unitPriceNum = useMemo(() => {
     if (!product) return null;
     if (needVariant && selectedVariant) {
@@ -632,6 +641,27 @@ export default function ProductPage() {
     if (!product) return null;
     return variantCompareAtUnitKz(product, needVariant ? selectedVariant ?? undefined : undefined);
   }, [product, needVariant, selectedVariant]);
+
+  const inCompare = useMemo(
+    () => !!(product && getCompareIds().includes(product.id)),
+    [product, compareTick],
+  );
+
+  const toggleCompare = useCallback(() => {
+    if (!product) return;
+    if (getCompareIds().includes(product.id)) {
+      removeCompareId(product.id);
+      setCompareNote("Removido da comparação.");
+    } else {
+      const r = addCompareId(product.id);
+      if (r === "full") {
+        setCompareNote(`O comparador aceita no máximo ${COMPARE_MAX} artigos.`);
+      } else {
+        setCompareNote("Adicionado ao comparador. Abra-o pelo ícone na barra superior.");
+      }
+    }
+    window.setTimeout(() => setCompareNote(null), 3400);
+  }, [product]);
 
   const mainImageAlt = useMemo(
     () => (product ? pdpMainAlt(product.name, selectedVariant) : "Artigo"),
@@ -672,38 +702,83 @@ export default function ProductPage() {
     return `${mainImageAlt} — fotografia ${lightboxIndex + 1} de ${product.images.length}`;
   }, [product, lightboxIndex, mainImageAlt]);
 
-  const seoJsonLd = product
-    ? {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: product.name,
-        description: product.description,
-        image: product.images.map((im) => resolveMediaUrl(im.url)).slice(0, 6),
-        sku: seoVariant?.sku || product.sku || undefined,
-        brand: {
-          "@type": "Brand",
-          name: "BAZAR DO BIÉ",
-        },
-        offers: {
-          "@type": "Offer",
-          priceCurrency: "AOA",
-          price: unitPriceNum ?? Number(product.displayPrice),
-          availability:
-            (seoVariant?.stock ?? product.stock) > 0
-              ? "https://schema.org/InStock"
-              : "https://schema.org/OutOfStock",
-          url: typeof window !== "undefined" ? window.location.href : "",
-        },
-        aggregateRating:
-          product.reviewCount > 0 && product.averageRating
-            ? {
-                "@type": "AggregateRating",
-                ratingValue: Number(product.averageRating),
-                reviewCount: product.reviewCount,
-              }
-            : undefined,
-      }
-    : null;
+  const { seoTitle, seoDescription, seoJsonLd } = useMemo(() => {
+    if (!product) {
+      return {
+        seoTitle: "Produto — BAZAR DO BIÉ",
+        seoDescription: "Detalhes do produto no marketplace BAZAR DO BIÉ.",
+        seoJsonLd: null as Record<string, unknown> | null,
+      };
+    }
+    const cat = product.category?.name?.trim();
+    const seoTitleResolved =
+      cat && cat.length > 0
+        ? `${product.name} · ${cat} | BAZAR DO BIÉ`
+        : `${product.name} | BAZAR DO BIÉ`;
+    const vForMeta = selectedVariant ?? product.variants[0];
+    const specBits =
+      vForMeta != null
+        ? variantPdpSpecRows(vForMeta, product.name)
+            .slice(0, 4)
+            .map((r) => `${r.label}: ${r.value}`)
+        : [];
+    const priceStr = formatKz(unitPriceNum ?? Number(product.displayPrice));
+    const parts: string[] = [
+      `${product.name}. ${priceStr} em Kz.`,
+      ...(cat ? [`Categoria: ${cat}.`] : []),
+      ...(specBits.length ? [specBits.join(" ")] : []),
+      "Compra segura no BAZAR DO BIÉ.",
+    ];
+    let seoDescriptionResolved = parts.join(" ");
+    const MAX = 158;
+    if (seoDescriptionResolved.length > MAX) {
+      seoDescriptionResolved = seoDescriptionResolved.slice(0, MAX - 1).trimEnd() + "…";
+    }
+    const specRowsFull = vForMeta != null ? variantPdpSpecRows(vForMeta, product.name) : [];
+    const additionalProperty =
+      specRowsFull.length > 0
+        ? specRowsFull.slice(0, 24).map((r) => ({
+            "@type": "PropertyValue",
+            name: r.label,
+            value: r.value,
+          }))
+        : undefined;
+    const plainDesc = (product.description ?? "").trim().slice(0, 800) || seoDescriptionResolved;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      description: plainDesc,
+      image: product.images.map((im) => resolveMediaUrl(im.url)).slice(0, 6),
+        sku: (selectedVariant ?? undefined)?.sku || product.sku || undefined,
+      category: cat || undefined,
+      brand: {
+        "@type": "Brand",
+        name: "BAZAR DO BIÉ",
+      },
+      ...(additionalProperty ? { additionalProperty } : {}),
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "AOA",
+        price: unitPriceNum ?? Number(product.displayPrice),
+        availability:
+          ((selectedVariant ?? undefined)?.stock ?? product.stock) > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        url: typeof window !== "undefined" ? window.location.href : "",
+      },
+      aggregateRating:
+        product.reviewCount > 0 && product.averageRating
+          ? {
+              "@type": "AggregateRating",
+              ratingValue: Number(product.averageRating),
+              reviewCount: product.reviewCount,
+            }
+          : undefined,
+    };
+    return { seoTitle: seoTitleResolved, seoDescription: seoDescriptionResolved, seoJsonLd: jsonLd };
+  }, [product, selectedVariant, unitPriceNum]);
+
   useSeo({
     title: seoTitle,
     description: seoDescription,
@@ -1127,9 +1202,7 @@ export default function ProductPage() {
                 {product.listingBadges?.length ? (
                   <div className="ae-pdp-listing-badges" aria-label="Selos de qualidade do anúncio">
                     {product.listingBadges.map((b) => (
-                      <span key={b.id} className={listingBadgeClassList(b.id, false)}>
-                        {b.label}
-                      </span>
+                      <ListingBadge key={b.id} badge={b} />
                     ))}
                   </div>
                 ) : null}
@@ -1180,7 +1253,7 @@ export default function ProductPage() {
                       <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
                       {product.reviewCount === 1 ? "avaliação verificada" : "avaliações verificadas"} ·{" "}
                       <span className="ae-muted">
-                        {product.ratingTrustShortPt ?? "média em consolidação"}
+                        {product.ratingTrustShortPt ?? "Ainda sem avaliações suficientes"}
                       </span>
                     </span>
                     <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
@@ -1595,6 +1668,19 @@ export default function ProductPage() {
               </Link>
             </div>
             <div className="ae-pdp-rail__extras">
+              <div className="ae-pdp-compare-row">
+                <button type="button" className="ae-btn-subtle" onClick={() => toggleCompare()}>
+                  {inCompare ? "Retirar da comparação" : "Adicionar à comparação"}
+                </button>
+                <Link to="/compare" className="ae-linkbtn">
+                  Abrir comparador
+                </Link>
+              </div>
+              {compareNote ? (
+                <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
+                  {compareNote}
+                </p>
+              ) : null}
               <FavoriteToggle productId={product.id} variantId={variantId} needVariant={needVariant} />
               <p style={{ margin: 0, fontSize: 12 }}>
                 <button type="button" className="ae-linkbtn" onClick={() => setShowReport(true)}>
@@ -1724,7 +1810,7 @@ export default function ProductPage() {
                         <span className="ae-pdp-reviews-hero__pending">—</span>
                         <p className="ae-pdp-reviews-hero__pending-copy ae-muted">
                           {product.ratingTrustHintPt ??
-                            "Média global oculta até volume mínimo de opiniões verificadas."}
+                            "A média em estrelas só aparece com volume mínimo de opiniões — para leituras mais fiáveis."}
                         </p>
                         <p className="ae-pdp-reviews-hero__meta ae-muted">
                           <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}

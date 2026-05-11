@@ -72,6 +72,18 @@ export const productController = {
     res.json(p);
   }),
 
+  /** Comparador público: até 5 referências activas, na ordem pedida. */
+  compare: asyncHandler(async (req, res) => {
+    const raw = typeof req.query.ids === "string" ? req.query.ids : "";
+    const ids = [...new Set(raw.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean))].slice(0, 5);
+    if (ids.length === 0) {
+      res.json({ products: [] });
+      return;
+    }
+    const products = await productService.listPublicByIdsOrdered(ids);
+    res.json({ products });
+  }),
+
   /** Semelhantes + co-ocorrência em encomendas (não canceladas). */
   related: asyncHandler(async (req, res) => {
     const take = Math.min(Math.max(Number(req.query.take) || 16, 4), 28);
