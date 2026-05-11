@@ -113,7 +113,8 @@ function ProductCardInner({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (inCompare) removeCompareId(p.id);
+              const nowIn = getCompareIds().includes(p.id);
+              if (nowIn) removeCompareId(p.id);
               else {
                 const r = addCompareId(p.id);
                 if (r === "full") {
@@ -138,13 +139,13 @@ function ProductCardInner({
             <span className="ae-pcard__compare-lbl">{inCompare ? "Na comparação" : "Comparar"}</span>
           </button>
         ) : null}
-        {compareTip ? (
-          <span className="ae-pcard__compare-tip" role="status">
-            {compareTip}
-          </span>
-        ) : null}
       </div>
       <div className="ae-pcard__body">
+        {compareTip ? (
+          <p className="ae-pcard__compare-banner" role="status">
+            {compareTip}
+          </p>
+        ) : null}
         <h3 className="ae-pcard__title">{p.name}</h3>
         {p.listingBadges?.length ? (
           <div className="ae-pcard__badges">

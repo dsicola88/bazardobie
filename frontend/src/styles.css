@@ -1333,6 +1333,59 @@ a:hover {
   color: #1e40af;
   border-color: rgb(59 130 246 / 0.35);
 }
+.ae-pcard__compare {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 8px;
+  max-width: calc(100% - 70px);
+  border-radius: 999px;
+  border: 1px solid rgb(15 23 42 / 0.14);
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  font-size: 11px;
+  font-weight: 750;
+  color: #0f172a;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgb(15 23 42 / 0.12);
+  line-height: 1.2;
+}
+.ae-pcard__compare:hover {
+  border-color: rgb(37 99 246 / 0.35);
+  color: #1e40af;
+}
+.ae-pcard__compare--on {
+  background: linear-gradient(180deg, #ecfdf5, #d1fae5);
+  border-color: rgb(16 185 129 / 0.4);
+  color: #047857;
+}
+.ae-pcard__compare--on:hover {
+  color: #065f46;
+}
+.ae-pcard__compare-ico {
+  flex-shrink: 0;
+  display: flex;
+  line-height: 0;
+}
+.ae-pcard__compare-lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ae-pcard__compare-banner {
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid rgb(245 158 11 / 0.35);
+  border-radius: 8px;
+}
 .ae-pcard__body,
 .card-product .body {
   padding: 11px 12px 13px;

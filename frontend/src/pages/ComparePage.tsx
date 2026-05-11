@@ -114,6 +114,12 @@ function rowHighlights(values: string[]): boolean {
   return true;
 }
 
+function escapeCsvField(val: string): string {
+  const s = val.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
 export default function ComparePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const idsKey = searchParams.get("ids") ?? "";
@@ -221,6 +227,36 @@ export default function ComparePage() {
     setProducts([]);
   }, [setSearchParams]);
 
+  const downloadCsv = useCallback(() => {
+    if (products.length === 0) return;
+    const cols = products.map((p) => p.name.trim().replace(/\s+/g, " "));
+    const rows: string[][] = [["Característica", ...cols]];
+    const push = (label: string, values: string[]) => {
+      rows.push([label, ...values]);
+    };
+    push("Preço (referência)", resumoRows.map((r) => r.priceCell));
+    push("Loja", resumoRows.map((r) => r.shopCell));
+    push("Categoria", resumoRows.map((r) => r.categoryCell));
+    push("Condição", resumoRows.map((r) => r.conditionCell));
+    push("Réf. / variante", resumoRows.map((r) => r.skuNote));
+    push("Reputação", resumoRows.map((r) => r.ratingCell));
+    push("Vendas na plataforma", resumoRows.map((r) => r.soldCell));
+    for (const sp of specRows) {
+      push(sp.label, sp.values);
+    }
+    const csv = rows.map((line) => line.map(escapeCsvField).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bazar-comparar-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [products, resumoRows, specRows]);
+
   const requestIds = parseCompareIdsParam(searchParams.get("ids"));
   const missingCount = requestIds.length - products.length;
 
@@ -255,6 +291,11 @@ export default function ComparePage() {
               Continuar a descobrir
             </Link>
             {products.length > 0 ? (
+              <button type="button" className="ae-btn-subtle" onClick={() => downloadCsv()}>
+                Descarregar CSV
+              </button>
+            ) : null}
+            {products.length > 0 ? (
               <button type="button" className="ae-btn-subtle" onClick={onClear}>
                 Limpar lista
               </button>
@@ -278,8 +319,8 @@ export default function ComparePage() {
         <div className="ae-compare-empty">
           <h2 className="ae-compare-empty__title">Lista vazia</h2>
           <p className="ae-muted">
-            Abra uma ficha de produto e use <strong>«Adicionar à comparação»</strong>. Guarde até {COMPARE_MAX} artigos
-            para ver especificações e preços em paralelo.
+            Abra uma ficha de produto ou use <strong>«Comparar»</strong> nos cartões da pesquisa. Guarde até {COMPARE_MAX}{" "}
+            artigos para ver especificações e preços em paralelo.
           </p>
           <Link to="/search" className="ae-btn-lg ae-btn-buy">
             Explorar catálogo
