@@ -1,10 +1,17 @@
 /**
  * Pré-visualização da qualidade do anúncio (espelha a lógica do backend para feedback imediato no editor).
  */
+export type ListingQualityHintItem = {
+  message: string;
+  /** Ganho aproximado ao resolver (para gamificação); null = dica informativa. */
+  impactPts: number | null;
+};
+
 export type ListingQualityPreview = {
   score: number;
   grade: "baixo" | "médio" | "alto" | "excelente";
   hints: string[];
+  hintItems: ListingQualityHintItem[];
 };
 
 type AttrDef = { id: string; isRequired: boolean };
@@ -27,7 +34,11 @@ export function computeListingQualityPreview(input: {
   }>;
   categoryAttrs: AttrDef[];
 }): ListingQualityPreview {
-  const hints: string[] = [];
+  const hintItems: ListingQualityHintItem[] = [];
+  const add = (message: string, impactPts: number | null) => {
+    hintItems.push({ message, impactPts });
+  };
+
   let texto = 0;
   let media = 0;
   let categoria = 0;
@@ -41,28 +52,31 @@ export function computeListingQualityPreview(input: {
   else if (descLen >= 80) texto += 10;
   else {
     texto += 4;
-    hints.push("Alargue a descrição (recomendado: pelo menos 160 caracteres úteis).");
+    add("Alargue a descrição (recomendado: pelo menos 160 caracteres úteis).", 12);
   }
 
   if (input.name.trim().length >= 15) texto += 8;
-  else hints.push("Use um título mais descritivo (marca, modelo, recurso-chave).");
+  else add("Use um título mais descritivo (marca, modelo, recurso-chave).", 6);
 
   const nImg = input.images.filter((u) => u.trim()).length;
   if (nImg >= 4) media += 20;
   else if (nImg >= 2) media += 14;
   else if (nImg >= 1) media += 8;
-  else hints.push("Adicione pelo menos uma fotografia nítida do artigo.");
+  else add("Adicione pelo menos uma fotografia nítida do artigo.", 14);
 
   if (input.demoVideoUrl.trim()) media += 6;
+  else if (nImg >= 1 && !input.demoVideoUrl.trim()) {
+    add("Um vídeo curto reforça confiança e pode acrescentar pontos à qualidade.", 6);
+  }
 
   if (input.categoryId.trim()) {
     categoria += 12;
   } else {
-    hints.push("Associe uma categoria comercial para activar a ficha técnica e facetas.");
+    add("Associe uma categoria comercial para activar a ficha técnica e facetas.", 12);
   }
 
   if (input.variants.length === 0) {
-    hints.push("Sem variantes: confirme stock e preço por SKU se aplicável.");
+    add("Sem variantes: confirme stock e preço por SKU se o artigo tiver tamanhos/cores/capacidades.", null);
   } else if (input.variants.length > 1) {
     variacoes += 8;
   }
@@ -78,7 +92,7 @@ export function computeListingQualityPreview(input: {
     if (required.length > 0) {
       const ratio = filledReq / required.length;
       ficha += Math.round(26 * ratio);
-      if (ratio < 1) hints.push("Preencha todos os atributos obrigatórios da categoria em cada variante.");
+      if (ratio < 1) add("Preencha todos os atributos obrigatórios da categoria em cada variante.", 20);
     }
     const optional = defs.filter((d) => !d.isRequired);
     if (optional.length > 0) {
@@ -88,6 +102,9 @@ export function computeListingQualityPreview(input: {
         if (some) anyOpt++;
       }
       ficha += Math.min(10, Math.round((anyOpt / optional.length) * 10));
+      if (anyOpt < Math.min(3, optional.length)) {
+        add("Complete atributos opcionais da categoria (RAM, marca, capacidade…) — melhora filtro e cliques.", 10);
+      }
     }
   } else if (input.categoryId.trim() && defs.length === 0) {
     ficha += 6;
@@ -95,14 +112,14 @@ export function computeListingQualityPreview(input: {
 
   if (input.condition === "USED" || input.condition === "REFURBISHED") {
     if (input.conditionDetail.trim().length >= 12) confianca += 10;
-    else hints.push("Para artigos usados/recondicionados, detalhe o estado (pontos de uso, inclusões).");
+    else add("Para artigos usados/recondicionados, detalhe o estado (pontos de uso, inclusões).", 10);
   } else {
     confianca += 6;
   }
 
   if (input.isDraft) {
     texto = Math.round(texto * 0.85);
-    hints.push("Rascunho: finalize imagens, envio e descrição antes de publicar.");
+    add("Rascunho: finalize imagens, envio e descrição antes de publicar.", null);
   }
 
   const raw = texto + media + categoria + ficha + variacoes + confianca;
@@ -112,5 +129,11 @@ export function computeListingQualityPreview(input: {
   else if (score >= 72) grade = "alto";
   else if (score >= 48) grade = "médio";
 
-  return { score, grade, hints: hints.slice(0, 5) };
+  const trimmed = hintItems.slice(0, 6);
+  return {
+    score,
+    grade,
+    hints: trimmed.map((h) => h.message),
+    hintItems: trimmed,
+  };
 }

@@ -312,150 +312,130 @@ export default function VendorProducts() {
           {patchErr}
         </p>
       ) : null}
-      <div className="ae-table-wrap">
-        <table className="ae-data-table">
-          <thead>
-            <tr>
-              <th>Designação</th>
-              <th>SKU</th>
-              <th>Condição</th>
-              <th>Preço corrente</th>
-              <th>Existências</th>
-              <th>Vendas</th>
-              <th>Validação</th>
-              <th>Qualidade</th>
-              <th>Estado</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p) => (
-              <tr key={p.id}>
-                <td style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <img
-                    src={resolveMediaUrl(p.images[0]?.url)}
-                    alt=""
-                    width={44}
-                    height={44}
-                    style={{ borderRadius: 4, objectFit: "cover" }}
-                  />
-                  <span>{p.name}</span>
-                </td>
-                <td style={{ fontFamily: "monospace", fontSize: 11 }}>{p.sku}</td>
-                <td>{productConditionLabel(p.condition)}</td>
-                <td>{formatKz(p.displayPrice)}</td>
-                <td>{p.stock}</td>
-                <td>{p.soldCount}</td>
-                <td>
+      <div className="ae-v-catalog-list">
+        {rows.map((p) => {
+          const qHint =
+            p.listingQuality?.hints && p.listingQuality.hints.length > 0
+              ? p.listingQuality.hints.slice(0, 3).join(" · ")
+              : "";
+          const qScore = p.listingQuality?.score ?? 0;
+          return (
+            <article key={p.id} className="ae-v-catalog-card">
+              <img
+                className="ae-v-catalog-card__thumb"
+                src={resolveMediaUrl(p.images[0]?.url)}
+                alt=""
+                width={88}
+                height={88}
+              />
+              <div>
+                <h2 className="ae-v-catalog-card__title">{p.name}</h2>
+                <div className="ae-v-catalog-card__sku">SKU {p.sku}</div>
+                <div className="ae-v-catalog-card__chips">
                   <span className={`ae-badge ${modClass(p.moderationStatus)}`}>{modLabel(p.moderationStatus)}</span>
-                </td>
-                <td>
-                  {p.listingQuality ? (
-                    <span
-                      className="ae-badge ae-badge--pend"
-                      style={{ cursor: "help" }}
-                      title={[...p.listingQuality.hints].slice(0, 4).join(" · ")}
-                    >
-                      {p.listingQuality.score} · {p.listingQuality.grade}
-                    </span>
-                  ) : (
-                    <span className="ae-muted">—</span>
-                  )}
-                </td>
-                <td>
                   <span className={`ae-badge ${p.isActive ? "ae-badge--live" : "ae-badge--off"}`}>
                     {archived(p) ? "Arquivado" : p.isDraft ? "Rascunho" : p.isActive ? "Activo na vitrine" : "Indisponível"}
                   </span>
-                  {p.isFeatured ? (
-                    <span className="ae-badge ae-badge--feat" style={{ marginLeft: 4 }}>
-                      Destaque
-                    </span>
-                  ) : null}
-                </td>
-                <td style={{ whiteSpace: "normal", maxWidth: 280 }}>
-                  {!archived(p) ? (
-                    <Link
-                      to={`/vendor/products/${p.id}/edit`}
-                      className="ae-mini-btn"
-                      style={{ textDecoration: "none", display: "inline-block", marginRight: 6, marginBottom: 4 }}
-                    >
-                      Editar ficha
-                    </Link>
+                  {p.isFeatured ? <span className="ae-badge ae-badge--feat">Destaque</span> : null}
+                  <span className="ae-v-catalog-chip ae-v-catalog-chip--dim">{productConditionLabel(p.condition)}</span>
+                </div>
+                <div className="ae-v-catalog-card__stats">
+                  <div>
+                    <strong>Preço</strong>
+                    {formatKz(p.displayPrice)}
+                  </div>
+                  <div>
+                    <strong>Stock</strong>
+                    {p.stock}
+                  </div>
+                  <div>
+                    <strong>Vendas</strong>
+                    {p.soldCount}
+                  </div>
+                </div>
+                {p.listingQuality ? (
+                  <div className="ae-v-catalog-card__qwrap" title={qHint || undefined}>
+                    <div className="ae-v-catalog-card__qlabel">
+                      Qualidade da ficha · {p.listingQuality.score}/100 · {p.listingQuality.grade}
+                    </div>
+                    <div className="ae-v-catalog-card__qbar">
+                      <div className="ae-v-catalog-card__qfill" style={{ width: `${qScore}%` }} />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="ae-v-catalog-card__actions">
+                {!archived(p) ? (
+                  <Link to={`/vendor/products/${p.id}/edit`} className="ae-mini-btn" style={{ textDecoration: "none" }}>
+                    Editar ficha
+                  </Link>
+                ) : (
+                  <span className="ae-muted" style={{ fontSize: 12 }}>
+                    Edição bloqueada até desarquivar
+                  </span>
+                )}
+                {!archived(p) ? (
+                  p.isActive ? (
+                    <button type="button" className="btn" style={{ width: "100%" }} onClick={() => void patchActive(p.id, false)}>
+                      Suspender venda
+                    </button>
                   ) : (
-                    <span className="ae-muted" style={{ fontSize: 12, display: "inline-block", marginRight: 8 }}>
-                      Edição bloqueada até desarquivar
-                    </span>
-                  )}
-                  {!archived(p) ? (
                     <button
                       type="button"
-                      className="ae-mini-btn"
-                      style={{ marginRight: 6, marginBottom: 4 }}
+                      className="btn btn-primary"
+                      style={{ width: "100%" }}
                       disabled={p.isDraft}
                       title={p.isDraft ? "Complete a ficha antes de activar a venda" : undefined}
-                      onClick={() => void patchActive(p.id, !p.isActive)}
+                      onClick={() => void patchActive(p.id, true)}
                     >
-                      {p.isActive ? "Suspender venda" : "Activar venda"}
+                      Activar venda na loja
                     </button>
-                  ) : null}
-                  {!archived(p) ? (
-                    <button
-                      type="button"
-                      className="ae-mini-btn"
-                      style={{ marginRight: 6, marginBottom: 4 }}
-                      onClick={() => void patch(p.id, { archived: true })}
-                    >
-                      Arquivar
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="ae-mini-btn"
-                      style={{ marginRight: 6, marginBottom: 4 }}
-                      onClick={() => void patch(p.id, { archived: false })}
-                    >
-                      Restaurar do arquivo
-                    </button>
-                  )}
-                  {p.canDelete ? (
-                    <button
-                      type="button"
-                      className="ae-mini-btn"
-                      style={{ marginBottom: 4 }}
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            "Eliminar permanentemente esta referência? Não pode haver encomendas associadas.",
-                          )
-                        )
-                          void removeProduct(p.id);
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  ) : (
-                    <span className="ae-muted" style={{ fontSize: 11, display: "block" }}>
-                      Com histórico de encomenda — não pode eliminar
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!listLoading && !listErr && bundle?.total === 0 ? (
-          <div className="ae-empty-center">
-            Não existem referências neste critério{qDeb ? " de pesquisa" : ""}. Experimente outra vista ou crie uma nova
-            ficha.
-          </div>
-        ) : null}
-        {!listLoading && bundle != null && bundle.total > 0 && rows.length === 0 ? (
-          <div className="ae-empty-center ae-muted">
-            Nenhuma linha corresponde aos filtros locais nesta página. Mude de página ou ajuste Activos / Inactivos /
-            Rascunhos.
-          </div>
-        ) : null}
+                  )
+                ) : null}
+                {!archived(p) ? (
+                  <button type="button" className="ae-mini-btn" onClick={() => void patch(p.id, { archived: true })}>
+                    Arquivar
+                  </button>
+                ) : (
+                  <button type="button" className="ae-mini-btn" onClick={() => void patch(p.id, { archived: false })}>
+                    Restaurar do arquivo
+                  </button>
+                )}
+                {p.canDelete ? (
+                  <button
+                    type="button"
+                    className="ae-mini-btn"
+                    onClick={() => {
+                      if (
+                        window.confirm("Eliminar permanentemente esta referência? Não pode haver encomendas associadas.")
+                      )
+                        void removeProduct(p.id);
+                    }}
+                  >
+                    Eliminar
+                  </button>
+                ) : (
+                  <span className="ae-muted" style={{ fontSize: 11 }}>
+                    Com histórico de encomenda — não pode eliminar
+                  </span>
+                )}
+              </div>
+            </article>
+          );
+        })}
       </div>
+      {!listLoading && !listErr && bundle?.total === 0 ? (
+        <div className="ae-empty-center">
+          Não existem referências neste critério{qDeb ? " de pesquisa" : ""}. Experimente outra vista ou crie uma nova
+          ficha.
+        </div>
+      ) : null}
+      {!listLoading && bundle != null && bundle.total > 0 && rows.length === 0 ? (
+        <div className="ae-empty-center ae-muted">
+          Nenhuma linha corresponde aos filtros locais nesta página. Mude de página ou ajuste Activos / Inactivos /
+          Rascunhos.
+        </div>
+      ) : null}
     </>
   );
 }

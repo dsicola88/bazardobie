@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { getPublicCategories, type PublicCategory } from "../data/publicCategoriesCache.js";
@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import type { ProductCondition } from "../utils/productCondition.js";
 import { computeListingQualityPreview } from "../utils/listingQualityPreview.js";
+import { computePublicationSteps, publicationOverallPct } from "../utils/publicationAssistant.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -282,6 +283,44 @@ export default function VendorProductEditor() {
       categoryAttrs,
     ],
   );
+
+  const publicationSteps = useMemo(
+    () =>
+      computePublicationSteps({
+        name,
+        sku,
+        categoryId,
+        description,
+        condition,
+        conditionDetail,
+        images,
+        price,
+        stock,
+        variants,
+        categoryAttrs: categoryAttrs.map((a) => ({ id: a.id, isRequired: a.isRequired })),
+        deliveries,
+      }),
+    [
+      name,
+      sku,
+      categoryId,
+      description,
+      condition,
+      conditionDetail,
+      images,
+      price,
+      stock,
+      variants,
+      categoryAttrs,
+      deliveries,
+    ],
+  );
+
+  const publicationAvg = useMemo(() => publicationOverallPct(publicationSteps), [publicationSteps]);
+
+  const goVendorStep = useCallback((stepId: string) => {
+    document.getElementById(`vstep-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   useEffect(() => {
     void getPublicCategories().then(setCats);
@@ -752,8 +791,101 @@ export default function VendorProductEditor() {
         </div>
       ) : null}
 
+      <div className="ae-v-prod-layout">
+        <nav className="ae-v-prod-rail" aria-label="Assistente de publicação — etapas">
+          <p className="ae-v-prod-rail__title">Etapas</p>
+          <p className="ae-v-prod-rail__sub">Toque para saltar à secção. O assistente acompanha o preenchimento.</p>
+          <ol className="ae-v-prod-rail__list">
+            {publicationSteps.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  className={`ae-v-prod-rail__btn${s.pct >= 88 ? " ae-v-prod-rail__btn--done" : ""}`}
+                  onClick={() => goVendorStep(s.id)}
+                >
+                  <span className="ae-v-prod-rail__btn-label">{s.label}</span>
+                  <span className="ae-v-prod-rail__btn-meta">
+                    {s.pct >= 88 ? "✓ " : ""}
+                    {s.pct}%
+                  </span>
+                </button>
+                <div className="ae-v-prod-rail__microbar" aria-hidden>
+                  <div className="ae-v-prod-rail__microfill" style={{ width: `${s.pct}%` }} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </nav>
+
+        <div className="ae-v-prod-maincol">
+          <div className="ae-v-prod-assistant">
+            <div className="ae-v-prod-assistant__head">
+              <div>
+                <h2 className="ae-v-prod-assistant__title">Assistente de publicação</h2>
+                <p className="ae-v-prod-assistant__lead">
+                  O Bazar calcula a <strong>qualidade do anúncio</strong> e guia-o nas melhorias que mais aumentam
+                  confiança e desempenho na loja.
+                </p>
+              </div>
+              <div
+                className={`ae-v-prod-score-ring ae-v-prod-score-ring--${listingGradeCssClass(listingPreview.grade)}`}
+                style={{ "--ae-score": String(listingPreview.score) } as CSSProperties}
+                aria-hidden
+              >
+                <div className="ae-v-prod-score-ring__inner">
+                  <span className="ae-v-prod-score-ring__val">{listingPreview.score}</span>
+                  <span className="ae-v-prod-score-ring__max">/100</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="ae-v-prod-assistant__global">
+              <div className="ae-v-prod-assistant__global-row">
+                <span>Progresso global do formulário</span>
+                <strong>{publicationAvg}%</strong>
+              </div>
+              <div className="ae-v-prod-assistant__bar" aria-hidden>
+                <div className="ae-v-prod-assistant__fill" style={{ width: `${publicationAvg}%` }} />
+              </div>
+            </div>
+
+            <div className="ae-v-prod-assistant__quality-row">
+              <span
+                className={`ae-badge ae-listing-quality-preview__grade ae-listing-quality-preview__grade--${listingGradeCssClass(listingPreview.grade)}`}
+              >
+                Qualidade: {listingPreview.grade}
+              </span>
+              <span className="ae-v-prod-assistant__impact">
+                {listingPreview.score < 72
+                  ? "Fichas mais completas tendem a receber mais cliques e aprovação mais rápida."
+                  : "Bom nível — pequenos retoques em fotos e ficha técnica podem elevar ainda mais a conversão."}
+              </span>
+            </div>
+
+            {listingPreview.hintItems.length > 0 ? (
+              <ul className="ae-v-prod-hint-cards">
+                {listingPreview.hintItems.map((h, hi) => (
+                  <li key={hi} className="ae-v-prod-hint-card">
+                    <div className="ae-v-prod-hint-card__top">
+                      {h.impactPts != null ? (
+                        <span className="ae-v-prod-hint-card__pts">+{h.impactPts} pts</span>
+                      ) : (
+                        <span className="ae-v-prod-hint-card__pts ae-v-prod-hint-card__pts--info">Dica</span>
+                      )}
+                    </div>
+                    <p className="ae-v-prod-hint-card__msg">{h.message}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="ae-v-prod-assistant__ok">
+                Tudo coerente neste momento. Avance para as imagens e a ficha técnica para maximizar a pontuação.
+              </p>
+            )}
+          </div>
+
       <form className="ae-form" onSubmit={(e) => void onSubmit(e)}>
-        <section className="ae-v-prod-sec ae-panel">
+        <section className="ae-v-prod-sec ae-panel" id="vstep-1">
           <h2 className="ae-v-prod-sec__h">01 · Identificação e classificação</h2>
           <p className="ae-v-prod-sec__lede">
             Utilize uma designação comercial clara, um código de stock (SKU) exclusivo na sua loja e a categoria mais
@@ -878,8 +1010,7 @@ export default function VendorProductEditor() {
           </div>
         </section>
 
-        <section className="ae-v-prod-sec ae-panel">
-          <h2 className="ae-v-prod-sec__h">02 · Recursos visuais</h2>
+        <section className="ae-v-prod-sec ae-panel" id="vstep-2">
           <p className="ae-v-prod-sec__lede">
             Até 15 imagens. A primeira é utilizada como imagem principal nas grelhas de catálogo. Prefira fundo neutro,
             iluminação uniforme e foco nítido sobre o artigo. A primeira imagem deve representar fielmente o produto
@@ -937,8 +1068,7 @@ export default function VendorProductEditor() {
           </button>
         </section>
 
-        <section className="ae-v-prod-sec ae-panel">
-          <h2 className="ae-v-prod-sec__h">03 · Preçário e inventário</h2>
+        <section className="ae-v-prod-sec ae-panel" id="vstep-3">
           <p className="ae-v-prod-sec__lede">
             Valores em kwanzas angolanos (Kz). O preço promocional, quando utilizado, deve ser estritamente inferior ao
             preço de referência.
@@ -996,41 +1126,50 @@ export default function VendorProductEditor() {
           </div>
         </section>
 
-        <section className="ae-v-prod-sec ae-panel">
+        <section className="ae-v-prod-sec ae-panel" id="vstep-4">
           <h2 className="ae-v-prod-sec__h">04 · Variantes (opcional)</h2>
           <p className="ae-v-prod-sec__lede">
             Cada variante tem o seu <strong>SKU</strong> e <strong>stock</strong>. O método preferido é definir um{" "}
             <strong>preço final (Kz)</strong> por variante; o campo «ajuste ±» mantém-se só para fichas antigas compatíveis.
             As opções de envio do artigo (taxa, prazo, zona) continuam a ser as da secção 05.
           </p>
+          {categoryAttrs.length > 0 ? (
+            <div className="ae-v-prod-suggest">
+              <strong>Sugestões inteligentes para esta categoria</strong>
+              <p className="ae-v-prod-suggest__lede">
+                Estes campos vêm do catálogo oficial. Quanto mais completa a ficha, melhor posicionamento em filtros e
+                pesquisa — sem precisar de adivinhar o que preencher.
+              </p>
+              <div className="ae-v-prod-suggest__chips">
+                {categoryAttrsSorted
+                  .filter((a) => a.isRequired || a.autoSuggest)
+                  .slice(0, 12)
+                  .map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className="ae-v-prod-suggest-chip"
+                      onClick={() => goVendorStep("4")}
+                    >
+                      {categoryAttrFieldLabel(a)}
+                      {a.isRequired ? <span className="ae-v-prod-suggest-chip__req">*</span> : null}
+                      {a.autoSuggest && !a.isRequired ? (
+                        <span className="ae-v-prod-suggest-chip__tag">recomendado</span>
+                      ) : null}
+                    </button>
+                  ))}
+              </div>
+              <p className="ae-field-hint" style={{ marginTop: 8 }}>
+                O painel <strong>Assistente de publicação</strong> (no topo) mostra a pontuação e o impacto estimado das
+                melhorias — actualiza-se enquanto edita.
+              </p>
+            </div>
+          ) : null}
           <p className="ae-field-hint" style={{ marginBottom: 14 }}>
             Se várias variantes partilham a mesma <strong>cor</strong>, preencha sempre{" "}
             <strong>tamanho / medida</strong> ou uma <strong>designação</strong> diferente por SKU — assim os botões na
             página do produto mostram texto legível em vez de pastilhas vazias.
           </p>
-          <div className="ae-listing-quality-preview" role="status">
-            <strong>Qualidade do anúncio (pré-visualização)</strong>
-            <span className="ae-listing-quality-preview__score">
-              {listingPreview.score}
-              <span className="ae-muted"> / 100</span>
-            </span>
-            <span
-              className={`ae-badge ae-listing-quality-preview__grade ae-listing-quality-preview__grade--${listingGradeCssClass(listingPreview.grade)}`}
-            >
-              {listingPreview.grade}
-            </span>
-            {listingPreview.hints.length > 0 ? (
-              <ul className="ae-listing-quality-preview__hints">
-                {listingPreview.hints.map((h, hi) => (
-                  <li key={hi}>{h}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 13 }}>
-                Bom equilíbrio entre texto, media e ficha. Continue a refinar antes de publicar.
-              </p>
-            )}
-          </div>
           {categoryAttrs.length > 0 && categoryPresets.length > 0 ? (
             <div className="ae-v-preset-row" style={{ marginBottom: 16 }}>
               <label htmlFor="preset-sort" style={{ display: "block", marginBottom: 6 }}>
@@ -1315,8 +1454,7 @@ export default function VendorProductEditor() {
           </button>
         </section>
 
-        <section className="ae-v-prod-sec ae-panel">
-          <h2 className="ae-v-prod-sec__h">05 · Condições de expedição</h2>
+        <section className="ae-v-prod-sec ae-panel" id="vstep-5">
           <p className="ae-v-prod-sec__lede">
             Indique pelo menos uma modalidade. Por defeito, seleccione a logística operada pela plataforma (BAZAR DO
             BIÉ). Para cada expedición da plataforma pode associar uma transportadora activa já registada pelo
@@ -1463,6 +1601,8 @@ export default function VendorProductEditor() {
           </Link>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   );
 }
