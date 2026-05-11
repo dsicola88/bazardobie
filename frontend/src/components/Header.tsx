@@ -81,6 +81,7 @@ export function Header() {
   const [searchCatId, setSearchCatId] = useState<string>("");
   const [catOpen, setCatOpen] = useState(false);
   const [compareN, setCompareN] = useState(0);
+  const [imgSearchBusy, setImgSearchBusy] = useState(false);
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const catMenuRef = useRef<HTMLDivElement | null>(null);
