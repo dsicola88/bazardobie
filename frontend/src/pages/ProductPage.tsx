@@ -4,7 +4,7 @@ import { apiFetch, cartSessionHeaders, withCartSession } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { FavoriteToggle } from "../components/FavoriteToggle.js";
 import { ProductReportModal } from "../components/ProductReportModal.js";
-import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
+import { type ProductCardData } from "../components/ProductCard.js";
 import { StarRating } from "../components/StarRating.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
 import { formatKz, formatFreteKz, formatRating, formatBusinessDaysPt } from "../utils/format.js";
@@ -148,6 +148,28 @@ type ProductDetail = {
   /** Contagens por estrela: [5★, 4★, 3★, 2★, 1★]; vindo da API para gráfico de barras */
   ratingDistribution?: number[];
 };
+
+function buildOverviewSpecRows(product: ProductDetail, selectedVariant: Variant | null): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
+  const seen = new Set<string>();
+  const push = (label: string, value: string) => {
+    const v = value.trim();
+    if (!v || seen.has(label)) return;
+    seen.add(label);
+    rows.push({ label, value: v });
+  };
+  if (product.category?.name) push("Categoria", product.category.name);
+  push("Condição", productConditionLabel(product.condition));
+  const v = selectedVariant ?? product.variants[0];
+  if (v) {
+    for (const r of variantPdpSpecRows(v, product.name)) {
+      push(r.label, r.value);
+    }
+  } else if (product.sku?.trim()) {
+    push("SKU", product.sku.trim());
+  }
+  return rows;
+}
 
 type ReviewSortKey = "recent" | "helpful" | "rating_desc" | "rating_asc";
 
@@ -585,15 +607,48 @@ export default function ProductPage() {
   }, [reviewPhotoLb]);
 
   const viewTrackedKey = useRef<string | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<ProductCardData[] | null>(null);
+  const [recoRelated, setRecoRelated] = useState<ProductCardData[] | null>(null);
+  const [recoCategory, setRecoCategory] = useState<ProductCardData[] | null>(null);
+  const [recoShop, setRecoShop] = useState<ProductCardData[] | null>(null);
 
   useEffect(() => {
-    if (!id) return;
-    setRelatedProducts(null);
-    void apiFetch<{ items: ProductCardData[] }>(`/products/${encodeURIComponent(id)}/related?take=16`)
-      .then((r) => setRelatedProducts(Array.isArray(r.items) ? r.items : []))
-      .catch(() => setRelatedProducts([]));
-  }, [id]);
+    if (!id || !product || product.id !== id) return;
+    const pid = product.id;
+    setRecoRelated(null);
+    setRecoCategory(null);
+    setRecoShop(null);
+    let cancelled = false;
+    const run = async () => {
+      const exclude = (items: ProductCardData[]) => items.filter((x) => x.id !== pid);
+      const [rel, cat, shop] = await Promise.all([
+        apiFetch<{ items: ProductCardData[] }>(`/products/${encodeURIComponent(pid)}/related?take=24`)
+          .then((r) => (Array.isArray(r.items) ? r.items : []))
+          .catch(() => [] as ProductCardData[]),
+        product.category?.id
+          ? apiFetch<{ items: ProductCardData[] }>(
+              `/products?${new URLSearchParams({ categoryId: product.category.id, sort: "mais_vendidos", take: "14" })}`,
+            )
+              .then((r) => (Array.isArray(r.items) ? r.items : []))
+              .catch(() => [] as ProductCardData[])
+          : Promise.resolve([] as ProductCardData[]),
+        product.shop?.id
+          ? apiFetch<{ items: ProductCardData[] }>(
+              `/products?${new URLSearchParams({ shopId: product.shop.id, sort: "mais_vendidos", take: "14" })}`,
+            )
+              .then((r) => (Array.isArray(r.items) ? r.items : []))
+              .catch(() => [] as ProductCardData[])
+          : Promise.resolve([] as ProductCardData[]),
+      ]);
+      if (cancelled) return;
+      setRecoRelated(exclude(rel));
+      setRecoCategory(exclude(cat));
+      setRecoShop(exclude(shop));
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, product?.id, product?.category?.id, product?.shop?.id]);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -651,6 +706,7 @@ export default function ProductPage() {
     () => !!(product && getCompareIds().includes(product.id)),
     [product, compareTick],
   );
+  const compareListCount = useMemo(() => getCompareIds().length, [compareTick]);
 
   const toggleCompare = useCallback(() => {
     if (!product) return;
@@ -1276,25 +1332,31 @@ export default function ProductPage() {
                           {product.soldCount === 1 ? "" : "(s)"}
                         </>
                       ) : (
-                        <span className="ae-muted">0 vendido(s)</span>
+                        <span className="ae-muted">Recém na vitrine</span>
                       )}
                     </span>
                   </>
                 ) : product.soldCount > 0 ? (
                   <>
-                    <span className="ae-muted">Nova listagem</span>
+                    <span className="ae-pdp-buy-rail__sold">
+                      <strong>{product.soldCount.toLocaleString("pt-PT")}</strong> vendido
+                      {product.soldCount === 1 ? "" : "(s)"}
+                    </span>
                     <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
                       |
                     </span>
-                    <span className="ae-pdp-buy-rail__sold">
-                      {product.soldCount.toLocaleString("pt-PT")} vendido
-                      {product.soldCount === 1 ? "" : "(s)"}
-                    </span>
+                    <span className="ae-muted">Recém na vitrine</span>
                   </>
                 ) : (
-                  <span className="ae-muted ae-pdp-buy-rail__empty">Nova listagem · sem vendas registadas</span>
+                  <span className="ae-muted ae-pdp-buy-rail__empty">Recém-chegado ao catálogo</span>
                 )}
               </div>
+              {meta ? (
+                <p className="ae-pdp-buy-rail__foot ae-muted">
+                  Entrega indicada: <strong>{formatBusinessDaysPt(meta.prazoEstimado)}</strong>
+                  {Number(meta.custoEntrega) <= 0 ? " · Portes grátis nesta modalidade" : null}
+                </p>
+              ) : null}
               {product.reviewCount > 0 ? (
                 <div className="ae-pdp-buy-rail__cta">
                   <button type="button" className="ae-linkbtn" onClick={openAllReviews}>
@@ -1675,19 +1737,21 @@ export default function ProductPage() {
               </Link>
             </div>
             <div className="ae-pdp-rail__extras">
-              <div className="ae-pdp-compare-row">
-                <button type="button" className="ae-btn-subtle" onClick={() => toggleCompare()}>
-                  {inCompare ? "Retirar da comparação" : "Adicionar à comparação"}
+              <div className="ae-pdp-compare-subtle">
+                <button type="button" className="ae-pdp-compare-subtle__btn" onClick={() => toggleCompare()}>
+                  {inCompare ? "Na comparação" : "Comparar artigo"}
                 </button>
-                <Link to="/compare" className="ae-linkbtn">
-                  Abrir comparador
-                </Link>
+                {compareListCount > 0 ? (
+                  <Link to="/compare" className="ae-pdp-compare-subtle__link">
+                    Abrir comparador ({compareListCount})
+                  </Link>
+                ) : (
+                  <span className="ae-pdp-compare-subtle__hint" aria-hidden>
+                    Máx. {COMPARE_MAX}
+                  </span>
+                )}
               </div>
-              {compareNote ? (
-                <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 12 }}>
-                  {compareNote}
-                </p>
-              ) : null}
+              {compareNote ? <p className="ae-pdp-compare-subtle__note">{compareNote}</p> : null}
               <FavoriteToggle productId={product.id} variantId={variantId} needVariant={needVariant} />
               <p style={{ margin: 0, fontSize: 12 }}>
                 <button type="button" className="ae-linkbtn" onClick={() => setShowReport(true)}>
@@ -1722,7 +1786,27 @@ export default function ProductPage() {
         {tab === "overview" ? (
           <div className="ae-tab-panel">
             <div className="ae-pdp-overview">
-              <div style={{ whiteSpace: "pre-wrap" }}>{product.description}</div>
+              <div className="ae-pdp-overview__main">
+                <h2 className="ae-pdp-overview__h">Sobre este artigo</h2>
+                <PdpDescriptionBody text={product.description} />
+                {(() => {
+                  const specRows = buildOverviewSpecRows(product, selectedVariant);
+                  if (specRows.length === 0) return null;
+                  return (
+                    <section className="ae-pdp-overview-specs" aria-label={CATALOG_TERMS.techSpecsHeading}>
+                      <h3 className="ae-pdp-overview-specs__h">{CATALOG_TERMS.techSpecsHeading}</h3>
+                      <div className="ae-pdp-overview-specs__grid">
+                        {specRows.map((row) => (
+                          <div key={`${row.label}-${row.value}`} className="ae-pdp-overview-specs__row">
+                            <span className="ae-pdp-overview-specs__k">{row.label}</span>
+                            <span className="ae-pdp-overview-specs__v">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
+              </div>
               {guarantees && (guarantees.textoChips.length > 0 || guarantees.fachadaParceiraUrl) ? (
                 <aside className="ae-pdp-trust-box" aria-label="Confiança no parceiro">
                   <h3 className="ae-pdp-trust-box__title">Este parceiro na BAZAR DO BIÉ</h3>
@@ -1775,13 +1859,13 @@ export default function ProductPage() {
           <div className="ae-tab-panel ae-tab-panel--reviews">
             {product.reviewCount === 0 ? (
               <div className="ae-pdp-reviews-empty">
-                <h3 className="ae-pdp-reviews-empty__title">Sem opiniões de clientes</h3>
+                <h3 className="ae-pdp-reviews-empty__title">Opiniões de compradores</h3>
                 <p className="ae-pdp-reviews-empty__lead">
-                  Este artigo ainda não recebeu classificações públicas após entregas concluídas.
+                  Ainda não há classificações públicas neste artigo — só quem comprou e recebeu a encomenda pode deixar
+                  opinião verificada.
                 </p>
                 <p className="ae-pdp-reviews-empty__hint ae-muted">
-                  No BAZAR DO BIÉ só quem comprou e recebeu a encomenda no estado «Entregue» pode opinar — isto mantém o
-                  sistema mais fiável e menos suscetível a manipulação.
+                  Isto ajuda a manter avaliações fiáveis e a proteger compradores contra manipulação.
                 </p>
               </div>
             ) : (
@@ -2097,23 +2181,42 @@ export default function ProductPage() {
         </div>
       ) : null}
 
-      {relatedProducts !== null && relatedProducts.length > 0 ? (
-        <section className="ae-shell ae-section ae-section--catalog" style={{ marginTop: 8 }} aria-label="Artigos relacionados">
-          <header className="ae-section__masthead">
-            <div className="ae-section__masthead-copy">
-              <h2>Semelhantes e frequência em encomendas</h2>
-              <p className="ae-section__dek">
-                Sugestões por categoria, loja e por artigos que costumam aparecer juntos nas mesmas encomendas confirmadas.
-              </p>
-            </div>
-          </header>
-          <div className="ae-grid">
-            {relatedProducts.map((p) => (
-              <ProductCard key={p.id} p={p} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {recoRelated !== null ? (
+        <div className="ae-shell ae-pdp-reco-stack">
+          <PdpRecoStrip
+            title="Quem viu este artigo, também explorou"
+            dek="Combinação de mesma categoria, mesma loja e artigos que surgem juntos em encomendas."
+            items={recoRelated}
+            emptyHint={
+              recoRelated.length === 0
+                ? "Em breve mais sugestões à medida que o catálogo e as vendas crescem."
+                : undefined
+            }
+          />
+          {product.category?.id ? (
+            <PdpRecoStrip
+              title="Mais vendidos na mesma categoria"
+              dek={
+                product.category.name
+                  ? `Destaques em «${product.category.name}» — pode filtrar ainda mais na pesquisa.`
+                  : undefined
+              }
+              items={recoCategory ?? []}
+            />
+          ) : null}
+          {product.shop?.id ? (
+            <PdpRecoStrip
+              title={`Mais artigos em ${product.shop.name.trim()}`}
+              dek="Outras referências homologadas do mesmo parceiro."
+              items={recoShop ?? []}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <p className="ae-muted ae-shell" style={{ marginTop: 20 }}>
+          A carregar recomendações…
+        </p>
+      )}
       {lightboxOpen && product && product.images.length ? (
         <div
           className="ae-pdp-lightbox"
