@@ -23,9 +23,58 @@ export const CATALOG_TERMS = {
 
   /** Legendas no editor do vendedor. */
   vendorCatalogAttrsLead: "Ficha técnica da categoria",
+  /** Uma linha sob o título — como preencher. */
+  vendorStructuredFieldsHint:
+    "Use valores exactos e iguais entre anúncios (ex.: «8 GB»). Vão para a ficha pública; com faceta activa, também para filtros na loja.",
+  vendorStructuredFieldsBadgesHint:
+    "* = obrigatório nesta categoria · «Sugerido» = campo destacado para não ficar vazio.",
+
+  /** Vendedor — escolha de categoria no produto. */
+  vendorCategoryPickHint:
+    "A categoria determina os campos da ficha técnica abaixo. Se mudar de categoria, os valores desses campos são limpos nas variantes.",
+
   vendorFreeformTitle: "Detalhes adicionais do vendedor",
   vendorFreeformHelp:
-    "Opcional: pares nome e valor livres (ex.: «Género» / «Homem», «Material» / «Algodão»). Não substituem os campos oficiais da categoria acima. Rótulos repetidos na mesma variante não são permitidos.",
+    "Opcional. Pares nome + valor livres (ex.: material, cor extra). Não substituem a ficha técnica; sem rótulos repetidos na mesma variante.",
+
+  /** Admin — página «Ficha técnica e facetas». */
+  adminCatalogPageSubtitle:
+    "Campos oficiais por categoria, filtros na loja e modelos para orientar o cadastro dos parceiros.",
+  adminCatalogPickCategoryHint:
+    "Toda a configuração abaixo aplica-se só à categoria seleccionada.",
+  adminCatalogQuickTipsTitle: "Dicas rápidas",
+  adminCatalogQuickTipFacet:
+    "Faceta: só em valores curtos e repetíveis (marca, capacidade). Textos longos não filtram bem.",
+  adminCatalogQuickTipRequired:
+    "Obrigatório: reserve ao que é mesmo essencial; o resto pode ser opcional com destaque.",
+  adminCatalogQuickTipModel:
+    "Modelo: ordena campos no formulário do vendedor; a faceta define-se em cada atributo.",
+  adminCatalogGlossaryTitle: "Termos neste ecrã",
+  adminCatalogGlossaryAttribute:
+    "Atributo — campo oficial da categoria; o comprador vê na ficha do produto.",
+  adminCatalogGlossaryFacet:
+    "Faceta / filtro — o mesmo campo permite filtrar na pesquisa da loja.",
+  adminCatalogGlossaryRequired:
+    "Obrigatório — o vendedor tem de preencher nas variantes abrangidas.",
+  adminCatalogGlossarySuggest:
+    "Destaque — o campo aparece em evidência no formulário do parceiro.",
+  adminCatalogGlossaryPreset:
+    "Modelo (preset) — conjunto e ordem de campos (ex.: smartphone).",
+  adminCatalogGlossaryCoverage:
+    "Cobertura — quantos produtos já têm o atributo preenchido.",
+  adminCatalogStatsLead:
+    "Ordem: menor cobertura primeiro — são os campos que mais precisam de atenção.",
+  adminCatalogCoverageListHint: "Lista ordenada da menor para a maior cobertura.",
+  adminCatalogAttributesLead:
+    "Um bloco por campo da ficha. Active faceta só onde o comprador deve filtrar.",
+  adminCatalogNewAttributeLead:
+    "Nome visível = o que todos leem. Tipo = como o valor é introduzido ou escolhido.",
+  adminCatalogVisibleNameHint:
+    "Ex.: «Memória RAM». Evite códigos internos; o nome aparece na loja.",
+  adminCatalogTypeHint:
+    "Lista → escolha entre opções fixas. Número → medidas. Texto → valor livre curto.",
+  adminCatalogPresetsLead:
+    "Nome familiar ao vendedor. Atributos seleccionados de cima a baixo = ordem no cadastro.",
 
   /** Dicas de qualidade (espelhar no backend `listingQuality.ts`). */
   qualityMissingCategory:

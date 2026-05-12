@@ -963,6 +963,7 @@ export default function VendorProductEditor() {
                 </option>
               ))}
             </select>
+            <p className="ae-field-hint">{CATALOG_TERMS.vendorCategoryPickHint}</p>
           </div>
           <div>
             <label htmlFor="pdesc">Descrição comercial · mínimo 10 caracteres</label>
@@ -1290,10 +1291,12 @@ export default function VendorProductEditor() {
               </div>
               {categoryAttrs.length > 0 ? (
                 <div style={{ marginTop: 12 }}>
-                  <p className="ae-field-hint" style={{ marginBottom: 10 }}>
-                    <strong>{CATALOG_TERMS.vendorCatalogAttrsLead}</strong> — campos alinhados ao catálogo «
-                    {catOptions.find((c) => c.id === categoryId)?.label ?? "…"}». Os marcados com * são
-                    obrigatórios quando assim definidos na administração da plataforma.
+                  <p className="ae-field-hint" style={{ marginBottom: 6 }}>
+                    <strong>{CATALOG_TERMS.vendorCatalogAttrsLead}</strong> —{" "}
+                    {CATALOG_TERMS.vendorStructuredFieldsHint}
+                  </p>
+                  <p className="ae-field-hint ae-muted" style={{ marginBottom: 10, fontSize: 12 }}>
+                    {CATALOG_TERMS.vendorStructuredFieldsBadgesHint}
                   </p>
                   {categoryAttrsSorted.map((a) => (
                       <div key={a.id} style={{ marginBottom: 12 }}>

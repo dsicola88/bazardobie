@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 
 type CatRow = {
   id: string;
@@ -388,10 +389,7 @@ export default function AdminCategoryCatalog() {
       <header className="ae-admin-pro__head">
         <div>
           <h1 className="ae-admin-pro__title">Ficha técnica e facetas</h1>
-          <p className="ae-admin-pro__sub">
-            Estrutura de catálogo por categoria: <strong>atributos</strong> que o vendedor preenche,{" "}
-            <strong>facetas</strong> que viram filtros na loja e <strong>modelos</strong> que aceleram o cadastro.
-          </p>
+          <p className="ae-admin-pro__sub">{CATALOG_TERMS.adminCatalogPageSubtitle}</p>
         </div>
         <Link to="/admin/categories" className="btn">
           Voltar às categorias
@@ -421,7 +419,7 @@ export default function AdminCategoryCatalog() {
                 </option>
               ))}
             </select>
-            <span className="ae-admin-field-hint">Toda a ficha técnica abaixo aplica-se só a esta categoria.</span>
+            <span className="ae-admin-field-hint">{CATALOG_TERMS.adminCatalogPickCategoryHint}</span>
           </label>
         </div>
 
@@ -431,41 +429,30 @@ export default function AdminCategoryCatalog() {
           <p className="ae-muted">A carregar…</p>
         ) : (
           <>
+            <div className="ae-admin-callout ae-admin-callout--soft ae-admin-catcatalog-quicktips">
+              <strong>{CATALOG_TERMS.adminCatalogQuickTipsTitle}</strong>
+              <ul className="ae-admin-catcatalog-quicktips__list">
+                <li>{CATALOG_TERMS.adminCatalogQuickTipFacet}</li>
+                <li>{CATALOG_TERMS.adminCatalogQuickTipRequired}</li>
+                <li>{CATALOG_TERMS.adminCatalogQuickTipModel}</li>
+              </ul>
+            </div>
+
             <div className="ae-admin-callout ae-admin-callout--soft ae-admin-catcatalog-glossary">
-              <strong>Como ler este ecrã</strong>
+              <strong>{CATALOG_TERMS.adminCatalogGlossaryTitle}</strong>
               <ul>
-                <li>
-                  <strong>Atributo</strong> — campo que o vendedor preenche (ex.: RAM, marca). O nome visível é o que o
-                  comprador entende.
-                </li>
-                <li>
-                  <strong>Faceta / filtro</strong> — o atributo passa a filtro na pesquisa da loja (como “Marca” ou
-                  “Capacidade”).
-                </li>
-                <li>
-                  <strong>Obrigatório</strong> — sem preencher, o vendedor não conclui a ficha nas variantes afectadas.
-                </li>
-                <li>
-                  <strong>Sugestão em destaque</strong> — aparece em evidência no formulário do vendedor para orientar
-                  o preenchimento.
-                </li>
-                <li>
-                  <strong>Modelo (preset)</strong> — “template” com a ordem dos campos para um tipo de produto (ex.: modelo
-                  smartphone). Acelera o onboarding do vendedor.
-                </li>
-                <li>
-                  <strong>Cobertura</strong> — percentagem de produtos que já têm o atributo preenchido: métrica operacional
-                  para melhorar a qualidade do catálogo.
-                </li>
+                <li>{CATALOG_TERMS.adminCatalogGlossaryAttribute}</li>
+                <li>{CATALOG_TERMS.adminCatalogGlossaryFacet}</li>
+                <li>{CATALOG_TERMS.adminCatalogGlossaryRequired}</li>
+                <li>{CATALOG_TERMS.adminCatalogGlossarySuggest}</li>
+                <li>{CATALOG_TERMS.adminCatalogGlossaryPreset}</li>
+                <li>{CATALOG_TERMS.adminCatalogGlossaryCoverage}</li>
               </ul>
             </div>
 
             <section className="ae-panel ae-admin-catcatalog__section ae-admin-catcatalog-stats">
               <h2 className="ae-admin-catcatalog__head">Preenchimento no catálogo</h2>
-              <p className="ae-admin-catcatalog__lead">
-                Visão rápida da qualidade dos dados nesta categoria. Prioridade: atributos com baixa cobertura (ordenados
-                da menor para a maior).
-              </p>
+              <p className="ae-admin-catcatalog__lead">{CATALOG_TERMS.adminCatalogStatsLead}</p>
               {fillStats ? (
                 <>
                   <div className="ae-admin-catcatalog-kpis">
@@ -490,9 +477,7 @@ export default function AdminCategoryCatalog() {
                       <div className="ae-admin-catcatalog-kpi__lbl">Variantes com obrigatórios completos</div>
                     </div>
                   </div>
-                  <p className="ae-admin-coverage-sort-hint">
-                    Lista ordenada por cobertura crescente (os primeiros são os que mais precisam de atenção).
-                  </p>
+                  <p className="ae-admin-coverage-sort-hint ae-muted">{CATALOG_TERMS.adminCatalogCoverageListHint}</p>
                   {coverageSorted.length === 0 ? (
                     <p className="ae-muted">Sem atributos definidos ainda — a cobertura aparece depois de criar atributos.</p>
                   ) : (
@@ -555,10 +540,7 @@ export default function AdminCategoryCatalog() {
 
             <section className="ae-panel ae-admin-catcatalog__section">
               <h2 className="ae-admin-catcatalog__head">Atributos da categoria</h2>
-              <p className="ae-admin-catcatalog__lead">
-                Cada bloco é um campo da ficha. Use filtros e destaques para aproximar a experiência de marketplaces
-                grandes — sem expor jargão técnico aos vendedores.
-              </p>
+              <p className="ae-admin-catcatalog__lead">{CATALOG_TERMS.adminCatalogAttributesLead}</p>
 
               {attrs.length === 0 ? (
                 <p className="ae-muted">Ainda não há atributos. Crie o primeiro abaixo.</p>
@@ -783,7 +765,7 @@ export default function AdminCategoryCatalog() {
                 Novo atributo
               </h3>
               <p className="ae-admin-catcatalog__lead">
-                Comece pelo nome que compradores e vendedores reconhecem; a chave técnica gera-se automaticamente.
+                {CATALOG_TERMS.adminCatalogNewAttributeLead}
               </p>
               <div className="ae-admin-form-stack">
                 <label className="ae-admin-field">
@@ -801,6 +783,7 @@ export default function AdminCategoryCatalog() {
                     }}
                     placeholder="Ex.: Memória RAM"
                   />
+                  <span className="ae-admin-field-hint">{CATALOG_TERMS.adminCatalogVisibleNameHint}</span>
                 </label>
                 <label className="ae-admin-field">
                   <span>Tipo do atributo</span>
@@ -815,6 +798,7 @@ export default function AdminCategoryCatalog() {
                       </option>
                     ))}
                   </select>
+                  <span className="ae-admin-field-hint">{CATALOG_TERMS.adminCatalogTypeHint}</span>
                 </label>
                 {newAttr.inputType === "NUMBER" ? (
                   <label className="ae-admin-field">
@@ -938,10 +922,7 @@ export default function AdminCategoryCatalog() {
 
             <section className="ae-panel ae-admin-catcatalog__section">
               <h2 className="ae-admin-catcatalog__head">Modelos de ficha (templates)</h2>
-              <p className="ae-admin-catcatalog__lead">
-                Um modelo é um conjunto e ordem de campos que o vendedor recebe de uma vez — pense em “modelo smartphone”
-                ou “modelo televisão”. O nome deve soar familiar ao parceiro, não como código interno.
-              </p>
+              <p className="ae-admin-catcatalog__lead">{CATALOG_TERMS.adminCatalogPresetsLead}</p>
 
               {presets.length === 0 ? (
                 <p className="ae-muted">Nenhum modelo ainda. Crie um abaixo quando tiver atributos definidos.</p>
