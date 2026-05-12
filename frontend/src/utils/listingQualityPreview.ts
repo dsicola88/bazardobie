@@ -1,3 +1,5 @@
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+
 /**
  * Pré-visualização da qualidade do anúncio (espelha a lógica do backend para feedback imediato no editor).
  */
@@ -66,17 +68,17 @@ export function computeListingQualityPreview(input: {
 
   if (input.demoVideoUrl.trim()) media += 6;
   else if (nImg >= 1 && !input.demoVideoUrl.trim()) {
-    add("Um vídeo curto reforça confiança e pode acrescentar pontos à qualidade.", 6);
+    add(CATALOG_TERMS.qualityVideoHint, 6);
   }
 
   if (input.categoryId.trim()) {
     categoria += 12;
   } else {
-    add("Associe uma categoria comercial para activar a ficha técnica e facetas.", 12);
+    add(CATALOG_TERMS.qualityMissingCategory, 12);
   }
 
   if (input.variants.length === 0) {
-    add("Sem variantes: confirme stock e preço por SKU se o artigo tiver tamanhos/cores/capacidades.", null);
+    add(CATALOG_TERMS.qualityNoVariantsHint, null);
   } else if (input.variants.length > 1) {
     variacoes += 8;
   }
@@ -103,7 +105,7 @@ export function computeListingQualityPreview(input: {
       }
       ficha += Math.min(10, Math.round((anyOpt / optional.length) * 10));
       if (anyOpt < Math.min(3, optional.length)) {
-        add("Complete atributos opcionais da categoria (RAM, marca, capacidade…) — melhora filtro e cliques.", 10);
+        add(CATALOG_TERMS.qualityOptionalStructured, 10);
       }
     }
   } else if (input.categoryId.trim() && defs.length === 0) {

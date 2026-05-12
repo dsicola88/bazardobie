@@ -31,6 +31,7 @@ import {
   getCompareIds,
   removeCompareId,
 } from "../utils/compareSelection.js";
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 
 type Img = { url: string };
 type Variant = {
@@ -1466,8 +1467,8 @@ export default function ProductPage() {
               const rows = variantPdpSpecRows(selectedVariant, product.name);
               if (rows.length === 0) return null;
               return (
-                <section className="ae-pdp-specs" aria-label="Características desta variante">
-                  <h3 className="ae-pdp-specs__h">Características</h3>
+                <section className="ae-pdp-specs" aria-label={CATALOG_TERMS.techSpecsAriaVariant}>
+                  <h3 className="ae-pdp-specs__h">{CATALOG_TERMS.techSpecsHeading}</h3>
                   <div className="ae-pdp-specs__grid">
                     {rows.map((row) => (
                       <div key={`${row.label}-${row.value}`} className="ae-pdp-specs__row">

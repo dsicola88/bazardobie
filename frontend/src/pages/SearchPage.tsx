@@ -17,6 +17,7 @@ import {
   upsertRangeFacet,
   isDiscreteValueSelected,
 } from "../utils/structuredFacetsUrl.js";
+import { CATALOG_TERMS, catalogStructuredFiltersChipLabel } from "../catalog/catalogTerminology.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
@@ -738,7 +739,7 @@ export default function SearchPage() {
     if (shopId) out.push({ label: shopLabel ? `Loja: ${shopLabel}` : "Loja filtrada", patch: { shopId: null } });
     if (structuredClausesParsed.length > 0)
       out.push({
-        label: `Ficha técnica (${structuredClausesParsed.length})`,
+        label: catalogStructuredFiltersChipLabel(structuredClausesParsed.length),
         patch: { structuredFacets: null },
       });
     if (sort !== "recentes") {
@@ -775,7 +776,7 @@ export default function SearchPage() {
     if (featured) constraints.push("só artigos em destaque");
     if (onSale) constraints.push("só artigos em promoção");
     if (shopId) constraints.push("uma loja específica");
-    if (structuredClausesParsed.length > 0) constraints.push("ficha técnica (atributos)");
+    if (structuredClausesParsed.length > 0) constraints.push("filtros da ficha técnica");
 
     let combo = "";
     if (constraints.length === 1) combo = constraints[0];
@@ -944,24 +945,21 @@ export default function SearchPage() {
             />
           </div>
           <div className="ae-filters__group">
-            <strong>Ficha técnica (categoria)</strong>
-            <p className="ae-filters__facet-hint ae-muted">
-              Valores normalizados do catálogo — só com categorias que tenham atributos marcados para filtro na
-              administração.
-            </p>
+            <strong>{CATALOG_TERMS.searchStructuredGroupTitle}</strong>
+            <p className="ae-filters__facet-hint ae-muted">{CATALOG_TERMS.searchStructuredGroupHint}</p>
             {visualMode ? (
               <p className="ae-muted" style={{ fontSize: 13 }}>
                 Não disponível na pesquisa por imagem.
               </p>
             ) : !categoryId ? (
               <p className="ae-muted" style={{ fontSize: 13 }}>
-                Escolha uma categoria na árvore acima para ver as facetas disponíveis.
+                {CATALOG_TERMS.searchPickCategoryForStructured}
               </p>
             ) : structuredFacetLoading ? (
-              <p className="ae-muted">A carregar atributos…</p>
+              <p className="ae-muted">{CATALOG_TERMS.searchLoadingStructured}</p>
             ) : !structuredAttrFacets || structuredAttrFacets.length === 0 ? (
               <p className="ae-muted" style={{ fontSize: 13 }}>
-                Sem facetas activas para esta categoria.
+                {CATALOG_TERMS.searchNoStructuredFilters}
               </p>
             ) : (
               <div className="ae-struct-facets">

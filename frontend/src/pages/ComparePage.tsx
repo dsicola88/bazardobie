@@ -17,6 +17,7 @@ import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { variantCompareAtUnitKz, variantEffectiveUnitKz } from "../utils/variantPrice.js";
 import { variantPdpSpecRows } from "../utils/variantDisplay.js";
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 
 type CompareVariant = {
   id: string;
@@ -436,7 +437,7 @@ export default function ComparePage() {
                 <>
                   <tr className="ae-compare-table__section">
                     <th colSpan={products.length + 1} scope="colgroup">
-                      Ficha técnica e características
+                      {CATALOG_TERMS.compareSpecsSectionTitle}
                     </th>
                   </tr>
                   {specRows.map((row) => (

@@ -7,6 +7,7 @@ import { useSiteContent } from "../site/SiteContentContext.js";
 import type { ProductCondition } from "../utils/productCondition.js";
 import { computeListingQualityPreview } from "../utils/listingQualityPreview.js";
 import { computePublicationSteps, publicationOverallPct } from "../utils/publicationAssistant.js";
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -1290,7 +1291,7 @@ export default function VendorProductEditor() {
               {categoryAttrs.length > 0 ? (
                 <div style={{ marginTop: 12 }}>
                   <p className="ae-field-hint" style={{ marginBottom: 10 }}>
-                    <strong>Ficha técnica da categoria</strong> — campos alinhados ao catálogo «
+                    <strong>{CATALOG_TERMS.vendorCatalogAttrsLead}</strong> — campos alinhados ao catálogo «
                     {catOptions.find((c) => c.id === categoryId)?.label ?? "…"}». Os marcados com * são
                     obrigatórios quando assim definidos na administração da plataforma.
                   </p>
@@ -1362,9 +1363,7 @@ export default function VendorProductEditor() {
               ) : null}
               <div className="ae-v-prod-variant-props">
                 <p className="ae-field-hint" style={{ marginBottom: 10 }}>
-                  <strong>Características desta variante</strong> (opcional): defina pares nome do atributo + valor (ex.{" "}
-                  <em>Género</em> / <em>Homem</em>, <em>Material</em> / <em>Algodão</em>). Rótulos repetidos na mesma
-                  variante não são permitidos.
+                  <strong>{CATALOG_TERMS.vendorFreeformTitle}</strong> — {CATALOG_TERMS.vendorFreeformHelp}
                 </p>
                 {(v.properties ?? []).map((prop, pi) => (
                   <div key={pi} className="ae-field-grid-2" style={{ marginBottom: 10 }}>

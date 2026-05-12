@@ -426,7 +426,7 @@ export default function AdminCategoryCatalog() {
         </div>
 
         {!categoryId.trim() ? (
-          <p className="ae-muted">Escolha uma categoria para gerir atributos, facetas e modelos de ficha.</p>
+          <p className="ae-muted">Escolha uma categoria para gerir atributos, filtros na loja e modelos de ficha.</p>
         ) : loading ? (
           <p className="ae-muted">A carregar…</p>
         ) : (

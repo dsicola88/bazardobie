@@ -18,9 +18,9 @@ export type VariantDisplayFields = {
   name?: string | null;
   color?: string | null;
   size?: string | null;
-  /** Características adicionais definidas pelo vendedor (Género, Material, …). */
+  /** Características livres definidas pelo vendedor (não confundir com a ficha técnica da categoria). */
   properties?: VariantPropertyPublic[] | null;
-  /** Atributos do catálogo (categoria) — `primaryRank` e depois `sortOrder`. */
+  /** Atributos oficiais da categoria (`CategoryAttribute`) — ordenados por primaryRank e sortOrder. */
   variantStructuredValues?: VariantStructuredValuePublic[] | null;
 };
 

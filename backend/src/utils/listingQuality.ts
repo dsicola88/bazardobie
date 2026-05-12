@@ -104,16 +104,21 @@ export function computeListingQuality(product: ProductLite, defs: AttrDef[]): Li
   else hints.push("Adicione pelo menos uma fotografia nítida do artigo.");
 
   if (product.demoVideoUrl?.trim()) media += 6;
+  else if (nImg >= 1) {
+    hints.push("Um vídeo curto reforça confiança e pode acrescentar pontos à qualidade.");
+  }
 
   if (product.categoryId) {
     categoria += 12;
   } else {
-    hints.push("Associe uma categoria comercial para activar a ficha técnica e facetas.");
+    hints.push("Associe uma categoria comercial para activar a ficha técnica e os filtros na loja.");
   }
 
   const variants = product.variants ?? [];
   if (variants.length === 0) {
-    hints.push("Sem variantes: confirme stock e preço por SKU se aplicável.");
+    hints.push(
+      "Sem variantes: confirme stock e preço por SKU se o artigo tiver tamanhos, cores ou capacidades diferentes.",
+    );
   } else if (variants.length > 1) {
     variacoes += 8;
   }
@@ -146,6 +151,11 @@ export function computeListingQuality(product: ProductLite, defs: AttrDef[]): Li
         if (some) anyOpt++;
       }
       ficha += Math.min(10, Math.round((anyOpt / optional.length) * 10));
+      if (anyOpt < Math.min(3, optional.length)) {
+        hints.push(
+          "Complete atributos opcionais da ficha técnica (RAM, marca, capacidade…) — reforça filtros e cliques.",
+        );
+      }
     }
   } else if (product.categoryId && defs.length === 0) {
     ficha += 6;
