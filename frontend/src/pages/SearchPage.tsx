@@ -17,12 +17,15 @@ import {
   upsertRangeFacet,
   isDiscreteValueSelected,
 } from "../utils/structuredFacetsUrl.js";
-import { CATALOG_TERMS, catalogStructuredFiltersChipLabel } from "../catalog/catalogTerminology.js";
+import { CATALOG_TERMS, catalogStructuredDiscreteFacetMoreLabel, catalogStructuredFiltersChipLabel } from "../catalog/catalogTerminology.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
 
 const PAGE_SIZE = 36;
+
+/** Valores iniciais visíveis por faceta discreta; o resto fica em «Ver mais». */
+const DISCRETE_FACET_VISIBLE = 10;
 
 const DEFAULT_PRICE_CEILING = 50_000_000;
 
@@ -883,7 +886,7 @@ export default function SearchPage() {
           aria-expanded={mobileFiltersOpen}
           onClick={() => setMobileFiltersOpen((v) => !v)}
         >
-          Filtros e categorias
+          {CATALOG_TERMS.searchFiltersMobileToggle}
         </button>
         <button
           type="button"
@@ -891,49 +894,18 @@ export default function SearchPage() {
           aria-expanded={!sideCollapsed}
           onClick={() => setSideCollapsed((v) => !v)}
         >
-          {sideCollapsed ? "Expandir filtros" : "Encolher filtros"}
+          {sideCollapsed ? CATALOG_TERMS.searchFiltersExpand : CATALOG_TERMS.searchFiltersCollapse}
         </button>
-        <h3>Critérios</h3>
+        <h3 className="ae-filters__panel-title">{CATALOG_TERMS.searchFiltersPanelHeading}</h3>
         <div
           className={`ae-filters__body ${mobileFiltersOpen ? "ae-filters__body--open" : ""} ${sideCollapsed ? "ae-filters__body--collapsed" : ""}`}
         >
-          <div className="ae-filters__group">
-            <strong>Curadoria da plataforma</strong>
-            <div className="ae-filters__checks">
-              <label className="ae-filters__check">
-                <input
-                  type="checkbox"
-                  checked={featured}
-                  onChange={(e) => {
-                    const n = new URLSearchParams(params);
-                    if (e.target.checked) n.set("featured", "true");
-                    else n.delete("featured");
-                    setParams(n);
-                  }}
-                />
-                Só em destaque
-              </label>
-              <label className="ae-filters__check">
-                <input
-                  type="checkbox"
-                  checked={onSale}
-                  onChange={(e) => {
-                    const n = new URLSearchParams(params);
-                    if (e.target.checked) n.set("onSale", "true");
-                    else n.delete("onSale");
-                    setParams(n);
-                  }}
-                />
-                Só em promoção
-              </label>
-            </div>
-          </div>
-          <div className="ae-filters__group">
-            <strong>Categoria</strong>
+          <section className="ae-filters__group" aria-labelledby="ae-filt-category">
+            <strong id="ae-filt-category" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchCategoryGroupTitle}
+            </strong>
             <p className="ae-filters__facet-hint ae-muted">
-              {visualMode
-                ? "Contagens não aplicáveis à pesquisa por imagem."
-                : "Números com os filtros actuais (exceto categoria)."}
+              {visualMode ? CATALOG_TERMS.searchCategoryFacetHintVisual : CATALOG_TERMS.searchCategoryFacetHintNormal}
             </p>
             <CategoryFacetNav
               params={params}
@@ -943,13 +915,15 @@ export default function SearchPage() {
               facetLoading={facetLoading}
               visualMode={visualMode}
             />
-          </div>
-          <div className="ae-filters__group">
-            <strong>{CATALOG_TERMS.searchStructuredGroupTitle}</strong>
+          </section>
+          <section className="ae-filters__group" aria-labelledby="ae-filt-structured">
+            <strong id="ae-filt-structured" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchStructuredGroupTitle}
+            </strong>
             <p className="ae-filters__facet-hint ae-muted">{CATALOG_TERMS.searchStructuredGroupHint}</p>
             {visualMode ? (
               <p className="ae-muted" style={{ fontSize: 13 }}>
-                Não disponível na pesquisa por imagem.
+                {CATALOG_TERMS.searchStructuredVisualUnavailable}
               </p>
             ) : !categoryId ? (
               <p className="ae-muted" style={{ fontSize: 13 }}>
@@ -968,7 +942,7 @@ export default function SearchPage() {
                     <div key={f.attributeId} className="ae-struct-facet-block">
                       <div className="ae-struct-facet-block__title">{f.label}</div>
                       <div className="ae-filters__checks ae-struct-facet-checks">
-                        {f.values.slice(0, 40).map((row) => (
+                        {f.values.slice(0, DISCRETE_FACET_VISIBLE).map((row) => (
                           <label key={row.value} className="ae-filters__check">
                             <input
                               type="checkbox"
@@ -989,6 +963,46 @@ export default function SearchPage() {
                           </label>
                         ))}
                       </div>
+                      {f.values.length > DISCRETE_FACET_VISIBLE ? (
+                        <details className="ae-struct-facet-more">
+                          <summary className="ae-struct-facet-more__summary">
+                            {catalogStructuredDiscreteFacetMoreLabel(
+                              f.values.length - DISCRETE_FACET_VISIBLE,
+                            )}
+                          </summary>
+                          <div className="ae-filters__checks ae-struct-facet-checks">
+                            {f.values.slice(DISCRETE_FACET_VISIBLE).map((row) => (
+                              <label key={row.value} className="ae-filters__check">
+                                <input
+                                  type="checkbox"
+                                  checked={isDiscreteValueSelected(
+                                    structuredClausesParsed,
+                                    f.attributeId,
+                                    row.value,
+                                  )}
+                                  onChange={(e) => {
+                                    const n = new URLSearchParams(params);
+                                    const prev = parseStructuredFacetsParam(n.get("structuredFacets"));
+                                    const next = toggleDiscreteValue(
+                                      prev,
+                                      f.attributeId,
+                                      row.value,
+                                      e.target.checked,
+                                    );
+                                    if (next.length === 0) n.delete("structuredFacets");
+                                    else n.set("structuredFacets", serializeStructuredFacets(next));
+                                    setParams(n);
+                                  }}
+                                />
+                                <span>
+                                  {row.value}{" "}
+                                  <span className="ae-muted">({row.count.toLocaleString("pt-AO")})</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </details>
+                      ) : null}
                     </div>
                   ) : (
                     <div key={f.attributeId} className="ae-struct-facet-block">
@@ -1010,14 +1024,39 @@ export default function SearchPage() {
                 )}
               </div>
             )}
-          </div>
-          <div className="ae-filters__group">
-            <strong>Condição do artigo</strong>
+          </section>
+          <section
+            className="ae-filters__group ae-filters__group--price"
+            aria-labelledby="ae-filt-price"
+          >
+            <strong id="ae-filt-price" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchPriceGroupTitle}
+            </strong>
             <p className="ae-filters__facet-hint ae-muted">
-              Escolha como quer limitar os resultados: novo, usado ou recondicionado (tal como o vendedor indicou no anúncio).
+              {CATALOG_TERMS.searchPriceGroupHint}
+              {visualMode ? CATALOG_TERMS.searchPriceGroupHintVisualSuffix : ""}
             </p>
+            <SearchPriceRange
+              disabled={visualMode}
+              floor={sliderPriceBounds.sf}
+              ceiling={sliderPriceBounds.st}
+              minPriceParam={minPriceParam}
+              maxPriceParam={maxPriceParam}
+              minDraft={minPrice}
+              maxDraft={maxPrice}
+              onMinDraftChange={setMinPrice}
+              onMaxDraftChange={setMaxPrice}
+              onApplyTextInputs={applyPrice}
+              commitSliderRange={(lo, hi) => commitNumericPricesToUrl(lo, hi)}
+            />
+          </section>
+          <section className="ae-filters__group" aria-labelledby="ae-filt-condition">
+            <strong id="ae-filt-condition" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchConditionGroupTitle}
+            </strong>
+            <p className="ae-filters__facet-hint ae-muted">{CATALOG_TERMS.searchConditionGroupHint}</p>
             <fieldset className="ae-filters__fieldset">
-              <legend className="sr-only">Condição do artigo</legend>
+              <legend className="sr-only">{CATALOG_TERMS.searchConditionGroupTitle}</legend>
               <div className="ae-filters__radio-grid" role="presentation">
                 {CONDITION_FILTER_OPTIONS.map((opt) => {
                   const selected = condition === opt.value;
@@ -1046,14 +1085,14 @@ export default function SearchPage() {
                 })}
               </div>
             </fieldset>
-          </div>
-          <div className="ae-filters__group">
-            <strong>Avaliação mínima</strong>
-            <p className="ae-filters__facet-hint ae-muted">
-              Como nos grandes marketplaces: escolha o número de estrelas mínimo da média pública do produto (reviews homologadas).
-            </p>
+          </section>
+          <section className="ae-filters__group" aria-labelledby="ae-filt-rating">
+            <strong id="ae-filt-rating" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchRatingGroupTitle}
+            </strong>
+            <p className="ae-filters__facet-hint ae-muted">{CATALOG_TERMS.searchRatingGroupHint}</p>
             <fieldset className="ae-filters__fieldset">
-              <legend className="sr-only">Avaliação mínima dos produtos</legend>
+              <legend className="sr-only">{CATALOG_TERMS.searchRatingGroupTitle}</legend>
               <div className="ae-filters__radio-grid" role="presentation">
                 {MIN_RATING_FILTER_OPTIONS.map((opt) => {
                   const selected = minRating === opt.value;
@@ -1094,28 +1133,41 @@ export default function SearchPage() {
                 })}
               </div>
             </fieldset>
-          </div>
-          <div className="ae-filters__group ae-filters__group--price">
-            <strong>Preço (Kz)</strong>
-            <p className="ae-filters__facet-hint ae-muted">
-              Barra dupla como nos grandes sites: os extremos vêm dos artigos que já correspondem aos outros filtros
-              (ainda sem este intervalo de preço nem por categoria).
-              {visualMode ? " Na pesquisa por imagem, o controlo de preço pode ficar limitado." : ""}
-            </p>
-            <SearchPriceRange
-              disabled={visualMode}
-              floor={sliderPriceBounds.sf}
-              ceiling={sliderPriceBounds.st}
-              minPriceParam={minPriceParam}
-              maxPriceParam={maxPriceParam}
-              minDraft={minPrice}
-              maxDraft={maxPrice}
-              onMinDraftChange={setMinPrice}
-              onMaxDraftChange={setMaxPrice}
-              onApplyTextInputs={applyPrice}
-              commitSliderRange={(lo, hi) => commitNumericPricesToUrl(lo, hi)}
-            />
-          </div>
+          </section>
+          <section className="ae-filters__group" aria-labelledby="ae-filt-curation">
+            <strong id="ae-filt-curation" className="ae-filters__group-title">
+              {CATALOG_TERMS.searchCurationGroupTitle}
+            </strong>
+            <p className="ae-filters__facet-hint ae-muted">{CATALOG_TERMS.searchCurationGroupHint}</p>
+            <div className="ae-filters__checks">
+              <label className="ae-filters__check">
+                <input
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => {
+                    const n = new URLSearchParams(params);
+                    if (e.target.checked) n.set("featured", "true");
+                    else n.delete("featured");
+                    setParams(n);
+                  }}
+                />
+                {CATALOG_TERMS.searchFeaturedOnly}
+              </label>
+              <label className="ae-filters__check">
+                <input
+                  type="checkbox"
+                  checked={onSale}
+                  onChange={(e) => {
+                    const n = new URLSearchParams(params);
+                    if (e.target.checked) n.set("onSale", "true");
+                    else n.delete("onSale");
+                    setParams(n);
+                  }}
+                />
+                {CATALOG_TERMS.searchPromoOnly}
+              </label>
+            </div>
+          </section>
         </div>
       </aside>
 
@@ -1156,8 +1208,8 @@ export default function SearchPage() {
         </div>
 
         {activeFilterChips.length > 0 ? (
-          <div className="ae-active-filters" aria-label="Filtros activos">
-            <span className="ae-active-filters__label">Filtros:</span>
+          <div className="ae-active-filters" aria-label={CATALOG_TERMS.searchActiveFiltersLabel}>
+            <span className="ae-active-filters__label">{CATALOG_TERMS.searchActiveFiltersLabel}:</span>
             {activeFilterChips.map((chip, i) => (
               <Link
                 key={`f-${i}-${chip.label}`}
@@ -1169,7 +1221,7 @@ export default function SearchPage() {
               </Link>
             ))}
             <button type="button" className="ae-active-filters__clear" onClick={clearFiltersKeepQuery}>
-              Limpar filtros
+              {CATALOG_TERMS.searchClearAllFilters}
             </button>
           </div>
         ) : null}

@@ -4199,6 +4199,19 @@ a:hover {
   margin: 0 0 10px;
   font-size: 14px;
 }
+.ae-filters__panel-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ae-deep);
+}
+.ae-filters__group-title {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ae-deep);
+}
 .ae-filters__group {
   margin-bottom: 16px;
   padding-bottom: 12px;
@@ -4262,6 +4275,23 @@ a:hover {
 .ae-struct-facet-checks {
   max-height: 200px;
   overflow-y: auto;
+}
+.ae-struct-facet-more {
+  margin-top: 8px;
+}
+.ae-struct-facet-more__summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ae-deep);
+  user-select: none;
+  list-style: none;
+}
+.ae-struct-facet-more__summary::-webkit-details-marker {
+  display: none;
+}
+.ae-struct-facet-more[open] .ae-struct-facet-more__summary {
+  margin-bottom: 6px;
 }
 .ae-struct-facet-range__inputs {
   display: grid;

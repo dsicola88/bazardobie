@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.js";
 import { ProductCard, type ProductCardData } from "../components/ProductCard.js";
 import { buildSearchPath } from "../buildSearchPath.js";
 import { variantDisplayBuyerLine } from "../utils/variantDisplay.js";
+import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 
 type FavoriteRow = {
   id: string;
@@ -183,9 +184,7 @@ export default function FavoritesPage() {
             </svg>
           </div>
           <h2 id="fav-empty-title">Ainda não guardou artigos</h2>
-          <p className="ae-muted">
-            Na ficha do artigo, utilize <strong>Guardar na lista</strong> para registar referências de interesse.
-          </p>
+          <p className="ae-muted">{CATALOG_TERMS.favoritesHowToSave}</p>
           <Link to="/search" className="btn btn-primary">
             Explorar catálogo
           </Link>
