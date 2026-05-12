@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, apiErrorDetailsCode, cartSessionHeaders, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { useSiteContent } from "../site/SiteContentContext.js";
+import { useToast } from "../ui/ToastProvider.js";
 import { formatKz, formatFreteKz, formatBusinessDaysPt } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
@@ -127,6 +128,7 @@ export default function CheckoutPage() {
   const { token, user, refreshMe } = useAuth();
   const { content } = useSiteContent();
   const navigate = useNavigate();
+  const toast = useToast();
   const [cart, setCart] = useState<{ items: CheckoutCartItem[] } | null>(null);
   const [cartErr, setCartErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -388,6 +390,7 @@ export default function CheckoutPage() {
       await refreshMe();
       setMeLoad({ phone: p });
       setShippingPhone((s) => (s.trim() ? s : p));
+      toast("Telefone guardado no perfil.", "ok");
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Não foi possível guardar o telefone.");
     } finally {
@@ -415,6 +418,7 @@ export default function CheckoutPage() {
       });
       setMeLoad(updated);
       await refreshMe();
+      toast("Morada principal actualizada no perfil.", "ok");
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Não foi possível guardar a morada principal.");
     } finally {
@@ -424,28 +428,89 @@ export default function CheckoutPage() {
 
   if (!token || user?.role !== "CLIENTE") {
     return (
-      <p>
-        O fecho de compra online destina-se a contas de comprador. <Link to="/login">Iniciar sessão</Link>
-      </p>
+      <div className="ae-checkout ae-checkout--gate">
+        <div className="ae-checkout__breadcrumb">
+          <Link to="/">Início</Link>
+          <span className="ae-checkout__sep">›</span>
+          <Link to="/cart">Carrinho</Link>
+          <span className="ae-checkout__sep">›</span>
+          <span className="ae-on">Fecho da compra</span>
+        </div>
+        <h1 className="ae-checkout__title">Fecho da compra</h1>
+        <div className="page-panel ae-empty-center" style={{ maxWidth: 480, margin: "0 auto" }}>
+          <p style={{ marginTop: 0 }}>
+            O fecho online está reservado a contas de <strong>comprador</strong>.
+          </p>
+          <p className="ae-muted" style={{ fontSize: 14 }}>
+            Inicie sessão com a mesma conta onde guardou o carrinho ou crie um registo gratuito.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 18 }}>
+            <Link className="btn btn-primary" to="/login?next=/checkout">
+              Iniciar sessão
+            </Link>
+            <Link className="btn" to="/login?register=1&next=/checkout">
+              Criar conta
+            </Link>
+          </div>
+          <p className="ae-muted" style={{ fontSize: 13, marginTop: 22 }}>
+            <Link to="/cart">← Voltar ao carrinho</Link>
+            {" · "}
+            <Link to="/search">Continuar a comprar</Link>
+          </p>
+        </div>
+      </div>
     );
   }
 
   if (cartErr && !cart) {
-    return <p className="ae-muted">{cartErr}</p>;
+    return (
+      <div className="ae-checkout">
+        <h1 className="ae-checkout__title">Fecho da compra</h1>
+        <div className="page-panel ae-admin-alert ae-admin-alert--err" role="alert" style={{ maxWidth: 560, margin: "0 auto" }}>
+          {cartErr}
+        </div>
+        <p style={{ textAlign: "center", marginTop: 16 }}>
+          <Link to="/cart">Voltar ao carrinho</Link>
+          {" · "}
+          <button type="button" className="ae-linkbtn" onClick={() => window.location.reload()}>
+            Tentar de novo
+          </button>
+          {" · "}
+          <Link to="/search">Explorar catálogo</Link>
+        </p>
+      </div>
+    );
   }
 
   if (!cart) {
-    return <p className="ae-muted">A carregar o carrinho…</p>;
+    return (
+      <div className="ae-checkout">
+        <h1 className="ae-checkout__title">Fecho da compra</h1>
+        <p className="ae-muted" style={{ margin: "16px 0" }} aria-busy="true">
+          A carregar o carrinho…
+        </p>
+        <p className="ae-muted" style={{ fontSize: 13 }}>
+          Se demorar, verifique a ligação ou{" "}
+          <button type="button" className="ae-linkbtn" onClick={() => window.location.reload()}>
+            actualize a página
+          </button>
+          .
+        </p>
+      </div>
+    );
   }
 
   if (cart.items.length === 0 && !done) {
     return (
       <div className="ae-checkout">
         <h1 className="ae-checkout__title">Fecho da compra</h1>
-        <div className="page-panel ae-empty-center">
-          O carrinho está vazio.
-          <br />
-          <Link to="/search">Continuar a comprar</Link>
+        <div className="page-panel ae-empty-center" style={{ maxWidth: 480, margin: "0 auto" }}>
+          <p className="ae-muted" style={{ marginTop: 0 }}>
+            O carrinho está vazio. Adicione artigos antes de concluir a compra.
+          </p>
+          <Link to="/search" className="btn btn-primary" style={{ marginTop: 12 }}>
+            Explorar catálogo
+          </Link>
         </div>
       </div>
     );
@@ -581,6 +646,7 @@ export default function CheckoutPage() {
     try {
       const url = await uploadAdminFile(token, f);
       setPaymentProofUrl(url);
+      toast("Comprovativo carregado. Confirme o endereço ou edite se necessário.", "info");
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Não foi possível carregar o comprovativo.");
     } finally {
@@ -673,6 +739,18 @@ export default function CheckoutPage() {
         <span className="ae-on">Fecho da compra</span>
       </div>
       <h1 className="ae-checkout__title">Fecho da compra</h1>
+
+      <nav className="ae-checkout-progress" aria-label="Progresso do fecho da compra">
+        <ol>
+          <li className="ae-checkout-progress__done">
+            <Link to="/cart">1 · Carrinho</Link>
+          </li>
+          <li className="ae-checkout-progress__current" aria-current="step">
+            2 · Dados e pagamento
+          </li>
+          <li className="ae-checkout-progress__next">3 · Confirmação</li>
+        </ol>
+      </nav>
 
       <div className="ae-checkout__grid">
         <form className="ae-checkout__main" onSubmit={submit}>
@@ -991,7 +1069,11 @@ export default function CheckoutPage() {
             ) : null}
           </section>
 
-          {msg ? <div className="ae-checkout-msg">{msg}</div> : null}
+          {msg ? (
+            <div className="ae-checkout-msg ae-checkout-msg--alert" role="alert">
+              {msg}
+            </div>
+          ) : null}
 
           <div className="ae-checkout-submit">
             <button

@@ -32,6 +32,7 @@ import {
   removeCompareId,
 } from "../utils/compareSelection.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+import { useToast } from "../ui/ToastProvider.js";
 
 type Img = { url: string };
 type Variant = {
@@ -321,6 +322,7 @@ export default function ProductPage() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
+  const pushToast = useToast();
   const { content } = useSiteContent();
   const codNote = content["public.product_cod_note"] ?? "";
   const [showReport, setShowReport] = useState(false);
@@ -1042,11 +1044,16 @@ export default function ProductPage() {
             ? `${qty} unidades foram adicionadas ao seu carrinho. Pode rever quantidades e portes antes de pagar.`
             : "Artigo adicionado ao carrinho. O total final inclui portes por linha e será confirmado no fecho da compra.",
       });
+      pushToast(
+        qty > 1 ? `${qty} unidades adicionadas ao carrinho.` : "Adicionado ao carrinho.",
+        "ok",
+      );
     } catch (e: unknown) {
       setCartFeedback({
         ok: false,
         message: e instanceof Error ? e.message : "Não foi possível actualizar o carrinho. Verifique a ligação e tente novamente.",
       });
+      pushToast("Não foi possível actualizar o carrinho.", "err");
     } finally {
       setAdding(false);
     }
