@@ -8728,6 +8728,73 @@ a:hover {
 .ae-admin-catcatalog-quicktips__list li {
   margin-bottom: 6px;
 }
+.ae-admin-niche-assistant {
+  border-color: #a5b4fc !important;
+  background: linear-gradient(135deg, #ffffff 0%, #eef2ff 45%, #fffef8 100%) !important;
+}
+.ae-admin-niche-suggest-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ae-admin-niche-suggest-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+.ae-admin-niche-suggest-meta {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.ae-admin-niche-suggest-meta code {
+  font-size: 11px;
+  color: #475569;
+}
+.ae-admin-niche-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.ae-admin-catcatalog__sync-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.ae-admin-catcatalog__sync-hint strong {
+  color: #312e81;
+}
+.ae-admin-niche-preset-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ae-admin-catcatalog-preset-create .ae-admin-form-stack {
+  max-width: 100%;
+}
+.ae-admin-catcatalog-preset-create {
+  max-width: 640px;
+}
+.ae-admin-field--preset-multiselect .ae-admin-catcatalog-multiselect {
+  min-height: 180px;
+  max-width: 100%;
+}
 .ae-admin-catcatalog-kpis {
   display: flex;
   flex-wrap: wrap;
@@ -10139,15 +10206,12 @@ a:hover {
   min-width: 0;
 }
 .ae-v-prod-assistant {
-  position: sticky;
-  top: 12px;
-  z-index: 3;
-  margin-bottom: 20px;
-  padding: 18px 20px 20px;
-  border-radius: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px 16px;
+  border-radius: 12px;
   border: 1px solid #c7d2fe;
   background: linear-gradient(135deg, #ffffff 0%, #f5f7ff 55%, #fefce8 100%);
-  box-shadow: 0 10px 36px rgba(79, 70, 229, 0.12);
+  box-shadow: 0 4px 18px rgba(79, 70, 229, 0.08);
 }
 .ae-v-prod-assistant__head {
   display: flex;
@@ -10157,26 +10221,30 @@ a:hover {
   flex-wrap: wrap;
 }
 .ae-v-prod-assistant__title {
-  margin: 0 0 6px;
-  font-size: 1.1rem;
+  margin: 0 0 4px;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #0f172a;
 }
 .ae-v-prod-assistant__lead {
   margin: 0;
-  max-width: 36rem;
-  font-size: 13px;
-  line-height: 1.55;
+  max-width: 38rem;
+  font-size: 12px;
+  line-height: 1.45;
   color: #475569;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .ae-v-prod-score-ring {
   --ae-score: 0;
   flex-shrink: 0;
-  width: 92px;
-  height: 92px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  padding: 6px;
+  padding: 5px;
   background: conic-gradient(
     var(--ae-score-ring, #4f46e5) calc(var(--ae-score) * 3.6deg),
     #e2e8f0 0
@@ -10206,7 +10274,7 @@ a:hover {
   line-height: 1;
 }
 .ae-v-prod-score-ring__val {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
@@ -10219,8 +10287,8 @@ a:hover {
   margin-top: 2px;
 }
 .ae-v-prod-assistant__global {
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 12px;
+  padding-top: 10px;
   border-top: 1px dashed rgba(100, 116, 139, 0.35);
 }
 .ae-v-prod-assistant__global-row {
@@ -10232,12 +10300,12 @@ a:hover {
   margin-bottom: 8px;
 }
 .ae-v-prod-assistant__global-row strong {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: #312e81;
 }
 .ae-v-prod-assistant__bar {
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid #e0e7ff;
@@ -10253,14 +10321,40 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ae-v-prod-assistant__hints-toolbar {
+  margin-top: 10px;
+}
+.ae-v-prod-assistant__hints-toggle {
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #a5b4fc;
+  background: rgba(255, 255, 255, 0.92);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: #3730a3;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ae-v-prod-assistant__hints-toggle:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
 }
 .ae-v-prod-assistant__impact {
-  font-size: 12px;
+  font-size: 11px;
   color: #475569;
-  line-height: 1.45;
+  line-height: 1.4;
   max-width: 38rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .ae-v-prod-assistant__ok {
   margin: 12px 0 0;
@@ -10273,11 +10367,14 @@ a:hover {
 }
 .ae-v-prod-hint-cards {
   list-style: none;
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   padding: 0;
   display: grid;
   gap: 10px;
   grid-template-columns: 1fr;
+  max-height: min(42vh, 280px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 @media (min-width: 700px) {
   .ae-v-prod-hint-cards {
@@ -10372,6 +10469,136 @@ a:hover {
   background: #e0f2fe;
   padding: 2px 6px;
   border-radius: 999px;
+}
+
+/* Vendedor — copiloto comercial (ficha técnica / nicho) */
+.ae-v-copilot {
+  margin: 18px 0 20px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #93c5fd;
+  background: linear-gradient(145deg, #ffffff 0%, #eff6ff 42%, #f0fdf4 100%);
+  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.08);
+}
+.ae-v-copilot__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ae-v-copilot__intro {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.ae-v-copilot__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.ae-v-copilot__sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+}
+.ae-v-copilot__collapse {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #1d4ed8;
+  cursor: pointer;
+}
+.ae-v-copilot__collapse:hover {
+  background: #eff6ff;
+}
+.ae-v-copilot__body {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(37, 99, 235, 0.25);
+}
+.ae-v-copilot__progress-block {
+  margin-bottom: 14px;
+}
+.ae-v-copilot__progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+.ae-v-copilot__progress-head strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a8a;
+  font-variant-numeric: tabular-nums;
+}
+.ae-v-copilot__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #bfdbfe;
+  overflow: hidden;
+}
+.ae-v-copilot__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #059669);
+  transition: width 0.35s ease;
+}
+.ae-v-copilot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ae-v-copilot__tips {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #475569;
+}
+.ae-v-copilot__tips li {
+  margin-bottom: 8px;
+}
+.ae-v-attr-quickpick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ae-v-attr-quickpick__chip {
+  margin: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.ae-v-attr-quickpick__chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+.ae-v-attr-quickpick__chip--on {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
 }
 
 /* Catálogo vendedor — linhas em cartão */

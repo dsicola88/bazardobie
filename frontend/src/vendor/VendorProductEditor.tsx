@@ -8,6 +8,8 @@ import type { ProductCondition } from "../utils/productCondition.js";
 import { computeListingQualityPreview } from "../utils/listingQualityPreview.js";
 import { computePublicationSteps, publicationOverallPct } from "../utils/publicationAssistant.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+import { resolveNichePack } from "../catalog/categoryNichePacks.js";
+import { structuredRequiredProgress, vendorCopilotTips } from "./vendorCopilot.js";
 import { listingQualityGradeCssSuffix } from "../utils/listingGradeUi.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
@@ -235,8 +237,42 @@ export default function VendorProductEditor() {
   });
   const [loadingEdit, setLoadingEdit] = useState(!isNew);
   const [shippingCarriers, setShippingCarriers] = useState<{ id: string; name: string }[]>([]);
+  /** Sugestões do assistente: recolhidas por defeito para o editor ficar visível primeiro. */
+  const [assistantHintsOpen, setAssistantHintsOpen] = useState(false);
+  const [vendorCopilotOpen, setVendorCopilotOpen] = useState(true);
 
   const catOptions = useMemo(() => flattenCats(cats), [cats]);
+
+  const selectedVendorCategory = useMemo(
+    () => (categoryId.trim() ? cats.find((c) => c.id === categoryId) ?? null : null),
+    [cats, categoryId],
+  );
+
+  const ancestorSlugsVendor = useMemo(() => {
+    if (!cats.length || !categoryId.trim()) return [] as string[];
+    const byId = new Map(cats.map((c) => [c.id, c] as const));
+    const out: string[] = [];
+    let cur = byId.get(categoryId);
+    while (cur?.parentId) {
+      const p = byId.get(cur.parentId);
+      if (!p) break;
+      out.push(p.slug);
+      cur = p;
+    }
+    return out;
+  }, [cats, categoryId]);
+
+  const nichePackVendor = useMemo(() => {
+    if (!selectedVendorCategory) return null;
+    return resolveNichePack(selectedVendorCategory.slug, selectedVendorCategory.name, ancestorSlugsVendor);
+  }, [selectedVendorCategory, ancestorSlugsVendor]);
+
+  const vendorCopilotTipsList = useMemo(() => vendorCopilotTips(nichePackVendor), [nichePackVendor]);
+
+  const structuredProgress = useMemo(
+    () => structuredRequiredProgress(categoryAttrs, variants),
+    [categoryAttrs, variants],
+  );
 
   const categoryAttrsSorted = useMemo(() => {
     const base = [...categoryAttrs];
@@ -317,6 +353,35 @@ export default function VendorProductEditor() {
   const goVendorStep = useCallback((stepId: string) => {
     document.getElementById(`vstep-${stepId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const applyVendorDefaultPreset = useCallback(() => {
+    const d = categoryPresets.find((p) => p.isDefault) ?? categoryPresets[0];
+    if (d) setPresetSortId(d.id);
+  }, [categoryPresets]);
+
+  const goToTechnicalSheetVariant = useCallback(() => {
+    const hasSku = variants.some((v) => v.sku.trim());
+    if (!hasSku) {
+      setVariants((prev) => {
+        if (prev.some((v) => v.sku.trim())) return prev;
+        if (prev.length === 0) {
+          const row = emptyVar();
+          row.sku = sku.trim() || "";
+          return [row];
+        }
+        const nx = [...prev];
+        const ix = nx.findIndex((v) => !v.sku.trim());
+        if (ix >= 0) {
+          nx[ix] = { ...nx[ix], sku: sku.trim() || nx[ix].sku };
+          return nx;
+        }
+        const row = emptyVar();
+        row.sku = sku.trim() || "";
+        return [...nx, row];
+      });
+    }
+    goVendorStep("4");
+  }, [variants, sku, goVendorStep]);
 
   useEffect(() => {
     void getPublicCategories().then(setCats);
@@ -859,20 +924,36 @@ export default function VendorProductEditor() {
             </div>
 
             {listingPreview.hintItems.length > 0 ? (
-              <ul className="ae-v-prod-hint-cards">
-                {listingPreview.hintItems.map((h, hi) => (
-                  <li key={hi} className="ae-v-prod-hint-card">
-                    <div className="ae-v-prod-hint-card__top">
-                      {h.impactPts != null ? (
-                        <span className="ae-v-prod-hint-card__pts">+{h.impactPts} pts</span>
-                      ) : (
-                        <span className="ae-v-prod-hint-card__pts ae-v-prod-hint-card__pts--info">Dica</span>
-                      )}
-                    </div>
-                    <p className="ae-v-prod-hint-card__msg">{h.message}</p>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <div className="ae-v-prod-assistant__hints-toolbar">
+                  <button
+                    type="button"
+                    className="ae-v-prod-assistant__hints-toggle"
+                    aria-expanded={assistantHintsOpen}
+                    onClick={() => setAssistantHintsOpen((v) => !v)}
+                  >
+                    {assistantHintsOpen
+                      ? "Ocultar sugestões de melhoria"
+                      : `Ver sugestões de melhoria (${listingPreview.hintItems.length})`}
+                  </button>
+                </div>
+                {assistantHintsOpen ? (
+                  <ul className="ae-v-prod-hint-cards">
+                    {listingPreview.hintItems.map((h, hi) => (
+                      <li key={hi} className="ae-v-prod-hint-card">
+                        <div className="ae-v-prod-hint-card__top">
+                          {h.impactPts != null ? (
+                            <span className="ae-v-prod-hint-card__pts">+{h.impactPts} pts</span>
+                          ) : (
+                            <span className="ae-v-prod-hint-card__pts ae-v-prod-hint-card__pts--info">Dica</span>
+                          )}
+                        </div>
+                        <p className="ae-v-prod-hint-card__msg">{h.message}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
               <p className="ae-v-prod-assistant__ok">
                 Tudo coerente neste momento. Avance para as imagens e a ficha técnica para maximizar a pontuação.
@@ -960,6 +1041,79 @@ export default function VendorProductEditor() {
             </select>
             <p className="ae-field-hint">{CATALOG_TERMS.vendorCategoryPickHint}</p>
           </div>
+
+          {categoryId.trim() && categoryAttrs.length > 0 ? (
+            <div className="ae-v-copilot">
+              <div className="ae-v-copilot__top">
+                <div className="ae-v-copilot__intro">
+                  <h3 className="ae-v-copilot__title">Copiloto comercial</h3>
+                  <p className="ae-v-copilot__sub">
+                    {nichePackVendor ? (
+                      <>
+                        Segmento identificado: <strong>{nichePackVendor.label}</strong>. Orientação alinhada ao catálogo
+                        oficial e às boas práticas deste nicho.
+                      </>
+                    ) : (
+                      <>
+                        Guia para preencher a <strong>ficha técnica</strong> com consistência — melhora filtros, busca e
+                        validação do anúncio.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ae-v-copilot__collapse"
+                  aria-expanded={vendorCopilotOpen}
+                  onClick={() => setVendorCopilotOpen((x) => !x)}
+                >
+                  {vendorCopilotOpen ? "Recolher" : "Expandir"}
+                </button>
+              </div>
+              {vendorCopilotOpen ? (
+                <div className="ae-v-copilot__body">
+                  <div className="ae-v-copilot__progress-block">
+                    <div className="ae-v-copilot__progress-head">
+                      <span>Obrigatórios da ficha (todas as variantes com SKU)</span>
+                      <strong>
+                        {structuredProgress.requiredTotal === 0
+                          ? "Sem campos obrigatórios nesta categoria"
+                          : structuredProgress.activeVariantRows === 0
+                            ? `${structuredProgress.requiredTotal} campo(s) — adicione variante com SKU`
+                            : `${structuredProgress.satisfiedAcrossAllActive} / ${structuredProgress.requiredTotal} completos em todas as variantes`}
+                      </strong>
+                    </div>
+                    {structuredProgress.requiredTotal > 0 ? (
+                      <div className="ae-v-copilot__bar" aria-hidden>
+                        <div
+                          className="ae-v-copilot__fill"
+                          style={{
+                            width: `${structuredProgress.activeVariantRows === 0 ? 0 : Math.min(100, Math.round((structuredProgress.satisfiedAcrossAllActive / structuredProgress.requiredTotal) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="ae-v-copilot__actions">
+                    <button type="button" className="btn btn-primary" onClick={goToTechnicalSheetVariant}>
+                      Ir à ficha técnica (secção 04)
+                    </button>
+                    {categoryPresets.length > 0 ? (
+                      <button type="button" className="btn" onClick={applyVendorDefaultPreset}>
+                        Ordenar campos pelo modelo sugerido
+                      </button>
+                    ) : null}
+                  </div>
+                  <ul className="ae-v-copilot__tips">
+                    {vendorCopilotTipsList.map((t, ti) => (
+                      <li key={ti}>{t}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div>
             <label htmlFor="pdesc">Descrição comercial · mínimo 10 caracteres</label>
             <textarea
@@ -1134,8 +1288,8 @@ export default function VendorProductEditor() {
             <div className="ae-v-prod-suggest">
               <strong>Sugestões inteligentes para esta categoria</strong>
               <p className="ae-v-prod-suggest__lede">
-                Estes campos vêm do catálogo oficial. Quanto mais completa a ficha, melhor posicionamento em filtros e
-                pesquisa — sem precisar de adivinhar o que preencher.
+                Campos do catálogo oficial: o <strong>Copiloto comercial</strong> (secção 01) indica o nicho e o progresso
+                dos obrigatórios; aqui pode saltar directamente aos campos em destaque.
               </p>
               <div className="ae-v-prod-suggest__chips">
                 {categoryAttrsSorted
@@ -1312,28 +1466,62 @@ export default function VendorProductEditor() {
                           </p>
                         ) : null}
                         {a.inputType === "SELECT" && a.options && a.options.length > 0 ? (
-                          <select
-                            value={v.categoryValues[a.id] ?? ""}
-                            onChange={(e) =>
-                              setVariants((p) =>
-                                p.map((x, i) =>
-                                  i === ix
-                                    ? {
-                                        ...x,
-                                        categoryValues: { ...x.categoryValues, [a.id]: e.target.value },
-                                      }
-                                    : x,
-                                ),
-                              )
-                            }
-                          >
-                            <option value="">— seleccionar —</option>
-                            {a.options.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
+                          <>
+                            <select
+                              value={v.categoryValues[a.id] ?? ""}
+                              onChange={(e) =>
+                                setVariants((p) =>
+                                  p.map((x, i) =>
+                                    i === ix
+                                      ? {
+                                          ...x,
+                                          categoryValues: { ...x.categoryValues, [a.id]: e.target.value },
+                                        }
+                                      : x,
+                                  ),
+                                )
+                              }
+                            >
+                              <option value="">— seleccionar —</option>
+                              {a.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                            {a.options.length <= 12 ? (
+                              <div className="ae-v-attr-quickpick" role="group" aria-label={`Valores rápidos: ${a.label}`}>
+                                {a.options.map((opt) => (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    className={
+                                      "ae-v-attr-quickpick__chip" +
+                                      ((v.categoryValues[a.id] ?? "") === opt ? " ae-v-attr-quickpick__chip--on" : "")
+                                    }
+                                    onClick={() =>
+                                      setVariants((p) =>
+                                        p.map((x, i) =>
+                                          i === ix
+                                            ? {
+                                                ...x,
+                                                categoryValues: { ...x.categoryValues, [a.id]: opt },
+                                              }
+                                            : x,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    {opt}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="ae-field-hint" style={{ marginTop: 6 }}>
+                                Muitas opções neste campo — use o menu acima para escolher com precisão.
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <input
                             type="text"

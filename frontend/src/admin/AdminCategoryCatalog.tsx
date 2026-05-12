@@ -3,10 +3,16 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+import {
+  resolveNichePack,
+  suggestionToOptionsJson,
+  type NicheAttrSuggestion,
+} from "../catalog/categoryNichePacks.js";
 
 type CatRow = {
   id: string;
   name: string;
+  slug: string;
   parentId: string | null;
   sortOrder: number;
   productCount: number;
@@ -128,8 +134,54 @@ export default function AdminCategoryCatalog() {
   const [presetDefault, setPresetDefault] = useState(false);
   const presetSelectRef = useRef<HTMLSelectElement | null>(null);
   const [newAttrKeyTouched, setNewAttrKeyTouched] = useState(false);
+  const [nicheBulkBusy, setNicheBulkBusy] = useState(false);
 
   const catOptions = useMemo(() => (cats ? flattenCatLabels(cats) : []), [cats]);
+
+  const selectedCategory = useMemo(
+    () => (cats && categoryId ? cats.find((c) => c.id === categoryId) ?? null : null),
+    [cats, categoryId],
+  );
+
+  const ancestorSlugs = useMemo(() => {
+    if (!cats?.length || !categoryId) return [] as string[];
+    const byId = new Map(cats.map((c) => [c.id, c] as const));
+    const out: string[] = [];
+    let cur = byId.get(categoryId);
+    while (cur?.parentId) {
+      const p = byId.get(cur.parentId);
+      if (!p) break;
+      out.push(p.slug);
+      cur = p;
+    }
+    return out;
+  }, [cats, categoryId]);
+
+  const nichePack = useMemo(() => {
+    if (!selectedCategory) return null;
+    return resolveNichePack(selectedCategory.slug, selectedCategory.name, ancestorSlugs);
+  }, [selectedCategory, ancestorSlugs]);
+
+  const missingNicheSuggestions = useMemo(() => {
+    if (!nichePack) return [] as NicheAttrSuggestion[];
+    const keys = new Set(attrs.map((a) => a.key));
+    return nichePack.attributes.filter((s) => !keys.has(s.key));
+  }, [nichePack, attrs]);
+
+  /** Ordem do multiselect alinhada ao pacote — a mesma ordem é enviada ao criar o modelo. */
+  const orderedAttrsForPreset = useMemo(() => {
+    if (!nichePack || attrs.length === 0) return attrs;
+    const inPack: AttrAdmin[] = [];
+    const seen = new Set<string>();
+    for (const s of nichePack.attributes) {
+      const a = attrs.find((x) => x.key === s.key);
+      if (a) {
+        inPack.push(a);
+        seen.add(a.id);
+      }
+    }
+    return [...inPack, ...attrs.filter((a) => !seen.has(a.id))];
+  }, [attrs, nichePack]);
 
   const coverageSorted = useMemo(() => {
     if (!fillStats?.byAttribute?.length) return [];
@@ -244,6 +296,89 @@ export default function AdminCategoryCatalog() {
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Falha ao criar atributo");
     }
+  }
+
+  function applyNicheSuggestionToForm(s: NicheAttrSuggestion) {
+    const nextOrder = Math.max(0, ...attrs.map((a) => a.sortOrder), 0) + 10;
+    setNewAttr({
+      key: s.key,
+      label: s.label,
+      inputType: s.inputType,
+      optionsJson: suggestionToOptionsJson(s),
+      helpText: s.helpText ?? "",
+      isRequired: s.isRequired ?? false,
+      sortOrder: s.sortOrder ?? nextOrder,
+      unitCode: s.unitCode ?? "",
+      facetEnabled: s.facetEnabled ?? false,
+      primaryRank: s.primaryRank ?? 0,
+      autoSuggest: s.autoSuggest ?? false,
+    });
+    setNewAttrKeyTouched(true);
+    setMsg(`Sugestão «${s.label}» aplicada ao formulário «Novo atributo» em baixo — reveja e crie.`);
+  }
+
+  async function createMissingNicheAttrs() {
+    if (!token || !categoryId.trim() || !nichePack || missingNicheSuggestions.length === 0) return;
+    setNicheBulkBusy(true);
+    setErr(null);
+    setMsg(null);
+    let baseOrder = Math.max(0, ...attrs.map((a) => a.sortOrder), 0);
+    const nMissing = missingNicheSuggestions.length;
+    try {
+      for (const s of missingNicheSuggestions) {
+        baseOrder += 10;
+        const body: Record<string, unknown> = {
+          key: s.key,
+          label: s.label,
+          inputType: s.inputType,
+          helpText: s.helpText?.trim() || null,
+          isRequired: s.isRequired ?? false,
+          sortOrder: s.sortOrder ?? baseOrder,
+          facetEnabled: s.facetEnabled ?? false,
+          primaryRank: s.primaryRank ?? 0,
+          autoSuggest: s.autoSuggest ?? false,
+        };
+        if (s.inputType === "SELECT") {
+          body.optionsJson = suggestionToOptionsJson(s);
+        }
+        if (s.inputType === "NUMBER" && s.unitCode?.trim()) {
+          body.unitCode = s.unitCode.trim().toLowerCase();
+        }
+        await apiFetch(`/admin/categories/${encodeURIComponent(categoryId)}/attributes`, {
+          method: "POST",
+          token,
+          body: JSON.stringify(body),
+        });
+      }
+      setMsg(`Foram criados ${nMissing} atributos sugeridos para «${nichePack.label}».`);
+      void loadCategoryDetail();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Falha ao criar atributos sugeridos");
+    } finally {
+      setNicheBulkBusy(false);
+    }
+  }
+
+  function selectPresetOptionsMatchingPack() {
+    if (!presetSelectRef.current || !nichePack) return;
+    const sel = presetSelectRef.current;
+    const want = new Set(
+      nichePack.attributes
+        .map((s) => attrs.find((a) => a.key === s.key)?.id)
+        .filter(Boolean) as string[],
+    );
+    for (let i = 0; i < sel.options.length; i++) {
+      sel.options[i].selected = want.has(sel.options[i].value);
+    }
+    setMsg(
+      "Multiselect actualizado com os atributos do pacote (ordem = ordem do nicho na lista). Defina o nome do modelo e clique em «Criar modelo».",
+    );
+  }
+
+  function suggestPresetNameFromNiche() {
+    if (!nichePack) return;
+    setPresetName(`${nichePack.label} — modelo base`);
+    setMsg("Nome do modelo preenchido — pode editar antes de criar.");
   }
 
   function openEdit(a: AttrAdmin) {
@@ -449,6 +584,57 @@ export default function AdminCategoryCatalog() {
                 <li>{CATALOG_TERMS.adminCatalogGlossaryCoverage}</li>
               </ul>
             </div>
+
+            {nichePack ? (
+              <div className="ae-admin-callout ae-admin-niche-assistant" role="region" aria-label="Assistente de nicho">
+                <h2 className="ae-admin-catcatalog__head" style={{ marginTop: 0 }}>
+                  Assistente de nicho
+                </h2>
+                <p className="ae-admin-catcatalog__lead" style={{ marginBottom: 12 }}>
+                  Para <strong>{selectedCategory?.name}</strong> foi detectado o pacote{" "}
+                  <strong>{nichePack.label}</strong> (slug e hierarquia da categoria, ou palavras‑chave no nome).
+                  Pré-preenche o formulário de novo atributo ou cria vários campos de uma vez; depois sincronize o modelo de
+                  ficha em baixo.
+                </p>
+                {missingNicheSuggestions.length === 0 ? (
+                  <p className="ae-muted" style={{ margin: 0 }}>
+                    Todos os campos deste pacote já existem nesta categoria. Pode definir facetas ou criar um modelo com o
+                    multiselect (botões «Seleccionar atributos do pacote» e «Sugerir nome» na secção de modelos).
+                  </p>
+                ) : (
+                  <>
+                    <p className="ae-muted" style={{ marginTop: 0, marginBottom: 10 }}>
+                      {missingNicheSuggestions.length} sugestão(ões) ainda não criada(s):
+                    </p>
+                    <ul className="ae-admin-niche-suggest-list">
+                      {missingNicheSuggestions.map((s) => (
+                        <li key={s.key} className="ae-admin-niche-suggest-item">
+                          <div>
+                            <strong>{s.label}</strong>
+                            <span className="ae-admin-niche-suggest-meta">
+                              {INPUT_TYPE_LABELS[s.inputType]} · <code>{s.key}</code>
+                            </span>
+                          </div>
+                          <button type="button" className="ae-mini-btn" onClick={() => applyNicheSuggestionToForm(s)}>
+                            Aplicar ao formulário «Novo atributo»
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="ae-admin-niche-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={nicheBulkBusy || !token}
+                        onClick={() => void createMissingNicheAttrs()}
+                      >
+                        {nicheBulkBusy ? "A criar…" : `Criar todos em falta (${missingNicheSuggestions.length})`}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <section className="ae-panel ae-admin-catcatalog__section ae-admin-catcatalog-stats">
               <h2 className="ae-admin-catcatalog__head">Preenchimento no catálogo</h2>
@@ -920,9 +1106,17 @@ export default function AdminCategoryCatalog() {
               </button>
             </section>
 
-            <section className="ae-panel ae-admin-catcatalog__section">
+            <section className="ae-panel ae-admin-catcatalog__section ae-admin-catcatalog-presets-section">
               <h2 className="ae-admin-catcatalog__head">Modelos de ficha (templates)</h2>
               <p className="ae-admin-catcatalog__lead">{CATALOG_TERMS.adminCatalogPresetsLead}</p>
+
+              {nichePack ? (
+                <p className="ae-admin-catcatalog__sync-hint">
+                  <strong>Sincronização com o assistente de nicho:</strong> a lista abaixo ordena os atributos na mesma
+                  sequência do pacote «{nichePack.label}»; ao criar o modelo, a ordem segue esta lista (não a ordem em que
+                  clicar com Ctrl). Use os botões para pré-seleccionar e sugerir o nome do modelo.
+                </p>
+              ) : null}
 
               {presets.length === 0 ? (
                 <p className="ae-muted">Nenhum modelo ainda. Crie um abaixo quando tiver atributos definidos.</p>
@@ -952,48 +1146,61 @@ export default function AdminCategoryCatalog() {
               <h3 className="ae-admin-catcatalog__head" style={{ marginTop: 24 }}>
                 Criar novo modelo
               </h3>
-              <div className="ae-admin-form-stack" style={{ marginTop: 12 }}>
-                <label className="ae-admin-field">
-                  <span>Nome do modelo</span>
-                  <input
-                    className="ae-input"
-                    value={presetName}
-                    onChange={(e) => setPresetName(e.target.value)}
-                    placeholder="Ex.: Modelo smartphone Android"
-                  />
-                  <span className="ae-admin-field-hint">Use linguagem que o vendedor reconhece no dia-a-dia.</span>
-                </label>
-                <label className="ae-admin-check--rich">
-                  <div className="ae-admin-check--rich__row">
-                    <input type="checkbox" checked={presetDefault} onChange={(e) => setPresetDefault(e.target.checked)} />
-                    <div className="ae-admin-check--rich__text">
-                      <strong>Modelo por defeito nesta categoria</strong>
-                      <span>Sugerido primeiro aos vendedores ao escolherem esta categoria.</span>
-                    </div>
+              <div className="ae-admin-catcatalog-preset-create">
+                {nichePack && attrs.length > 0 ? (
+                  <div className="ae-admin-niche-preset-tools">
+                    <button type="button" className="btn" onClick={() => selectPresetOptionsMatchingPack()}>
+                      Seleccionar atributos do pacote
+                    </button>
+                    <button type="button" className="btn" onClick={() => suggestPresetNameFromNiche()}>
+                      Sugerir nome do modelo
+                    </button>
                   </div>
-                </label>
-                <label className="ae-admin-field">
-                  <span>Atributos incluídos (ordem = ordem no modelo)</span>
-                  <select
-                    ref={presetSelectRef}
-                    multiple
-                    className="ae-input ae-admin-catcatalog-multiselect"
-                    size={Math.min(12, Math.max(5, attrs.length || 5))}
-                  >
-                    {attrs.map((at) => (
-                      <option key={at.id} value={at.id}>
-                        {at.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="ae-admin-field-hint">
-                    Segure Ctrl (Windows) ou ⌘ (Mac) para seleccionar vários; prefira seleccionar de cima a baixo na ordem desejada.
-                  </span>
-                </label>
+                ) : null}
+                <div className="ae-admin-form-stack" style={{ marginTop: 12 }}>
+                  <label className="ae-admin-field">
+                    <span>Nome do modelo</span>
+                    <input
+                      className="ae-input"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      placeholder="Ex.: Modelo smartphone Android"
+                    />
+                    <span className="ae-admin-field-hint">Use linguagem que o vendedor reconhece no dia-a-dia.</span>
+                  </label>
+                  <label className="ae-admin-check--rich">
+                    <div className="ae-admin-check--rich__row">
+                      <input type="checkbox" checked={presetDefault} onChange={(e) => setPresetDefault(e.target.checked)} />
+                      <div className="ae-admin-check--rich__text">
+                        <strong>Modelo por defeito nesta categoria</strong>
+                        <span>Sugerido primeiro aos vendedores ao escolherem esta categoria.</span>
+                      </div>
+                    </div>
+                  </label>
+                  <label className="ae-admin-field ae-admin-field--preset-multiselect">
+                    <span>Atributos incluídos (ordem = ordem no modelo)</span>
+                    <select
+                      ref={presetSelectRef}
+                      multiple
+                      className="ae-input ae-admin-catcatalog-multiselect"
+                      size={Math.min(12, Math.max(5, orderedAttrsForPreset.length || 5))}
+                    >
+                      {orderedAttrsForPreset.map((at) => (
+                        <option key={at.id} value={at.id}>
+                          {at.label} · {at.key}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="ae-admin-field-hint">
+                      A ordem dos itens na lista é a ordem enviada ao criar o modelo (use «Seleccionar atributos do pacote»
+                      para marcar o conjunto sugerido). Segure Ctrl (Windows) ou ⌘ (Mac) para ajustar a selecção.
+                    </span>
+                  </label>
+                </div>
+                <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => void createPreset()}>
+                  Criar modelo
+                </button>
               </div>
-              <button type="button" className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => void createPreset()}>
-                Criar modelo
-              </button>
             </section>
           </>
         )}
