@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
@@ -150,14 +150,26 @@ export default function AdminDashboard() {
   const [period, setPeriod] = useState<"day" | "month" | "year" | "custom">("month");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const statsRef = useRef<StatsFull | StatsSupport | null>(null);
+  useEffect(() => {
+    statsRef.current = stats;
+  }, [stats]);
 
   const loadStats = useCallback(() => {
     if (!token) return;
-    if (period === "custom" && (!start || !end)) {
-      setCustomDateMsg("Selecione data inicial e final para o período personalizado.");
-      setStats(null);
-      setLoading(false);
-      return;
+    if (period === "custom") {
+      if (!start || !end) {
+        setCustomDateMsg("Escolha a data inicial e a data final e clique em «Actualizar».");
+        setErr(null);
+        if (statsRef.current != null) setLoading(false);
+        return;
+      }
+      if (start > end) {
+        setCustomDateMsg("A data final deve ser igual ou posterior à data inicial.");
+        setErr(null);
+        if (statsRef.current != null) setLoading(false);
+        return;
+      }
     }
     setCustomDateMsg(null);
     setLoading(true);
@@ -239,7 +251,12 @@ export default function AdminDashboard() {
           </>
         ) : null}
         {customDateMsg ? (
-          <span style={{ color: "crimson", fontSize: 12, fontWeight: 600 }}>{customDateMsg}</span>
+          <span className="ae-admin-dash-hint">{customDateMsg}</span>
+        ) : null}
+        {period === "custom" && (!start || !end) && stats ? (
+          <span className="ae-admin-dash-hint ae-admin-dash-hint--muted">
+            Os números abaixo correspondem ao último período carregado. Defina as duas datas e actualize.
+          </span>
         ) : null}
         {fullAdmin && isStatsFull(stats) ? (
           <button type="button" className="btn btn-ghost" onClick={exportCsv}>

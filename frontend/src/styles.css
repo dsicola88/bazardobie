@@ -9193,6 +9193,16 @@ a:hover {
   align-items: center;
   margin-bottom: 14px;
 }
+.ae-admin-dash-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b45309;
+  flex: 1 1 100%;
+}
+.ae-admin-dash-hint--muted {
+  color: var(--ae-muted, #64748b);
+  font-weight: 500;
+}
 .ae-admin-filter-input {
   min-width: min(100%, 360px);
   flex: 1 280px;
