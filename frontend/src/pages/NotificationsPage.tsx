@@ -154,17 +154,14 @@ export default function NotificationsPage() {
           <p className="ae-muted" style={{ margin: "4px 0 0" }}>
             Atualizações de encomendas, rastreio, chat e decisões operacionais.
           </p>
-          <div className="ae-panel ae-notif-page-guide" style={{ marginTop: 12, padding: "12px 14px" }}>
-            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
-              <strong>Referência da encomenda ≠ código de rastreio.</strong> O identificador que acompanha as
-              notificações de estado é o <strong>número do pedido na plataforma</strong> (referência interna). O{" "}
-              <strong>código de rastreio da transportadora</strong> (guia, AWB, etc.) só aparece depois de registado,
-              na página <Link to="/orders">As minhas encomendas</Link> → <strong>Seguir encomenda</strong>, na
-              secção <strong>Rastreio da entrega</strong>. Pode{" "}
-              <Link to="/orders">pesquisar pela referência na lista de encomendas</Link>
-              {" "}(campo «Pesquisar»).
+          <details className="ae-notif-page-hint">
+            <summary>Onde está o rastreio da transportadora?</summary>
+            <p>
+              O número em «Referência» no aviso identifica o pedido no BAZAR DO BIÉ. A guia da transportadora aparece em{" "}
+              <Link to="/orders">As minhas encomendas</Link> → <strong>Seguir encomenda</strong> → «Rastreio da entrega»,
+              quando existir.
             </p>
-          </div>
+          </details>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className={unreadOnly ? "btn btn-primary" : "btn"} onClick={() => setUnreadOnly((v) => !v)}>

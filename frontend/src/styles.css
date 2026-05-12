@@ -9275,6 +9275,10 @@ a:hover {
   font-family: ui-monospace, monospace;
   font-size: 12px;
 }
+.ae-admin-mono--wrap {
+  word-break: break-all;
+  white-space: normal;
+}
 .ae-admin-ellipsis {
   max-width: 220px;
 }
@@ -11193,6 +11197,26 @@ a:hover {
   margin: 8px 0 0;
   white-space: pre-wrap;
   line-height: 1.5;
+}
+.ae-notif-page-hint {
+  margin-top: 10px;
+  max-width: 640px;
+}
+.ae-notif-page-hint summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ae-muted, #64748b);
+  list-style-position: outside;
+}
+.ae-notif-page-hint summary:hover {
+  color: var(--ae-deep, #0f172a);
+}
+.ae-notif-page-hint p {
+  margin: 8px 0 0;
+  padding-left: 1rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ae-muted, #64748b);
 }
 .ae-notif-card--tone-default:not(.ae-notif-card--read) {
   border-left-color: var(--ae-deep);

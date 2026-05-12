@@ -196,9 +196,8 @@ export default function OrdersPage() {
             As minhas encomendas
           </h1>
           <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.45, maxWidth: 520 }}>
-            <strong>Onde ver o rastreio da transportadora:</strong> abra <strong>Seguir encomenda</strong> e desça até à
-            secção «Rastreio da entrega». O código nas notificações de estado é a <strong>referência do pedido neste site</strong>, não
-            a guia da DHL nem de outra operadora.
+            O rastreio da transportadora (guia) está em cada encomenda → <strong>Seguir encomenda</strong> → «Rastreio da
+            entrega». Use a pesquisa para localizar pelo número do pedido.
           </p>
         </div>
         <div style={{ flex: "1 1 260px", maxWidth: 360 }}>

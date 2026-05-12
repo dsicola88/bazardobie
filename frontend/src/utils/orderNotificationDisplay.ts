@@ -75,6 +75,31 @@ export function notificationVariantForOrderStatus(toStatus: string): Notificatio
   }
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Corrige mensagens antigas onde o ID aparecia truncado com «…» (ex.: Pedido abc123xyz0…). */
+export function expandStoredNotificationOrderRef(
+  message: string,
+  orderId: string,
+  orderCode: string | null | undefined
+): string {
+  const id = orderId.trim();
+  if (!id) return message;
+  const ref = orderCode != null && String(orderCode).trim() !== "" ? String(orderCode).trim() : id;
+  const short = id.slice(0, 10);
+  if (short.length < 8) return message;
+  let out = message;
+  const reShort = escapeRegExp(short);
+  const tail = "(?:\\.\\.\\.|…)";
+  out = out.replace(new RegExp(`Pedido\\s+${reShort}${tail}`, "gi"), `Pedido ${ref}`);
+  out = out.replace(new RegExp(`Encomenda\\s+#?${reShort}${tail}`, "gi"), `Encomenda ${ref}`);
+  out = out.replace(new RegExp(`Referência\\s+${reShort}${tail}`, "gi"), `Referência ${ref}`);
+  out = out.replace(new RegExp(`#${reShort}${tail}`, "g"), ref.startsWith("#") ? ref : `#${ref}`);
+  return out;
+}
+
 /** Melhora textos antigos gravados com enums ou papéis crus (CLIENTE, SUPORTE, …). */
 export function prettifyNotificationPlaintext(text: string): string {
   if (!text.trim()) return text;
@@ -178,28 +203,67 @@ export function presentNotificationRow(row: {
   payload?: unknown;
 }): PresentedNotification {
   const p = row.payload;
-  if (isRecord(p) && p.kind === "ORDER_STATUS" && typeof p.toStatus === "string") {
-    const op = p as OrderStatusNotificationPayload;
-    const ref = orderRefFromNotificationPayload(op);
-    const orderRef = ref || undefined;
-    const audience = op.audience === "vendor" ? "vendor" : "buyer";
 
-    if (audience === "vendor") {
+  if (isRecord(p) && p.kind === "ORDER_STATUS") {
+    const op = p as OrderStatusNotificationPayload;
+    const toStatusRaw = op.toStatus;
+    const toStatusOk =
+      typeof toStatusRaw === "string" && toStatusRaw.trim().length > 0 ? toStatusRaw.trim() : null;
+
+    if (toStatusOk) {
+      const ref = orderRefFromNotificationPayload(op);
+      const orderRef = ref || undefined;
+      const audience = op.audience === "vendor" ? "vendor" : "buyer";
+
+      if (audience === "vendor") {
+        return {
+          title: vendorHeadline(toStatusOk),
+          message: vendorBody("", toStatusOk, op.actorLabel),
+          orderRef,
+          visualVariant: notificationVariantForOrderStatus(toStatusOk),
+          showOrderStatusExtras: false,
+        };
+      }
+
       return {
-        title: vendorHeadline(op.toStatus),
-        message: vendorBody("", op.toStatus, op.actorLabel),
+        title: buyerHeadline(toStatusOk),
+        message: buyerBody("", toStatusOk),
         orderRef,
-        visualVariant: notificationVariantForOrderStatus(op.toStatus),
+        visualVariant: notificationVariantForOrderStatus(toStatusOk),
         showOrderStatusExtras: false,
       };
     }
 
+    const ref = orderRefFromNotificationPayload(op);
+    const orderRef = ref || undefined;
+    const audience = op.audience === "vendor" ? "vendor" : "buyer";
+    const hasLabels = Boolean(
+      (typeof op.fromLabel === "string" && op.fromLabel.trim()) ||
+        (typeof op.toLabel === "string" && op.toLabel.trim())
+    );
+    const rawMsg = prettifyNotificationPlaintext(row.message);
+    const messageWithRef =
+      typeof op.orderId === "string" && op.orderId.trim()
+        ? expandStoredNotificationOrderRef(rawMsg, op.orderId, op.orderCode)
+        : rawMsg;
+
+    const titleBuyer = prettifyNotificationPlaintext(row.title.trim());
+    const messageBody =
+      messageWithRef.trim() !== ""
+        ? messageWithRef
+        : hasLabels
+          ? "Resumo da mudança de estado:"
+          : "O estado do pedido foi actualizado na plataforma.";
+
     return {
-      title: buyerHeadline(op.toStatus),
-      message: buyerBody("", op.toStatus),
+      title:
+        audience === "vendor"
+          ? "Actualização do pedido"
+          : titleBuyer.replace(/^Actualização de estado da encomenda\.?$/i, "Actualização da encomenda"),
+      message: messageBody,
       orderRef,
-      visualVariant: notificationVariantForOrderStatus(op.toStatus),
-      showOrderStatusExtras: false,
+      visualVariant: "neutral",
+      showOrderStatusExtras: hasLabels,
     };
   }
 
@@ -234,15 +298,10 @@ export function presentNotificationRow(row: {
     };
   }
 
-  const op = isRecord(p) && p.kind === "ORDER_STATUS" ? (p as OrderStatusNotificationPayload) : null;
-  const reconstructed = Boolean(op?.toStatus && String(op.toStatus).trim().length > 0);
-  const partialRef = op ? orderRefFromNotificationPayload(op) : "";
-
   return {
     title: prettifyNotificationPlaintext(row.title),
     message: prettifyNotificationPlaintext(row.message),
-    orderRef: partialRef || undefined,
     visualVariant: "neutral",
-    showOrderStatusExtras: Boolean(op && !reconstructed),
+    showOrderStatusExtras: false,
   };
 }

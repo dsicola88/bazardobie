@@ -117,7 +117,7 @@ export default function AdminOrders() {
             <table className="ae-admin-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>Referência</th>
                   <th>Comprador</th>
                   <th>
                     <button
@@ -158,7 +158,9 @@ export default function AdminOrders() {
                 {data.items.map((o) => (
                   <tr key={o.id}>
                     <td>
-                      <code className="ae-admin-mono">{o.orderCode || `${o.id.slice(0, 12)}…`}</code>
+                      <code className="ae-admin-mono ae-admin-mono--wrap" title={o.id}>
+                        {o.orderCode?.trim() || o.id}
+                      </code>
                     </td>
                     <td>{o.user.name}</td>
                     <td>
