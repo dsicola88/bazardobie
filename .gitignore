@@ -9,3 +9,8 @@
 /frontend/.env.*.local
 *.log
 .DS_Store
+
+# Playwright E2E
+/frontend/playwright-report/
+/frontend/test-results/
+
