@@ -1293,7 +1293,7 @@ a:hover {
   bottom: 8px;
   left: 8px;
   z-index: 1;
-  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  background: #dc2626;
   color: #fff;
   font-size: 11px;
   font-weight: 800;
@@ -1301,7 +1301,7 @@ a:hover {
   padding: 5px 11px;
   border-radius: var(--ae-radius-pill);
   border: 1px solid rgb(255 255 255 / 0.35);
-  box-shadow: 0 4px 14px rgb(220 38 38 / 0.28);
+  box-shadow: 0 2px 10px rgb(220 38 38 / 0.22);
   line-height: 1;
 }
 .ae-pcard__cond {
@@ -1335,29 +1335,43 @@ a:hover {
 }
 .ae-pcard__compare {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 7px;
+  right: 7px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px 5px 8px;
-  max-width: calc(100% - 70px);
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: 999px;
-  border: 1px solid rgb(15 23 42 / 0.14);
-  background: linear-gradient(180deg, #fff, #f8fafc);
-  font-size: 11px;
-  font-weight: 750;
-  color: #0f172a;
+  border: 1px solid rgb(15 23 42 / 0.12);
+  background: rgb(255 255 255 / 0.92);
+  color: #475569;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgb(15 23 42 / 0.12);
-  line-height: 1.2;
+  box-shadow: 0 1px 6px rgb(15 23 42 / 0.1);
+  line-height: 0;
+  backdrop-filter: blur(6px);
+}
+@media (hover: hover) {
+  .ae-pcard__compare:not(.ae-pcard__compare--on) {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ae-pcard:hover .ae-pcard__compare,
+  .ae-pcard:focus-visible .ae-pcard__compare {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .ae-pcard__compare:hover {
   border-color: rgb(37 99 246 / 0.35);
   color: #1e40af;
+  background: #fff;
 }
 .ae-pcard__compare--on {
+  opacity: 1 !important;
+  pointer-events: auto !important;
   background: linear-gradient(180deg, #ecfdf5, #d1fae5);
   border-color: rgb(16 185 129 / 0.4);
   color: #047857;
@@ -1369,11 +1383,6 @@ a:hover {
   flex-shrink: 0;
   display: flex;
   line-height: 0;
-}
-.ae-pcard__compare-lbl {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .ae-pcard__compare-banner {
   margin: 0 0 6px;
@@ -1485,8 +1494,11 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: 650;
-  color: var(--ae-deep);
+  font-weight: 600;
+  color: #334155;
+}
+.ae-pcard__rate .ae-star-rating__num {
+  color: #334155;
 }
 .ae-pcard__rate--muted {
   font-weight: 500;
@@ -2377,12 +2389,6 @@ a:hover {
   color: rgba(255, 255, 255, 0.92);
 }
 
-.ae-pcard__condline {
-  margin: 0 0 4px;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--ae-hint);
-}
 .ae-pcard__price-row {
   display: flex;
   flex-wrap: wrap;
@@ -2393,7 +2399,7 @@ a:hover {
 .price {
   font-size: 18px;
   font-weight: 800;
-  color: var(--ae-deep);
+  color: #0f172a;
 }
 .ae-pcard__old {
   font-size: 12px;

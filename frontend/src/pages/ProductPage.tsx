@@ -32,7 +32,6 @@ import {
   removeCompareId,
 } from "../utils/compareSelection.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
-import { MIN_REVIEWS_FOR_PUBLIC_STAR_AVG } from "../constants/reputation.js";
 import { useToast } from "../ui/ToastProvider.js";
 
 type Img = { url: string };
@@ -1255,16 +1254,9 @@ export default function ProductPage() {
                   </>
                 ) : product.reviewCount > 0 ? (
                   <>
-                    <span className="ae-pdp-buy-rail__pending-mark" aria-hidden>
-                      ★
-                    </span>
-                    <span className="ae-pdp-buy-rail__pending-text">
+                    <span className="ae-pdp-buy-rail__meta-line ae-muted">
                       <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
-                      {product.reviewCount === 1 ? "avaliação verificada" : "avaliações verificadas"} ·{" "}
-                      <span className="ae-muted" title={product.ratingTrustHintPt ?? undefined}>
-                        {product.ratingTrustShortPt ??
-                          `Média em estrelas após ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões`}
-                      </span>
+                      {product.reviewCount === 1 ? "opinião verificada" : "opiniões verificadas"}
                     </span>
                     <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
                       |
@@ -1282,7 +1274,7 @@ export default function ProductPage() {
                   </>
                 ) : product.soldCount > 0 ? (
                   <>
-                    <span className="ae-muted">Sem avaliações públicas</span>
+                    <span className="ae-muted">Nova listagem</span>
                     <span className="ae-pdp-buy-rail__sep" aria-hidden="true">
                       |
                     </span>
@@ -1292,7 +1284,7 @@ export default function ProductPage() {
                     </span>
                   </>
                 ) : (
-                  <span className="ae-muted ae-pdp-buy-rail__empty">Sem avaliações · sem vendas registadas</span>
+                  <span className="ae-muted ae-pdp-buy-rail__empty">Nova listagem · sem vendas registadas</span>
                 )}
               </div>
               {product.reviewCount > 0 ? (
@@ -1301,9 +1293,6 @@ export default function ProductPage() {
                     Ver todas as opiniões e filtros ↓
                   </button>
                 </div>
-              ) : null}
-              {product.reviewCount > 0 && product.averageRating == null && product.ratingTrustHintPt ? (
-                <p className="ae-pdp-buy-rail__micro ae-muted">{product.ratingTrustHintPt}</p>
               ) : null}
             </div>
             <div className="ae-pdp-price-deal">
@@ -1819,8 +1808,9 @@ export default function ProductPage() {
                       <>
                         <span className="ae-pdp-reviews-hero__pending">—</span>
                         <p className="ae-pdp-reviews-hero__pending-copy ae-muted">
-                          {product.ratingTrustHintPt ??
-                            "A média em estrelas só aparece com volume mínimo de opiniões — para leituras mais fiáveis."}
+                          {product.reviewCount > 0
+                            ? "A média numérica será actualizada em breve."
+                            : "Ainda não há opiniões verificadas para este artigo."}
                         </p>
                         <p className="ae-pdp-reviews-hero__meta ae-muted">
                           <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}

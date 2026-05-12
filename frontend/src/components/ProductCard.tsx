@@ -4,6 +4,8 @@ import { formatKz, formatRating, promoSavingPercent } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
 import { addCompareId, COMPARE_MAX, getCompareIds, removeCompareId } from "../utils/compareSelection.js";
+import { listingBadgesForProductCard } from "../utils/listingBadgesCard.js";
+import { ListingBadge } from "./ListingBadge.js";
 import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { StarRating } from "./StarRating.js";
 
@@ -23,7 +25,7 @@ export type ProductCardData = {
   ratingTrustShortPt?: string | null;
   ratingTrustHintPt?: string | null;
   images: { url: string }[];
-  /** Selos da ficha (API); na vitrine compacta não se mostram — ver ficha do produto. */
+  /** Selos na vitrine: no máx. 2, com hierarquia (ver ajuda em listingBadgesForProductCard). */
   listingBadges?: { id: string; label: string }[];
 };
 
@@ -48,6 +50,7 @@ function ProductCardInner({
     return () => window.removeEventListener("compare-updated", fn);
   }, []);
   const inCompare = useMemo(() => getCompareIds().includes(p.id), [p.id, compareRev]);
+  const cardBadges = useMemo(() => listingBadgesForProductCard(p.listingBadges), [p.listingBadges]);
 
   const img = resolveMediaUrl(p.images[0]?.url);
   const promoRaw = p.promoPrice != null ? String(p.promoPrice).trim() : "";
@@ -67,7 +70,7 @@ function ProductCardInner({
         ? ` Promoção; preço anterior ${formatKz(p.price)}.`
         : "";
   const reviewNote =
-    p.reviewCount > 0
+    p.reviewCount > 0 && p.averageRating != null
       ? ` Avaliações: ${formatRating(p.averageRating)} em 5 (${p.reviewCount}). `
       : "";
   const ariaBrief = `${p.name}. ${productConditionLabel(p.condition)}. ${formatKz(p.displayPrice)}.${promoNote}${reviewNote}Abrir ficha.`;
@@ -92,7 +95,9 @@ function ProductCardInner({
         ) : (
           <MediaPlaceholder variant="card" />
         )}
-        <span className={`ae-pcard__cond ae-pcard__cond--${condition.toLowerCase()}`}>{conditionBadge}</span>
+        {condition !== "NEW" ? (
+          <span className={`ae-pcard__cond ae-pcard__cond--${condition.toLowerCase()}`}>{conditionBadge}</span>
+        ) : null}
         {savePct != null && savePct > 0 ? (
           <span className="ae-pcard__pct" aria-hidden="true">
             −{savePct}%
@@ -126,16 +131,16 @@ function ProductCardInner({
           >
             <span className="ae-pcard__compare-ico" aria-hidden>
               {inCompare ? (
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M7 4v16M7 4l3 3M7 4L4 7M17 20V4M17 20l-3-3M17 20l3-3" />
                 </svg>
               )}
             </span>
-            <span className="ae-pcard__compare-lbl">{inCompare ? "Na comparação" : "Comparar"}</span>
+            <span className="sr-only">{inCompare ? "Na comparação" : "Comparar"}</span>
           </button>
         ) : null}
       </div>
@@ -147,7 +152,7 @@ function ProductCardInner({
         ) : null}
         <h3 className="ae-pcard__title">{p.name}</h3>
         <div className="ae-pcard__meta">
-          {p.averageRating != null ? (
+          {p.averageRating != null && p.reviewCount > 0 ? (
             <StarRating
               value={Number(p.averageRating)}
               size="sm"
@@ -156,14 +161,20 @@ function ProductCardInner({
               className="ae-pcard__rate"
             />
           ) : p.reviewCount > 0 ? (
-            <span className="ae-pcard__rate ae-muted" title={p.ratingTrustHintPt ?? undefined}>
-              {p.reviewCount === 1 ? "1 opinião" : `${p.reviewCount} opiniões`}
+            <span className="ae-pcard__rate ae-muted">
+              {p.reviewCount === 1 ? "1 opinião verificada" : `${p.reviewCount} opiniões verificadas`}
             </span>
           ) : (
-            <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações</span>
+            <span className="ae-pcard__rate ae-pcard__rate--muted">Nova listagem</span>
           )}
         </div>
-        <p className="ae-pcard__condline">{productConditionLabel(p.condition)}</p>
+        {cardBadges.length > 0 ? (
+          <div className="ae-pcard__badges">
+            {cardBadges.map((b) => (
+              <ListingBadge key={b.id} badge={b} compact />
+            ))}
+          </div>
+        ) : null}
         <div className="ae-pcard__price-row">
           <span className="ae-pcard__price">{formatKz(p.displayPrice)}</span>
           {hasPromo ? <span className="ae-pcard__old">{formatKz(p.price)}</span> : null}

@@ -56,12 +56,12 @@ function OfferShowcaseTileInner({
               <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
             </>
           ) : p.reviewCount > 0 ? (
-            <span className="ae-offer-tile__sold ae-muted" title={p.ratingTrustHintPt ?? undefined}>
-              {p.reviewCount === 1 ? "1 opinião" : `${p.reviewCount} opiniões`} ·{" "}
+            <span className="ae-offer-tile__sold ae-muted">
+              {p.reviewCount === 1 ? "1 opinião verificada" : `${p.reviewCount} opiniões verificadas`} ·{" "}
               {p.soldCount.toLocaleString("pt-AO")}+ vendidos
             </span>
           ) : (
-            <span className="ae-offer-tile__sold">{p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
+            <span className="ae-offer-tile__sold ae-muted">Nova listagem · {p.soldCount.toLocaleString("pt-AO")}+ vendidos</span>
           )}
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 import type { Decimal } from "@prisma/client/runtime/library";
-import { MIN_REVIEWS_FOR_PUBLIC_STAR_AVG } from "../constants/reputation.js";
+import { MIN_REVIEWS_FOR_PRODUCT_STAR_DISPLAY } from "../constants/reputation.js";
 
 function toNum(v: Decimal | number | string | null | undefined): number | null {
   if (v == null) return null;
@@ -8,8 +8,8 @@ function toNum(v: Decimal | number | string | null | undefined): number | null {
 }
 
 /**
- * Campos de ratings para respostas públicas de produto: esconde média até volume mínimo;
- * mantém `reviewCount` sempre visível (transparência).
+ * Campos de ratings para respostas públicas de produto: média visível com pelo menos uma opinião verificada;
+ * sem mensagens de «volume insuficiente» na API (o cliente pode mostrar «Nova listagem» quando não há opiniões).
  */
 export function mergePublicRatingFields(input: {
   averageRating: Decimal | number | string | null | undefined;
@@ -22,19 +22,9 @@ export function mergePublicRatingFields(input: {
 } {
   const rc = Number(input.reviewCount || 0);
   const raw = toNum(input.averageRating);
-  const eligible = rc >= MIN_REVIEWS_FOR_PUBLIC_STAR_AVG && raw != null;
-  let ratingTrustHintPt: string | null = null;
-  let ratingTrustShortPt: string | null = null;
-  if (!eligible) {
-    if (rc === 0) {
-      ratingTrustHintPt = "Este artigo ainda não tem opiniões de compradores na loja.";
-      ratingTrustShortPt = "Sem avaliações";
-    } else {
-      ratingTrustHintPt = `Mostramos a média em estrelas quando existirem pelo menos ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões verificadas — transparência sem ruído estatístico.`;
-      /** Texto para combinar com o número de opiniões (evita “sem avaliações suficientes” + “1 avaliação”). */
-      ratingTrustShortPt = `Média em estrelas após ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões`;
-    }
-  }
+  const eligible = rc >= MIN_REVIEWS_FOR_PRODUCT_STAR_DISPLAY && raw != null;
+  const ratingTrustHintPt: string | null = null;
+  const ratingTrustShortPt: string | null = null;
   return {
     averageRating: eligible ? Math.min(5, Math.max(0, raw!)) : null,
     reviewCount: rc,
