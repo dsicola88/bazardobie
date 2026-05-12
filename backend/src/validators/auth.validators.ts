@@ -1,8 +1,14 @@
 import { z } from "zod";
 
+/** E-mail normalizado para login/registo (evita falhas por espaços ou maiúsculas). */
+const emailSchema = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+  z.string().email()
+);
+
 export const registerSchema = z
   .object({
-    email: z.string().email(),
+    email: emailSchema,
     password: z.string().min(8),
     name: z.string().min(2),
     phone: z.string().optional(),
@@ -45,12 +51,12 @@ export const patchProfileSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(1),
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
 });
 
 export const resetPasswordSchema = z.object({

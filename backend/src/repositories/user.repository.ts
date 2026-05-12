@@ -4,8 +4,9 @@ import { prisma } from "../lib/prisma.js";
 export function userRepo() {
   return {
     findByEmail(email: string) {
-      return prisma.user.findUnique({
-        where: { email },
+      const normalized = email.trim().toLowerCase();
+      return prisma.user.findFirst({
+        where: { email: { equals: normalized, mode: "insensitive" } },
         include: {
           logisticsPartner: { select: { id: true, name: true } },
           municipality: {

@@ -148,7 +148,14 @@ export default function Login() {
             </>
           )}
           <label htmlFor="email">E-mail</label>
-          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
           <label htmlFor="password">Palavra-passe</label>
           <input
             id="password"
@@ -157,6 +164,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
+            autoComplete={registerMode ? "new-password" : "current-password"}
           />
           {error && (
             <p style={{ color: "crimson", margin: "10px 0 0", fontSize: "13px" }}>{error}</p>
@@ -174,6 +182,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
             {error && <p style={{ color: "crimson", margin: "10px 0 0", fontSize: "13px" }}>{error}</p>}
             {forgotDone ? <p style={{ color: "#0d5c2e", margin: "10px 0 0", fontSize: "13px" }}>{forgotDone}</p> : null}
