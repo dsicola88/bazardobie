@@ -249,11 +249,7 @@ export default function OrderTrackPage() {
 
       <div className="page-panel" style={{ marginBottom: 14 }}>
         <p style={{ marginTop: 0, marginBottom: 6 }} className="ae-muted">
-          <span style={{ display: "block", marginBottom: 4, fontSize: 12, lineHeight: 1.45 }}>
-            <strong>Referência no BAZAR DO BIÉ</strong> — identifica o seu pedido nesta plataforma.{" "}
-            <span className="ae-muted">Não confunda com o código de rastreio da transportadora (guia / AWB), que só
-            aparece na secção «Rastreio da entrega» abaixo, quando a loja ou a logística o registarem.</span>
-          </span>
+          <strong>Referência da encomenda</strong> nesta plataforma:{" "}
           <code className="ae-notif-ref-code" style={{ fontSize: 12 }}>{referenciaEncomendaVisivel(row)}</code>
           {" · "}
           {new Date(row.createdAt).toLocaleString("pt-AO")}
@@ -470,63 +466,90 @@ export default function OrderTrackPage() {
         </p>
       </div>
 
-      <div className="page-panel ae-track-courier" style={{ marginBottom: 14 }}>
-        <h2 style={{ marginTop: 0, marginBottom: 10, fontSize: 15 }}>Rastreio da entrega</h2>
-        <p className="ae-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: 12, lineHeight: 1.5 }}>
-          Aqui figura o <strong>código ou ligação da transportadora</strong> (para pesquisar no site da DHL, FedEx, TMS
-          nacional, etc.). Com envio pela loja, o parceiro regista guia e URL ao expedir. Com envio BAZAR DO BIÉ, a
-          logística ou a administração preenchem estes dados. É notificado quando forem actualizados — também pode
-          consultar sempre em <Link to="/orders">As minhas encomendas</Link> → <strong>Seguir encomenda</strong>.
-        </p>
-        {row.trackingCode || row.trackingUrl || row.trackingCarrier ? (
-          <div style={{ fontSize: 14, lineHeight: 1.55 }}>
-            {row.trackingCarrier ? (
-              <p style={{ margin: "0 0 8px" }}>
-                <strong>Transportadora:</strong> {row.trackingCarrier}
-              </p>
-            ) : null}
-            {row.status === "EM_ENTREGA" && row.logisticsPartner?.phone ? (
-              <p style={{ margin: "0 0 8px" }}>
-                <strong>Telefone da transportadora:</strong>{" "}
-                <a href={`tel:${row.logisticsPartner.phone}`}>{row.logisticsPartner.phone}</a>
-              </p>
-            ) : null}
-            {row.trackingCode ? (
-              <p style={{ margin: "0 0 8px" }}>
-                <strong>Código de rastreio / guia:</strong>{" "}
-                <code style={{ fontSize: 13, padding: "2px 6px", background: "#f5f5f5", borderRadius: 4 }}>
-                  {row.trackingCode}
-                </code>
-                <button
-                  type="button"
-                  className="ae-tracking__cta"
-                  style={{ marginLeft: 8 }}
-                  onClick={() => void navigator.clipboard.writeText(row.trackingCode!)}
-                >
-                  Copiar
-                </button>
-              </p>
-            ) : null}
-            {row.trackingUrl ? (
-              <a
-                href={row.trackingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary"
-                style={{ display: "inline-block", marginTop: 6 }}
-              >
-                Abrir página de rastreio
-              </a>
-            ) : null}
-          </div>
-        ) : (
-          <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
-            Ainda não há código de rastreio da transportadora registado. Quando a loja ou a logística o indicar, o número
-            de guia e a hiperligação aparecerão aqui para poder seguir o envio no canal oficial da operadora.
+      <div className="page-panel ae-track-courier ae-buyer-tracking-card" style={{ marginBottom: 14 }}>
+        <div className="ae-buyer-tracking-card__head">
+          <h2 className="ae-buyer-tracking-card__title">Rastreio</h2>
+          <p className="ae-buyer-tracking-card__lede">
+            Use o <strong>número de rastreio</strong> no site da operadora. A referência do pedido no BAZAR DO BIÉ está
+            acima — não é a guia de envio.
           </p>
-        )}
-        <hr style={{ border: 0, borderTop: "1px dashed var(--ae-line)", margin: "14px 0" }} />
-        <strong>O que significa este estado?</strong>
+        </div>
+
+        {(() => {
+          const hasTrackingData = Boolean(row.trackingCode || row.trackingUrl || row.trackingCarrier);
+          const carrierLabel =
+            row.trackingCarrier?.trim() ||
+            row.logisticsPartner?.name?.trim() ||
+            null;
+          const phone = row.logisticsPartner?.phone?.trim() || null;
+          const showContactBlock =
+            Boolean(phone) && (hasTrackingData || row.status === "EM_ENTREGA" || row.status === "ENTREGUE");
+
+          return hasTrackingData ? (
+            <div className="ae-buyer-tracking-body">
+              {carrierLabel ? (
+                <p className="ae-buyer-tracking-carrier">
+                  <span className="ae-muted">Operador logístico</span>
+                  <strong>{carrierLabel}</strong>
+                </p>
+              ) : null}
+
+              {row.trackingCode ? (
+                <div className="ae-buyer-tracking-number">
+                  <span className="ae-buyer-tracking-number__label">Número de rastreio</span>
+                  <div className="ae-buyer-tracking-number__row">
+                    <code className="ae-buyer-tracking-number__code">{row.trackingCode}</code>
+                    <button
+                      type="button"
+                      className="ae-buyer-tracking-copy"
+                      onClick={() => void navigator.clipboard.writeText(row.trackingCode!)}
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="ae-buyer-tracking-actions">
+                {row.trackingUrl ? (
+                  <a
+                    href={row.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                  >
+                    Rastrear no site da transportadora
+                  </a>
+                ) : null}
+              </div>
+
+              {showContactBlock ? (
+                <div className="ae-buyer-tracking-contact">
+                  <strong className="ae-buyer-tracking-contact__title">Contactar a transportadora</strong>
+                  <p className="ae-buyer-tracking-contact__hint">
+                    Para encaminhamentos ou esclarecimentos sobre o envio, ligue ao parceiro indicado pela plataforma.
+                  </p>
+                  <a href={`tel:${phone}`} className="btn btn-ghost ae-buyer-tracking-contact__tel">
+                    Ligar · {phone}
+                  </a>
+                </div>
+              ) : hasTrackingData && !phone ? (
+                <p className="ae-muted ae-buyer-tracking-contact-fallback" style={{ marginTop: 12, fontSize: 13, lineHeight: 1.45 }}>
+                  Telefone da transportadora não disponível aqui. Use a página de rastreio, se existir, ou o{" "}
+                  <a href="#chat">chat com a loja</a>.
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="ae-muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>
+              Ainda não há número de rastreio. Quando a loja ou a logística registarem a guia, o código e a ligação
+              aparecem aqui.
+            </p>
+          );
+        })()}
+
+        <hr className="ae-buyer-tracking-divider" />
+        <strong className="ae-buyer-tracking-state-help">O que significa este estado?</strong>
         <p style={{ marginTop: 10, marginBottom: 0, fontSize: 14, lineHeight: 1.55 }}>
           {textoRastreioPorEstado(row.status)}
         </p>

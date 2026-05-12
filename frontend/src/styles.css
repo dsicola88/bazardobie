@@ -7092,6 +7092,115 @@ a:hover {
 .ae-track-courier {
   border-left: 4px solid var(--ae-line);
 }
+
+/* Rastreio comprador — alinhado a fluxo explícito (número + rastrear + contacto) */
+.ae-buyer-tracking-card {
+  border-left-color: var(--ae-deep, #0f172a);
+}
+.ae-buyer-tracking-card__head {
+  margin-bottom: 14px;
+}
+.ae-buyer-tracking-card__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+.ae-buyer-tracking-card__lede {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ae-muted, #64748b);
+}
+.ae-buyer-tracking-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ae-buyer-tracking-carrier {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ae-buyer-tracking-carrier .ae-muted {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ae-buyer-tracking-number__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ae-deep, #0f172a);
+  margin-bottom: 6px;
+}
+.ae-buyer-tracking-number__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ae-buyer-tracking-number__code {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid var(--ae-line);
+  word-break: break-all;
+}
+.ae-buyer-tracking-copy {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ae-deep, #0f172a);
+  background: #fff;
+  border: 1px solid var(--ae-line);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.ae-buyer-tracking-copy:hover {
+  background: #f8fafc;
+}
+.ae-buyer-tracking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ae-buyer-tracking-contact {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--ae-line);
+}
+.ae-buyer-tracking-contact__title {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+.ae-buyer-tracking-contact__hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ae-muted, #64748b);
+}
+.ae-buyer-tracking-contact__tel {
+  text-decoration: none;
+}
+.ae-buyer-tracking-contact-fallback a {
+  font-weight: 600;
+}
+.ae-buyer-tracking-divider {
+  border: 0;
+  border-top: 1px dashed var(--ae-line);
+  margin: 16px 0;
+}
+.ae-buyer-tracking-state-help {
+  font-size: 14px;
+}
 .ae-track-placeholder {
   margin: 12px 0 0;
   padding: 12px;
