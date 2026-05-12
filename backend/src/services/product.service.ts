@@ -907,7 +907,7 @@ export const productService = {
           variants: { include: variantWithPropertiesInclude },
           deliveryOptions: deliveryOptionsPublicInclude,
           category: true,
-          _count: { select: { orderItems: true } },
+          _count: { select: { orderItems: true, favorites: true, recentViews: true } },
         },
       }),
       prisma.product.count({ where }),
@@ -929,28 +929,33 @@ export const productService = {
       items: items.map((p) => {
         const { _count, ...rest } = p;
         const defs = p.categoryId ? defsByCat.get(p.categoryId) ?? [] : [];
-        const listingQuality = computeListingQuality(
-          {
-            name: p.name,
-            description: p.description,
-            categoryId: p.categoryId,
-            images: p.images,
-            demoVideoUrl: p.demoVideoUrl,
-            condition: p.condition,
-            conditionDetail: p.conditionDetail,
-            isDraft: p.isDraft,
-            variants: p.variants.map((v) => ({
-              variantStructuredValues: v.variantStructuredValues,
-              properties: v.properties,
-            })),
-          },
-          defs
-        );
+        const listingInput = toListingQualityInput({
+          name: p.name,
+          description: p.description,
+          categoryId: p.categoryId,
+          images: p.images,
+          demoVideoUrl: p.demoVideoUrl,
+          condition: p.condition,
+          conditionDetail: p.conditionDetail,
+          isDraft: p.isDraft,
+          variants: p.variants.map((v) => ({
+            variantStructuredValues: v.variantStructuredValues,
+            properties: v.properties,
+          })),
+        });
+        const listingQuality = computeListingQuality(listingInput, defs);
+        const listingBadges = computePublicListingBadges(listingInput, defs);
         return {
           ...mapProductMediaForApi(rest),
           orderItemsCount: _count.orderItems,
           canDelete: _count.orderItems === 0,
           listingQuality,
+          listingBadges,
+          engagement: {
+            /** Linhas em `ProductRecentView` (visitantes/distintos de chave de identidade). */
+            uniqueProductVisitors: _count.recentViews,
+            favorites: _count.favorites,
+          },
         };
       }),
       total,

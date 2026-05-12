@@ -8,6 +8,7 @@ import type { ProductCondition } from "../utils/productCondition.js";
 import { computeListingQualityPreview } from "../utils/listingQualityPreview.js";
 import { computePublicationSteps, publicationOverallPct } from "../utils/publicationAssistant.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+import { listingQualityGradeCssSuffix } from "../utils/listingGradeUi.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -160,12 +161,6 @@ function categoryAttrFieldLabel(a: CategoryAttrDefPublic): string {
     if (a.unitCode) return `${a.label} (${a.unitCode})`;
   }
   return a.label;
-}
-
-/** Sufixo de classe CSS seguro (evita acentos em selectors). */
-function listingGradeCssClass(grade: "baixo" | "médio" | "alto" | "excelente"): string {
-  if (grade === "médio") return "medio";
-  return grade;
 }
 
 function validateVariantSkus(parentSkuRaw: string, rows: VarForm[]): string | null {
@@ -829,7 +824,7 @@ export default function VendorProductEditor() {
                 </p>
               </div>
               <div
-                className={`ae-v-prod-score-ring ae-v-prod-score-ring--${listingGradeCssClass(listingPreview.grade)}`}
+                className={`ae-v-prod-score-ring ae-v-prod-score-ring--${listingQualityGradeCssSuffix(listingPreview.grade)}`}
                 style={{ "--ae-score": String(listingPreview.score) } as CSSProperties}
                 aria-hidden
               >
@@ -852,7 +847,7 @@ export default function VendorProductEditor() {
 
             <div className="ae-v-prod-assistant__quality-row">
               <span
-                className={`ae-badge ae-listing-quality-preview__grade ae-listing-quality-preview__grade--${listingGradeCssClass(listingPreview.grade)}`}
+                className={`ae-badge ae-listing-quality-preview__grade ae-listing-quality-preview__grade--${listingQualityGradeCssSuffix(listingPreview.grade)}`}
               >
                 Qualidade: {listingPreview.grade}
               </span>

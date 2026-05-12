@@ -5,6 +5,9 @@ import { useAuth } from "../auth/AuthContext.js";
 import { formatKz } from "../utils/format.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { productConditionLabel } from "../utils/productCondition.js";
+import { MediaPlaceholder } from "../components/MediaPlaceholder.js";
+import { ListingBadge } from "../components/ListingBadge.js";
+import { listingQualityGradeCssSuffix, listingQualitySellerTierPt } from "../utils/listingGradeUi.js";
 
 type Row = {
   id: string;
@@ -26,6 +29,11 @@ type Row = {
     score: number;
     grade: string;
     hints: string[];
+  };
+  listingBadges?: { id: string; label: string }[];
+  engagement?: {
+    uniqueProductVisitors: number;
+    favorites: number;
   };
 };
 
@@ -176,6 +184,14 @@ export default function VendorProducts() {
 
   const archived = (p: Row) => Boolean(p.archivedAt);
 
+  function shelfStatusLabel(p: Row): string {
+    if (archived(p)) return "Arquivado";
+    if (p.isDraft) return "Rascunho";
+    if (p.isActive) return "Activo na vitrine";
+    if (p.stock <= 0) return "Fora de stock";
+    return "Venda pausada";
+  }
+
   return (
     <>
       <div className="ae-v-head">
@@ -319,26 +335,49 @@ export default function VendorProducts() {
               ? p.listingQuality.hints.slice(0, 3).join(" · ")
               : "";
           const qScore = p.listingQuality?.score ?? 0;
+          const qTier = p.listingQuality ? listingQualitySellerTierPt(p.listingQuality.grade) : "";
+          const qGradeCss = p.listingQuality ? listingQualityGradeCssSuffix(p.listingQuality.grade) : "baixo";
+          const thumbRaw = p.images[0]?.url?.trim() ?? "";
+          const hasThumb = thumbRaw.length > 0;
+          const visitors = p.engagement?.uniqueProductVisitors ?? 0;
+          const favs = p.engagement?.favorites ?? 0;
           return (
             <article key={p.id} className="ae-v-catalog-card">
-              <img
-                className="ae-v-catalog-card__thumb"
-                src={resolveMediaUrl(p.images[0]?.url)}
-                alt=""
-                width={88}
-                height={88}
-              />
+              {hasThumb ? (
+                <img
+                  className="ae-v-catalog-card__thumb"
+                  src={resolveMediaUrl(thumbRaw)}
+                  alt=""
+                  width={88}
+                  height={88}
+                />
+              ) : (
+                <div
+                  className="ae-v-catalog-card__thumb ae-v-catalog-card__thumb--empty"
+                  aria-label="Sem imagem principal na ficha"
+                >
+                  <MediaPlaceholder variant="tile" className="ae-v-catalog-card__ph-inner" />
+                  <span className="ae-v-catalog-card__thumb-caption">Sem imagem principal</span>
+                </div>
+              )}
               <div>
                 <h2 className="ae-v-catalog-card__title">{p.name}</h2>
                 <div className="ae-v-catalog-card__sku">SKU {p.sku}</div>
                 <div className="ae-v-catalog-card__chips">
                   <span className={`ae-badge ${modClass(p.moderationStatus)}`}>{modLabel(p.moderationStatus)}</span>
                   <span className={`ae-badge ${p.isActive ? "ae-badge--live" : "ae-badge--off"}`}>
-                    {archived(p) ? "Arquivado" : p.isDraft ? "Rascunho" : p.isActive ? "Activo na vitrine" : "Indisponível"}
+                    {shelfStatusLabel(p)}
                   </span>
                   {p.isFeatured ? <span className="ae-badge ae-badge--feat">Destaque</span> : null}
                   <span className="ae-v-catalog-chip ae-v-catalog-chip--dim">{productConditionLabel(p.condition)}</span>
                 </div>
+                {p.listingBadges != null && p.listingBadges.length > 0 ? (
+                  <div className="ae-v-catalog-card__trust-badges" aria-label="Selos da ficha na loja">
+                    {p.listingBadges.map((b) => (
+                      <ListingBadge key={b.id} badge={b} compact />
+                    ))}
+                  </div>
+                ) : null}
                 <div className="ae-v-catalog-card__stats">
                   <div>
                     <strong>Preço</strong>
@@ -353,13 +392,39 @@ export default function VendorProducts() {
                     {p.soldCount}
                   </div>
                 </div>
+                {visitors > 0 || favs > 0 ? (
+                  <div
+                    className="ae-v-catalog-card__engage"
+                    title="Vistas únicas: utilizadores ou visitantes que abriram a ficha (histórico recente). Favoritos: quantidade de corações na plataforma."
+                  >
+                    {visitors > 0 ? (
+                      <span className="ae-v-catalog-card__engage-item">
+                        <span aria-hidden>👁</span> {visitors.toLocaleString("pt-PT")} vistas
+                      </span>
+                    ) : null}
+                    {visitors > 0 && favs > 0 ? <span className="ae-v-catalog-card__engage-sep">·</span> : null}
+                    {favs > 0 ? (
+                      <span className="ae-v-catalog-card__engage-item">
+                        <span aria-hidden>❤</span> {favs.toLocaleString("pt-PT")} favoritos
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 {p.listingQuality ? (
                   <div className="ae-v-catalog-card__qwrap" title={qHint || undefined}>
                     <div className="ae-v-catalog-card__qlabel">
-                      Qualidade da ficha · {p.listingQuality.score}/100 · {p.listingQuality.grade}
+                      <span className="ae-v-catalog-card__qscore">{p.listingQuality.score}</span>
+                      <span className="ae-v-catalog-card__qdot" aria-hidden>
+                        ·
+                      </span>
+                      <span className={`ae-v-catalog-card__qtier ae-v-catalog-card__qtier--${qGradeCss}`}>{qTier}</span>
+                      <span className="ae-v-catalog-card__qsub"> · Qualidade da ficha</span>
                     </div>
                     <div className="ae-v-catalog-card__qbar">
-                      <div className="ae-v-catalog-card__qfill" style={{ width: `${qScore}%` }} />
+                      <div
+                        className={`ae-v-catalog-card__qfill ae-v-catalog-card__qfill--${qGradeCss}`}
+                        style={{ width: `${qScore}%` }}
+                      />
                     </div>
                   </div>
                 ) : null}
