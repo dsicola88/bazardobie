@@ -23,8 +23,23 @@ export type NotificationVisualVariant = "neutral" | "positive" | "negative" | "p
 export type PresentedNotification = {
   title: string;
   message: string;
+  /** Referência da encomenda em linha própria (evita títulos truncados). */
+  orderRef?: string;
   visualVariant: NotificationVisualVariant;
   showOrderStatusExtras: boolean;
+};
+
+export type ChatNotificationPayload = {
+  kind: "CHAT";
+  orderId?: string;
+  orderCode?: string | null;
+  preview?: string;
+};
+
+export type TrackingNotificationPayload = {
+  kind: "TRACKING";
+  orderId?: string;
+  orderCode?: string | null;
 };
 
 const ENUM_ORDER_STATUS = [
@@ -36,12 +51,12 @@ const ENUM_ORDER_STATUS = [
   "CANCELADO",
 ] as const;
 
-/** Referência legível: código curto do pedido ou prefixo do ID. */
+/** Código de encomenda ou ID completo (sem truncar). */
 export function orderRefFromNotificationPayload(p: Pick<OrderStatusNotificationPayload, "orderCode" | "orderId">): string {
   const code = p.orderCode != null && String(p.orderCode).trim() !== "" ? String(p.orderCode).trim() : null;
   if (code) return code;
   const id = p.orderId?.trim();
-  if (id) return `#${id.slice(0, 10)}`;
+  if (id) return id;
   return "";
 }
 
@@ -76,23 +91,22 @@ export function prettifyNotificationPlaintext(text: string): string {
   return out;
 }
 
-function buyerHeadline(toStatus: string, ref: string): string {
-  const suffix = ref ? ` · ${ref}` : "";
+function buyerHeadline(toStatus: string): string {
   switch (toStatus) {
     case "PENDENTE":
-      return `Encomenda registada${suffix}`;
+      return "Encomenda registada";
     case "CONFIRMADO":
-      return `Pedido confirmado pela loja${suffix}`;
+      return "Pedido confirmado pela loja";
     case "EM_PREPARACAO":
-      return `Em preparação para envio${suffix}`;
+      return "Em preparação para envio";
     case "EM_ENTREGA":
-      return `Pedido em trânsito${suffix}`;
+      return "Pedido em trânsito";
     case "ENTREGUE":
-      return `Pedido entregue${suffix}`;
+      return "Pedido entregue";
     case "CANCELADO":
-      return `Pedido cancelado${suffix}`;
+      return "Pedido cancelado";
     default:
-      return ref ? `Actualização da encomenda · ${ref}` : "Actualização da encomenda";
+      return "Actualização da encomenda";
   }
 }
 
@@ -116,23 +130,22 @@ function buyerBody(ref: string, toStatus: string): string {
   }
 }
 
-function vendorHeadline(toStatus: string, ref: string): string {
-  const suffix = ref ? ` · ${ref}` : "";
+function vendorHeadline(toStatus: string): string {
   switch (toStatus) {
     case "PENDENTE":
-      return `Novo pedido${suffix}`;
+      return "Novo pedido";
     case "CONFIRMADO":
-      return `Pedido confirmado${suffix}`;
+      return "Pedido confirmado";
     case "EM_PREPARACAO":
-      return `Pedido em preparação${suffix}`;
+      return "Pedido em preparação";
     case "EM_ENTREGA":
-      return `Pedido em trânsito${suffix}`;
+      return "Pedido em trânsito";
     case "ENTREGUE":
-      return `Pedido entregue${suffix}`;
+      return "Pedido entregue";
     case "CANCELADO":
-      return `Pedido cancelado${suffix}`;
+      return "Pedido cancelado";
     default:
-      return ref ? `Actualização do pedido · ${ref}` : "Actualização do pedido";
+      return "Actualização do pedido";
   }
 }
 
@@ -168,31 +181,67 @@ export function presentNotificationRow(row: {
   if (isRecord(p) && p.kind === "ORDER_STATUS" && typeof p.toStatus === "string") {
     const op = p as OrderStatusNotificationPayload;
     const ref = orderRefFromNotificationPayload(op);
+    const orderRef = ref || undefined;
     const audience = op.audience === "vendor" ? "vendor" : "buyer";
 
     if (audience === "vendor") {
       return {
-        title: vendorHeadline(op.toStatus, ref),
-        message: vendorBody(ref, op.toStatus, op.actorLabel),
+        title: vendorHeadline(op.toStatus),
+        message: vendorBody("", op.toStatus, op.actorLabel),
+        orderRef,
         visualVariant: notificationVariantForOrderStatus(op.toStatus),
         showOrderStatusExtras: false,
       };
     }
 
     return {
-      title: buyerHeadline(op.toStatus, ref),
-      message: buyerBody(ref, op.toStatus),
+      title: buyerHeadline(op.toStatus),
+      message: buyerBody("", op.toStatus),
+      orderRef,
       visualVariant: notificationVariantForOrderStatus(op.toStatus),
+      showOrderStatusExtras: false,
+    };
+  }
+
+  if (isRecord(p) && p.kind === "CHAT") {
+    const cp = p as ChatNotificationPayload;
+    const ref = orderRefFromNotificationPayload({
+      orderId: typeof cp.orderId === "string" ? cp.orderId : "",
+      orderCode: cp.orderCode,
+    });
+    const preview = typeof cp.preview === "string" ? cp.preview.trim() : "";
+    return {
+      title: "Nova mensagem no chat da encomenda",
+      message: preview || "Abra o chat para ler a mensagem completa.",
+      orderRef: ref || undefined,
+      visualVariant: "neutral",
+      showOrderStatusExtras: false,
+    };
+  }
+
+  if (isRecord(p) && p.kind === "TRACKING") {
+    const tp = p as TrackingNotificationPayload;
+    const ref = orderRefFromNotificationPayload({
+      orderId: typeof tp.orderId === "string" ? tp.orderId : "",
+      orderCode: tp.orderCode,
+    });
+    return {
+      title: "Rastreio actualizado",
+      message: prettifyNotificationPlaintext(row.message),
+      orderRef: ref || undefined,
+      visualVariant: "progress",
       showOrderStatusExtras: false,
     };
   }
 
   const op = isRecord(p) && p.kind === "ORDER_STATUS" ? (p as OrderStatusNotificationPayload) : null;
   const reconstructed = Boolean(op?.toStatus && String(op.toStatus).trim().length > 0);
+  const partialRef = op ? orderRefFromNotificationPayload(op) : "";
 
   return {
     title: prettifyNotificationPlaintext(row.title),
     message: prettifyNotificationPlaintext(row.message),
+    orderRef: partialRef || undefined,
     visualVariant: "neutral",
     showOrderStatusExtras: Boolean(op && !reconstructed),
   };

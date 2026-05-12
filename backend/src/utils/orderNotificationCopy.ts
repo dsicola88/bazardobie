@@ -15,6 +15,13 @@ export function orderStatusLabelPt(status: string | null | undefined): string {
   return STATUS_PT[k] ?? status;
 }
 
+/** Código de encomenda amigável ou identificador completo (sem truncar). */
+export function orderRefForNotification(orderId: string, orderCode: string | null | undefined): string {
+  const c = orderCode != null ? String(orderCode).trim() : "";
+  if (c !== "") return c;
+  return orderId.trim();
+}
+
 export function actorLabelPt(actorRole: string): { label: string; kind: "buyer" | "seller" | "platform" | "support" | "logistics" | "other" } {
   switch (actorRole) {
     case "CLIENTE":

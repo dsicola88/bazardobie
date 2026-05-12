@@ -61,8 +61,13 @@ export function OrderTrackingEditor({ orderId, token, initial, onSaved, disabled
           />
         </label>
         <label>
-          <span>Código</span>
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Nº de guia / tracking" maxLength={160} />
+          <span>Código de rastreio / guia</span>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Nº que o comprador usa no site da transportadora"
+            maxLength={160}
+          />
         </label>
         <label className="ae-tracking-editor__full">
           <span>URL de seguimento (opcional)</span>

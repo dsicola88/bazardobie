@@ -69,6 +69,14 @@ export default function OrdersPage() {
     productName: string;
   } | null>(null);
 
+  const [orderSearchInput, setOrderSearchInput] = useState("");
+  const [orderSearchQ, setOrderSearchQ] = useState("");
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setOrderSearchQ(orderSearchInput.trim()), 320);
+    return () => window.clearTimeout(t);
+  }, [orderSearchInput]);
+
   const [ordersTab, setOrdersTab] = useState<BuyerOrdersTab>(
     () => parseBuyerOrdersTabParam(searchParams.get("tab")) ?? "todos"
   );
@@ -106,7 +114,8 @@ export default function OrdersPage() {
 
   const reload = useCallback(() => {
     if (!token || user?.role !== "CLIENTE") return;
-    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=0`, { token })
+    const qParam = orderSearchQ ? `&q=${encodeURIComponent(orderSearchQ)}` : "";
+    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=0${qParam}`, { token })
       .then((res) => {
         setList(res.items);
         setOrdersTotal(res.total);
@@ -115,17 +124,18 @@ export default function OrdersPage() {
         setList([]);
         setOrdersTotal(0);
       });
-  }, [token, user]);
+  }, [token, user, orderSearchQ]);
 
   const loadMore = useCallback(() => {
     if (!token || user?.role !== "CLIENTE") return;
-    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=${list.length}`, { token })
+    const qParam = orderSearchQ ? `&q=${encodeURIComponent(orderSearchQ)}` : "";
+    void apiFetch<OrdersMineResp>(`/orders/my?take=${BUYER_ORDER_PAGE}&skip=${list.length}${qParam}`, { token })
       .then((res) => {
         setList((prev) => [...prev, ...res.items]);
         setOrdersTotal(res.total);
       })
       .catch(() => {});
-  }, [token, user, list.length]);
+  }, [token, user, list.length, orderSearchQ]);
 
   const resumePay = useCallback(
     async (checkoutGroupId: string) => {
@@ -175,16 +185,46 @@ export default function OrdersPage() {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
+          alignItems: "flex-start",
           gap: 12,
           flexWrap: "wrap",
           marginBottom: 14,
         }}
       >
-        <h1 className="ae-checkout__title" style={{ margin: 0 }}>
-          As minhas encomendas
-        </h1>
-        <Link to="/search">Continuar compras →</Link>
+        <div style={{ flex: "1 1 220px" }}>
+          <h1 className="ae-checkout__title" style={{ margin: 0 }}>
+            As minhas encomendas
+          </h1>
+          <p className="ae-muted" style={{ margin: "6px 0 0", fontSize: 12, lineHeight: 1.45, maxWidth: 520 }}>
+            <strong>Onde ver o rastreio da transportadora:</strong> abra <strong>Seguir encomenda</strong> e desça até à
+            secção «Rastreio da entrega». O código nas notificações de estado é a <strong>referência do pedido neste site</strong>, não
+            a guia da DHL nem de outra operadora.
+          </p>
+        </div>
+        <div style={{ flex: "1 1 260px", maxWidth: 360 }}>
+          <label htmlFor="ae-orders-q" className="ae-muted" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+            Pesquisar (referência, identificador…)
+          </label>
+          <input
+            id="ae-orders-q"
+            type="search"
+            autoComplete="off"
+            value={orderSearchInput}
+            onChange={(e) => setOrderSearchInput(e.target.value)}
+            placeholder="Ex.: cmp04… / código da encomenda"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--ae-line)",
+              font: "inherit",
+            }}
+          />
+        </div>
+        <Link to="/search" style={{ alignSelf: "center" }}>
+          Continuar compras →
+        </Link>
       </div>
 
       {gatewayFlash === "PAGO" ? (
@@ -263,11 +303,13 @@ export default function OrdersPage() {
       <ul style={{ padding: 0, listStyle: "none", margin: 0 }}>
         {filteredList.length === 0 ? (
           <li className="page-panel ae-buyer-orders-empty">
-            <strong>Nenhuma encomenda neste separador.</strong>
+            <strong>{orderSearchQ ? "Nenhum resultado para esta pesquisa." : "Nenhuma encomenda neste separador."}</strong>
             <p className="ae-muted" style={{ margin: "8px 0 0", fontSize: 13 }}>
-              {ordersTab === "concluidos"
-                ? "As encomendas entregues só aparecem aqui depois de avaliar todos os produtos dessa encomenda (cada produto: uma avaliação por conta)."
-                : "Use «Todas» para ver o histórico completo ou «À pagar» se finalizou com pagamento online."}
+              {orderSearchQ
+                ? "Confirme a referência copiada das notificações ou tente parte do identificador. O código de rastreio da transportadora consulta-se em Seguir encomenda → Rastreio da entrega."
+                : ordersTab === "concluidos"
+                  ? "As encomendas entregues só aparecem aqui depois de avaliar todos os produtos dessa encomenda (cada produto: uma avaliação por conta)."
+                  : "Use «Todas» para ver o histórico completo ou «À pagar» se finalizou com pagamento online."}
             </p>
           </li>
         ) : null}
@@ -275,7 +317,7 @@ export default function OrdersPage() {
           <li key={o.id} className="page-panel ae-order-card" style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
               <div>
-                <strong>Encomenda {o.orderCode || `${o.id.slice(0, 10)}…`}</strong>
+                <strong>Encomenda {o.orderCode?.trim() || o.id}</strong>
                 <div className="ae-muted" style={{ fontSize: 12 }}>
                   {new Date(o.createdAt).toLocaleString("pt-AO")}
                 </div>
@@ -317,7 +359,7 @@ export default function OrdersPage() {
 
             {(o.trackingCode || o.trackingUrl || o.trackingCarrier) && (o.status === "EM_ENTREGA" || o.status === "ENTREGUE") ? (
               <div className="ae-order-tracking-snippet" style={{ marginTop: 10 }}>
-                <strong>Rastreio:</strong>{" "}
+                <strong>Rastreio (transportadora):</strong>{" "}
                 {[o.trackingCarrier, o.trackingCode].filter(Boolean).join(" · ") || "—"}
                 {o.trackingUrl ? (
                   <>

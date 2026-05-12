@@ -41,6 +41,7 @@ type TrackItem = {
 
 type TrackOrder = {
   id: string;
+  orderCode?: string | null;
   status: string;
   createdAt: string;
   grandTotal: string;
@@ -69,6 +70,11 @@ type TrackOrder = {
   trackingUrl?: string | null;
   logisticsPartner?: { id: string; name: string; phone?: string | null } | null;
 };
+
+function referenciaEncomendaVisivel(row: TrackOrder): string {
+  const c = row.orderCode?.trim();
+  return c && c.length > 0 ? c : row.id;
+}
 
 function textoRastreioPorEstado(status: string): string {
   switch (status) {
@@ -242,8 +248,13 @@ export default function OrderTrackPage() {
       </h1>
 
       <div className="page-panel" style={{ marginBottom: 14 }}>
-        <p style={{ marginTop: 0, marginBottom: 8 }} className="ae-muted">
-          Ref. <code style={{ fontSize: 12 }}>{row.id.slice(0, 14)}…</code>
+        <p style={{ marginTop: 0, marginBottom: 6 }} className="ae-muted">
+          <span style={{ display: "block", marginBottom: 4, fontSize: 12, lineHeight: 1.45 }}>
+            <strong>Referência no BAZAR DO BIÉ</strong> — identifica o seu pedido nesta plataforma.{" "}
+            <span className="ae-muted">Não confunda com o código de rastreio da transportadora (guia / AWB), que só
+            aparece na secção «Rastreio da entrega» abaixo, quando a loja ou a logística o registarem.</span>
+          </span>
+          <code className="ae-notif-ref-code" style={{ fontSize: 12 }}>{referenciaEncomendaVisivel(row)}</code>
           {" · "}
           {new Date(row.createdAt).toLocaleString("pt-AO")}
         </p>
@@ -462,8 +473,10 @@ export default function OrderTrackPage() {
       <div className="page-panel ae-track-courier" style={{ marginBottom: 14 }}>
         <h2 style={{ marginTop: 0, marginBottom: 10, fontSize: 15 }}>Rastreio da entrega</h2>
         <p className="ae-muted" style={{ marginTop: 0, marginBottom: 12, fontSize: 12, lineHeight: 1.5 }}>
-          Com envio pela loja, o parceiro regista guia e URL quando expedir. Com envio BAZAR DO BIÉ, a equipa de logística
-          ou a administração preenchem estes dados. Recebe notificação quando forem actualizados.
+          Aqui figura o <strong>código ou ligação da transportadora</strong> (para pesquisar no site da DHL, FedEx, TMS
+          nacional, etc.). Com envio pela loja, o parceiro regista guia e URL ao expedir. Com envio BAZAR DO BIÉ, a
+          logística ou a administração preenchem estes dados. É notificado quando forem actualizados — também pode
+          consultar sempre em <Link to="/orders">As minhas encomendas</Link> → <strong>Seguir encomenda</strong>.
         </p>
         {row.trackingCode || row.trackingUrl || row.trackingCarrier ? (
           <div style={{ fontSize: 14, lineHeight: 1.55 }}>
@@ -480,7 +493,7 @@ export default function OrderTrackPage() {
             ) : null}
             {row.trackingCode ? (
               <p style={{ margin: "0 0 8px" }}>
-                <strong>Código:</strong>{" "}
+                <strong>Código de rastreio / guia:</strong>{" "}
                 <code style={{ fontSize: 13, padding: "2px 6px", background: "#f5f5f5", borderRadius: 4 }}>
                   {row.trackingCode}
                 </code>
@@ -508,7 +521,8 @@ export default function OrderTrackPage() {
           </div>
         ) : (
           <p className="ae-muted" style={{ marginTop: 0, fontSize: 13 }}>
-            Ainda não há código de rastreio registado. Quando a loja ou a logística o indicar, aparecerá aqui.
+            Ainda não há código de rastreio da transportadora registado. Quando a loja ou a logística o indicar, o número
+            de guia e a hiperligação aparecerão aqui para poder seguir o envio no canal oficial da operadora.
           </p>
         )}
         <hr style={{ border: 0, borderTop: "1px dashed var(--ae-line)", margin: "14px 0" }} />

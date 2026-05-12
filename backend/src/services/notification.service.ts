@@ -3,6 +3,7 @@ import { HttpError } from "../middlewares/errorHandler.js";
 import { NotificationType, type Prisma } from "@prisma/client";
 import {
   actorLabelPt,
+  orderRefForNotification,
   orderStatusChangeBuyerCopy,
   orderStatusChangeVendorCopy,
   orderStatusLabelPt,
@@ -160,10 +161,7 @@ export const notificationService = {
     if (!order) return { notified: 0 };
 
     const vendorIds = [...new Set(await vendorUserIdsFromOrder(orderId))];
-    const code =
-      order.orderCode != null && String(order.orderCode).trim() !== ""
-        ? String(order.orderCode).trim()
-        : `#${order.id.slice(0, 10)}`;
+    const code = orderRefForNotification(order.id, order.orderCode);
 
     const prevLabel = orderStatusLabelPt(payload.previous === "—" ? null : payload.previous);
     const nextLabel = orderStatusLabelPt(payload.next);
@@ -232,7 +230,7 @@ export const notificationService = {
     }
   ) {
     const vendorIds = await vendorUserIdsFromOrder(orderId);
-    const ref = (payload.orderCode && payload.orderCode.trim()) || `#${orderId.slice(0, 10)}`;
+    const ref = orderRefForNotification(orderId, payload.orderCode ?? null);
     const actor = actorLabelPt(payload.actorRole);
     const title = `Rastreio · pedido ${ref}`;
     const message = `${actor.label} actualizou os dados de envio (transportadora, código ou hiperligação). Abra o pedido para consultar e seguir a entrega.`;
@@ -287,6 +285,11 @@ export const notificationService = {
     orderId: string,
     payload: { senderUserId: string; senderRole: string; buyerUserId: string; preview: string }
   ) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, orderCode: true },
+    });
+    const chatRef = orderRefForNotification(order?.id ?? orderId, order?.orderCode ?? null);
     const vendorIds = await vendorUserIdsFromOrder(orderId);
     const staffRole = payload.senderRole === "ADMIN" || payload.senderRole === "SUPORTE";
     const recipients = staffRole
@@ -295,10 +298,11 @@ export const notificationService = {
         ? vendorIds
         : [payload.buyerUserId];
     const title = "Mensagem no chat da encomenda";
-    const message = `Encomenda #${orderId.slice(0, 10)} · «${payload.preview}»`;
+    const message = `Encomenda ${chatRef} · «${payload.preview}»`;
     const chatPayloadBase = {
       kind: "CHAT" as const,
       orderId,
+      orderCode: order?.orderCode ?? null,
       preview: payload.preview,
     };
     const filtered = recipients.filter((id) => id !== payload.senderUserId);
@@ -331,7 +335,7 @@ export const notificationService = {
     });
     if (staff.length === 0) return { notified: 0 };
     const title = "Pedido pronto para recolha (BAZAR DO BIÉ)";
-    const message = `Ref. ${orderId.slice(0, 14)}… · ${grandTotalKz} Kz · ${shippingCity}. A loja marcou «Em preparação» — planifique a recolha na origem.`;
+    const message = `Ref. ${orderRefForNotification(orderId, null)} · ${grandTotalKz} Kz · ${shippingCity}. A loja marcou «Em preparação» — planifique a recolha na origem.`;
     return createForUserIds(
       staff.map((u) => u.id),
       NotificationType.PEDIDO,

@@ -68,7 +68,7 @@ function TrackingExtras({ payload }: { payload: unknown }) {
   return href ? (
     <div style={{ marginTop: 10 }}>
       <Link to={href} className="ae-tracking__cta">
-        Abrir ficha do pedido
+        Ver rastreio e detalhes da encomenda
       </Link>
     </div>
   ) : null;
@@ -154,6 +154,17 @@ export default function NotificationsPage() {
           <p className="ae-muted" style={{ margin: "4px 0 0" }}>
             Atualizações de encomendas, rastreio, chat e decisões operacionais.
           </p>
+          <div className="ae-panel ae-notif-page-guide" style={{ marginTop: 12, padding: "12px 14px" }}>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
+              <strong>Referência da encomenda ≠ código de rastreio.</strong> O identificador que acompanha as
+              notificações de estado é o <strong>número do pedido na plataforma</strong> (referência interna). O{" "}
+              <strong>código de rastreio da transportadora</strong> (guia, AWB, etc.) só aparece depois de registado,
+              na página <Link to="/orders">As minhas encomendas</Link> → <strong>Seguir encomenda</strong>, na
+              secção <strong>Rastreio da entrega</strong>. Pode{" "}
+              <Link to="/orders">pesquisar pela referência na lista de encomendas</Link>
+              {" "}(campo «Pesquisar»).
+            </p>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className={unreadOnly ? "btn btn-primary" : "btn"} onClick={() => setUnreadOnly((v) => !v)}>
@@ -182,12 +193,18 @@ export default function NotificationsPage() {
           return (
             <article key={n.id} className={notifArticleClass(n.read, presented.visualVariant)}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                <strong style={{ lineHeight: 1.3 }}>{presented.title}</strong>
+                <strong className="ae-notif-card__title">{presented.title}</strong>
                 <span className="ae-muted" style={{ fontSize: 12, flexShrink: 0 }}>
                   {new Date(n.createdAt).toLocaleString("pt-AO")}
                 </span>
               </div>
-              <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{presented.message}</p>
+              {presented.orderRef ? (
+                <div className="ae-notif-ref-row">
+                  <span className="ae-muted">Referência</span>{" "}
+                  <code className="ae-notif-ref-code">{presented.orderRef}</code>
+                </div>
+              ) : null}
+              <p className="ae-notif-card__body">{presented.message}</p>
               <OrderStatusPrimaryLink payload={n.payload} />
               {presented.showOrderStatusExtras ? <OrderStatusExtras payload={n.payload} /> : null}
               <TrackingExtras payload={n.payload} />
