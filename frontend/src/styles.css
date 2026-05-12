@@ -3306,6 +3306,9 @@ a:hover {
 .ae-home-mega__children {
   display: grid;
   gap: 4px;
+  max-height: min(42vh, 360px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .ae-home-mega__children a:not(.ae-home-mega__children-all) {
   font-size: 13.25px;

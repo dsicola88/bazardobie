@@ -223,7 +223,7 @@ export default function Home() {
     return () => clearInterval(t);
   }, [banners.length]);
 
-  const roots = useMemo(() => cats.filter((c) => !c.parentId).slice(0, 24), [cats]);
+  const roots = useMemo(() => cats.filter((c) => !c.parentId), [cats]);
   const byParent = useMemo(() => {
     const map = new Map<string, Category[]>();
     for (const c of cats) {
@@ -487,7 +487,7 @@ export default function Home() {
                 </div>
               ) : null}
               <nav className="ae-home-mega__children" aria-label="Subcategorias">
-                {activeChildren.slice(0, 12).map((child) => (
+                {activeChildren.map((child) => (
                   <Link key={child.id} to={`/search?categoryId=${child.id}`}>
                     {child.name}
                   </Link>

@@ -221,7 +221,7 @@ export function Header() {
     const barKw = uniquePromoKeywords(promoKeywordsRaw, 4);
     return (promoPopupKeywordsRaw ? uniquePromoKeywords(promoPopupKeywordsRaw, 6) : barKw).slice(0, 6);
   }, [promoPopupKeywordsRaw, promoKeywordsRaw]);
-  const roots = cats.filter((c) => !c.parentId).slice(0, 12);
+  const roots = cats.filter((c) => !c.parentId);
   const discoveryColumnTitle =
     discoveryScope === "related" ? "Categorias relacionadas" : "Categorias em destaque";
 
@@ -290,7 +290,6 @@ export function Header() {
   const viewAllSuggestIdx = showSuggestViewAll ? suggestProducts.length + discoveryItems.length : -1;
   const suggestTotal =
     suggestProducts.length + discoveryItems.length + (showSuggestViewAll ? 1 : 0);
-  const searchRoots = roots.slice(0, 20);
   const promoPriority = Number.isFinite(Number(promoPriorityRaw)) ? Math.round(Number(promoPriorityRaw)) : 50;
   const promoDelaySeconds = Number.isFinite(Number(promoDelayRaw))
     ? Math.min(Math.max(Number(promoDelayRaw), 0), 180)
@@ -482,7 +481,7 @@ export function Header() {
                   onClick={() => setCatOpen((v) => !v)}
                 >
                   <span className="ae-search__catbtn-label">
-                    {searchRoots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias"}
+                    {roots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias"}
                   </span>
                   <span aria-hidden className="ae-search__catbtn-caret">▾</span>
                 </button>
@@ -492,7 +491,7 @@ export function Header() {
                       <span className="ae-search-cat__icon">☰</span>
                       <span>Todas as categorias</span>
                     </button>
-                    {searchRoots.map((c) => (
+                    {roots.map((c) => (
                       <button
                         key={c.id}
                         type="button"
