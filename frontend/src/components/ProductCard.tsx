@@ -6,7 +6,6 @@ import { productConditionLabel } from "../utils/productCondition.js";
 import { addCompareId, COMPARE_MAX, getCompareIds, removeCompareId } from "../utils/compareSelection.js";
 import { MediaPlaceholder } from "./MediaPlaceholder.js";
 import { StarRating } from "./StarRating.js";
-import { ListingBadge } from "./ListingBadge.js";
 
 export type ProductCardData = {
   id: string;
@@ -24,7 +23,7 @@ export type ProductCardData = {
   ratingTrustShortPt?: string | null;
   ratingTrustHintPt?: string | null;
   images: { url: string }[];
-  /** Selos derivados da completude da ficha (API pública). */
+  /** Selos da ficha (API); na vitrine compacta não se mostram — ver ficha do produto. */
   listingBadges?: { id: string; label: string }[];
 };
 
@@ -147,13 +146,6 @@ function ProductCardInner({
           </p>
         ) : null}
         <h3 className="ae-pcard__title">{p.name}</h3>
-        {p.listingBadges?.length ? (
-          <div className="ae-pcard__badges">
-            {p.listingBadges.map((b) => (
-              <ListingBadge key={b.id} badge={b} compact />
-            ))}
-          </div>
-        ) : null}
         <div className="ae-pcard__meta">
           {p.averageRating != null ? (
             <StarRating
@@ -165,8 +157,7 @@ function ProductCardInner({
             />
           ) : p.reviewCount > 0 ? (
             <span className="ae-pcard__rate ae-muted" title={p.ratingTrustHintPt ?? undefined}>
-              {p.ratingTrustShortPt ?? "Ainda sem avaliações suficientes"} · {p.reviewCount}{" "}
-              {p.reviewCount === 1 ? "avaliação" : "avaliações"}
+              {p.reviewCount === 1 ? "1 opinião" : `${p.reviewCount} opiniões`}
             </span>
           ) : (
             <span className="ae-pcard__rate ae-pcard__rate--muted">Sem avaliações</span>

@@ -12,7 +12,6 @@ import { useSeo } from "../seo/useSeo.js";
 import { useFlashDealCountdown } from "../home/useFlashDealCountdown.js";
 import { HomeGroupShowcase, resolveHomeGroupCta, type HomeGroupPublicBlock } from "../home/HomeGroupShowcase.js";
 import { HomeSpotlightBlocks, type HomeSpotlightPublicSection } from "../home/HomeSpotlightBlocks.js";
-import { ListingBadge } from "../components/ListingBadge.js";
 
 type Banner = { id: string; title?: string | null; imageUrl: string; linkUrl?: string | null };
 type Category = PublicCategory;
@@ -519,13 +518,6 @@ export default function Home() {
                       </span>
                       <span className="ae-home-mega__product-main">
                         <span className="ae-home-mega__product-copy">{p.name}</span>
-                        {p.listingBadges?.length ? (
-                          <span className="ae-home-mega__badges">
-                            {p.listingBadges.map((b) => (
-                              <ListingBadge key={b.id} badge={b} compact />
-                            ))}
-                          </span>
-                        ) : null}
                       </span>
                     </Link>
                   ))}

@@ -32,6 +32,7 @@ import {
   removeCompareId,
 } from "../utils/compareSelection.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
+import { MIN_REVIEWS_FOR_PUBLIC_STAR_AVG } from "../constants/reputation.js";
 import { useToast } from "../ui/ToastProvider.js";
 
 type Img = { url: string };
@@ -1260,8 +1261,9 @@ export default function ProductPage() {
                     <span className="ae-pdp-buy-rail__pending-text">
                       <strong>{product.reviewCount.toLocaleString("pt-PT")}</strong>{" "}
                       {product.reviewCount === 1 ? "avaliação verificada" : "avaliações verificadas"} ·{" "}
-                      <span className="ae-muted">
-                        {product.ratingTrustShortPt ?? "Ainda sem avaliações suficientes"}
+                      <span className="ae-muted" title={product.ratingTrustHintPt ?? undefined}>
+                        {product.ratingTrustShortPt ??
+                          `Média em estrelas após ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões`}
                       </span>
                     </span>
                     <span className="ae-pdp-buy-rail__sep" aria-hidden="true">

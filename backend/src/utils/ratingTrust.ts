@@ -31,7 +31,8 @@ export function mergePublicRatingFields(input: {
       ratingTrustShortPt = "Sem avaliações";
     } else {
       ratingTrustHintPt = `Mostramos a média em estrelas quando existirem pelo menos ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões verificadas — transparência sem ruído estatístico.`;
-      ratingTrustShortPt = "Ainda sem avaliações suficientes";
+      /** Texto para combinar com o número de opiniões (evita “sem avaliações suficientes” + “1 avaliação”). */
+      ratingTrustShortPt = `Média em estrelas após ${MIN_REVIEWS_FOR_PUBLIC_STAR_AVG} opiniões`;
     }
   }
   return {

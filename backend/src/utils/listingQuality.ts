@@ -228,7 +228,7 @@ export function computePublicListingBadges(product: ProductLite, defs: AttrDef[]
   const hasDemo = Boolean(product.demoVideoUrl?.trim());
   const mediaRich = nImg >= 2 || (nImg >= 1 && hasDemo);
   if (descLen >= 160 && mediaRich) {
-    badges.push({ id: "produto_detalhado", label: "Produto detalhado" });
+    badges.push({ id: "produto_detalhado", label: "Descrição e fotos úteis" });
   }
 
   /** Selo rígido: obrigatórios em todas as variantes, mín. de ficha estruturada, imagens e score. */
