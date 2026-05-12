@@ -33,6 +33,8 @@ import {
 } from "../utils/compareSelection.js";
 import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 import { useToast } from "../ui/ToastProvider.js";
+import { PdpDescriptionBody } from "../components/PdpDescriptionBody.js";
+import { PdpRecoStrip } from "../components/PdpRecoStrip.js";
 
 type Img = { url: string };
 type Variant = {
@@ -1096,6 +1098,9 @@ export default function ProductPage() {
 
   const trust = product.shop?.credibilidade;
   const guarantees = trust?.garantiasAoComprador;
+  const pdpCondition = product.condition ?? "NEW";
+  const pdpConditionPill =
+    pdpCondition === "USED" ? "Usado" : pdpCondition === "REFURBISHED" ? "Recond." : "Novo";
 
   return (
     <>
@@ -1145,6 +1150,12 @@ export default function ProductPage() {
             onTouchStart={canMainGallerySwipe ? onMainTouchStart : undefined}
             onTouchEnd={canMainGallerySwipe ? onMainTouchEnd : undefined}
           >
+            <span
+              className={`ae-pdp-main__cond ae-pdp-main__cond--${pdpCondition.toLowerCase()}`}
+              aria-label={`Condição: ${productConditionLabel(pdpCondition)}`}
+            >
+              {pdpConditionPill}
+            </span>
             {product.demoVideoUrl ? (
               <video
                 src={product.demoVideoUrl}
@@ -1220,9 +1231,6 @@ export default function ProductPage() {
               {needVariant && selectedVariant && product.sku && selectedVariant.sku !== product.sku ? (
                 <span className="ae-muted"> · modelo {product.sku}</span>
               ) : null}
-            </p>
-            <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
-              Condição: <strong>{productConditionLabel(product.condition)}</strong>
             </p>
             {product.condition === "USED" && product.conditionDetail?.trim() ? (
               <p className="ae-muted" style={{ fontSize: 12, margin: "0 0 8px" }}>

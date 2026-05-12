@@ -4983,6 +4983,36 @@ a:hover {
   max-height: 100%;
   object-fit: contain;
 }
+.ae-pdp-main__cond {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 5px 11px;
+  border-radius: var(--ae-radius-pill);
+  line-height: 1.2;
+  border: 1px solid rgb(255 255 255 / 0.65);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.1);
+  pointer-events: none;
+}
+.ae-pdp-main__cond--new {
+  background: linear-gradient(180deg, #ecfdf5, #d1fae5);
+  color: #065f46;
+  border-color: rgb(16 185 129 / 0.35);
+}
+.ae-pdp-main__cond--used {
+  background: linear-gradient(180deg, #fffbeb, #fef3c7);
+  color: #92400e;
+  border-color: rgb(245 158 11 / 0.38);
+}
+.ae-pdp-main__cond--refurbished {
+  background: linear-gradient(180deg, #eff6ff, #dbeafe);
+  color: #1e40af;
+  border-color: rgb(59 130 246 / 0.35);
+}
 .ae-pdp-main--zoomable {
   cursor: zoom-in;
 }
