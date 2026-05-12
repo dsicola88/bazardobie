@@ -89,7 +89,7 @@ export const CATALOG_TERMS = {
     "Na página do produto, utilize «Guardar na lista» para registar referências de interesse.",
 } as const;
 
-/** Chip «filtros activos» na pesquisa — contagens de cláusulas de ficha técnica. */
+/** Chip «critérios aplicados» na pesquisa — contagens de cláusulas de ficha técnica. */
 export function catalogStructuredFiltersChipLabel(count: number): string {
   if (count <= 0) return "Ficha técnica";
   return `Ficha técnica · ${count} critério${count === 1 ? "" : "s"}`;
