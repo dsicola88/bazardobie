@@ -12,6 +12,33 @@ import type { ProductCardData } from "./ProductCard.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { getCompareIds } from "../utils/compareSelection.js";
 
+function cmpPublicCategoryPick(a: PublicCategory, b: PublicCategory): number {
+  const so = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  if (so !== 0) return so;
+  return a.name.localeCompare(b.name, "pt");
+}
+
+/** Raízes e subcategorias em profundidade-primeiro (mesma ordem que o seed / sortOrder). */
+function categoryPickerRowsDepthFirst(cats: PublicCategory[]): { c: PublicCategory; depth: number }[] {
+  const byParent = new Map<string | null, PublicCategory[]>();
+  for (const c of cats) {
+    const k = c.parentId ?? null;
+    const list = byParent.get(k) ?? [];
+    list.push(c);
+    byParent.set(k, list);
+  }
+  for (const list of byParent.values()) list.sort(cmpPublicCategoryPick);
+  const out: { c: PublicCategory; depth: number }[] = [];
+  function walk(parentId: string | null, depth: number) {
+    for (const c of byParent.get(parentId) ?? []) {
+      out.push({ c, depth });
+      walk(c.id, depth + 1);
+    }
+  }
+  walk(null, 0);
+  return out;
+}
+
 function triStatePromoFlag(raw: string | undefined): boolean | null {
   const v = (raw ?? "").trim().toLowerCase();
   if (v === "true" || v === "1" || v === "sim" || v === "yes") return true;
@@ -222,6 +249,7 @@ export function Header() {
     return (promoPopupKeywordsRaw ? uniquePromoKeywords(promoPopupKeywordsRaw, 6) : barKw).slice(0, 6);
   }, [promoPopupKeywordsRaw, promoKeywordsRaw]);
   const roots = cats.filter((c) => !c.parentId);
+  const searchCategoryRows = useMemo(() => categoryPickerRowsDepthFirst(cats), [cats]);
   const discoveryColumnTitle =
     discoveryScope === "related" ? "Categorias relacionadas" : "Categorias em destaque";
 
@@ -481,7 +509,7 @@ export function Header() {
                   onClick={() => setCatOpen((v) => !v)}
                 >
                   <span className="ae-search__catbtn-label">
-                    {roots.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias"}
+                    {cats.find((c) => c.id === searchCatId)?.name ?? "Todas as categorias"}
                   </span>
                   <span aria-hidden className="ae-search__catbtn-caret">▾</span>
                 </button>
@@ -491,14 +519,17 @@ export function Header() {
                       <span className="ae-search-cat__icon">☰</span>
                       <span>Todas as categorias</span>
                     </button>
-                    {roots.map((c) => (
+                    {searchCategoryRows.map(({ c, depth }) => (
                       <button
                         key={c.id}
                         type="button"
                         className={`ae-search-cat__item ${searchCatId === c.id ? "ae-search-cat__item--on" : ""}`}
+                        style={{ paddingLeft: `${8 + depth * 14}px` }}
                         onClick={() => applyCategoryFromSearchBar(c.id)}
                       >
-                        <span className="ae-search-cat__icon">•</span>
+                        <span className="ae-search-cat__icon" aria-hidden>
+                          {depth === 0 ? "•" : "›"}
+                        </span>
                         <span>{c.name}</span>
                       </button>
                     ))}
