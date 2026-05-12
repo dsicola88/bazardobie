@@ -42,8 +42,15 @@ export const CATALOG_TERMS = {
   searchFiltersMobileToggle: "Filtros e categorias",
   searchFiltersExpand: "Expandir painel de filtros",
   searchFiltersCollapse: "Encolher painel de filtros",
-  searchActiveFiltersLabel: "Filtros activos",
-  searchClearAllFilters: "Limpar filtros",
+  /** Rótulo visível da barra de chips (com dois pontos na UI). */
+  searchActiveFiltersBarTitle: "Critérios aplicados",
+  /** Acessibilidade — grupo de chips e botão de repor. */
+  searchActiveFiltersGroupAria:
+    "Critérios de refinamento activos na pesquisa. Cada ligação remove um critério.",
+  searchClearAllFilters: "Repor refinamento",
+  /** Explicar que o termo de pesquisa textual se mantém (atributo title no botão). */
+  searchClearAllFiltersHint:
+    "Remove filtros e refinamentos; mantém o texto de pesquisa, se existir.",
 
   searchCategoryGroupTitle: "Categoria",
   searchCategoryFacetHintVisual: "Contagens não aplicáveis à pesquisa por imagem.",
@@ -51,7 +58,7 @@ export const CATALOG_TERMS = {
 
   searchPriceGroupTitle: "Preço (Kz)",
   searchPriceGroupHint:
-    "Barra dupla como nos grandes sites: os extremos vêm dos artigos que já correspondem aos outros filtros (ainda sem este intervalo de preço nem por categoria).",
+    "Barra com dois valores: os extremos reflectem apenas artigos que já cumprem os restantes critérios (antes de aplicar este intervalo de preço por categoria).",
   searchPriceGroupHintVisualSuffix:
     " Na pesquisa por imagem, o controlo de preço pode ficar limitado.",
 
@@ -61,7 +68,7 @@ export const CATALOG_TERMS = {
 
   searchRatingGroupTitle: "Avaliação mínima",
   searchRatingGroupHint:
-    "Como nos grandes marketplaces: escolha o número de estrelas mínimo da média pública do produto (reviews homologadas).",
+    "Seleccione a média mínima de avaliações públicas do produto (reviews homologadas na plataforma).",
 
   searchCurationGroupTitle: "Destaques e promoções",
   searchCurationGroupHint:
@@ -71,6 +78,12 @@ export const CATALOG_TERMS = {
 
   searchStructuredVisualUnavailable: "Não disponível na pesquisa por imagem.",
 
+  /** Intervalos numéricos na ficha técnica (filtro lateral). */
+  searchStructuredRangeFrom: "De",
+  searchStructuredRangeTo: "Até",
+  searchStructuredRangeApply: "Aplicar",
+  searchStructuredRangeClear: "Repor",
+
   /** Favoritos (comprador). */
   favoritesHowToSave:
     "Na página do produto, utilize «Guardar na lista» para registar referências de interesse.",
@@ -79,11 +92,20 @@ export const CATALOG_TERMS = {
 /** Chip «filtros activos» na pesquisa — contagens de cláusulas de ficha técnica. */
 export function catalogStructuredFiltersChipLabel(count: number): string {
   if (count <= 0) return "Ficha técnica";
-  return `Ficha técnica · ${count} filtro${count === 1 ? "" : "s"}`;
+  return `Ficha técnica · ${count} critério${count === 1 ? "" : "s"}`;
 }
 
 /** Faceta discreta longa — resumo do `<details>` «Ver mais». */
 export function catalogStructuredDiscreteFacetMoreLabel(remaining: number): string {
   const n = remaining.toLocaleString("pt-AO");
-  return `Ver mais ${n} valor${remaining === 1 ? "" : "es"}`;
+  return `Mostrar mais ${n} valor${remaining === 1 ? "" : "es"}`;
+}
+
+/** Botões de intervalo — rótulos acessíveis por atributo da ficha técnica. */
+export function catalogStructuredRangeApplyAria(attributeLabel: string): string {
+  return `Aplicar o intervalo ao atributo «${attributeLabel}» da ficha técnica`;
+}
+
+export function catalogStructuredRangeClearAria(attributeLabel: string): string {
+  return `Repor o filtro de intervalo em «${attributeLabel}»`;
 }

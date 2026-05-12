@@ -17,7 +17,13 @@ import {
   upsertRangeFacet,
   isDiscreteValueSelected,
 } from "../utils/structuredFacetsUrl.js";
-import { CATALOG_TERMS, catalogStructuredDiscreteFacetMoreLabel, catalogStructuredFiltersChipLabel } from "../catalog/catalogTerminology.js";
+import {
+  CATALOG_TERMS,
+  catalogStructuredDiscreteFacetMoreLabel,
+  catalogStructuredFiltersChipLabel,
+  catalogStructuredRangeApplyAria,
+  catalogStructuredRangeClearAria,
+} from "../catalog/catalogTerminology.js";
 
 type Category = PublicCategory;
 type VisualSearchPayload = { items?: ProductCardData[]; total?: number };
@@ -189,7 +195,8 @@ function StructuredNumericFacetFilter({
     <div className="ae-struct-facet-range">
       <div className="ae-struct-facet-range__inputs">
         <label>
-          Mín{unitHint}
+          {CATALOG_TERMS.searchStructuredRangeFrom}
+          {unitHint}
           <input
             type="text"
             inputMode="decimal"
@@ -199,7 +206,8 @@ function StructuredNumericFacetFilter({
           />
         </label>
         <label>
-          Máx{unitHint}
+          {CATALOG_TERMS.searchStructuredRangeTo}
+          {unitHint}
           <input
             type="text"
             inputMode="decimal"
@@ -210,12 +218,22 @@ function StructuredNumericFacetFilter({
         </label>
       </div>
       <div className="ae-struct-facet-range__actions">
-        <button type="button" className="btn" onClick={() => apply()}>
-          Aplicar
+        <button
+          type="button"
+          className="btn"
+          onClick={() => apply()}
+          aria-label={catalogStructuredRangeApplyAria(facet.label)}
+        >
+          {CATALOG_TERMS.searchStructuredRangeApply}
         </button>
         {active ? (
-          <button type="button" className="btn" onClick={() => clearRange()}>
-            Limpar
+          <button
+            type="button"
+            className="btn"
+            onClick={() => clearRange()}
+            aria-label={catalogStructuredRangeClearAria(facet.label)}
+          >
+            {CATALOG_TERMS.searchStructuredRangeClear}
           </button>
         ) : null}
       </div>
@@ -1208,8 +1226,12 @@ export default function SearchPage() {
         </div>
 
         {activeFilterChips.length > 0 ? (
-          <div className="ae-active-filters" aria-label={CATALOG_TERMS.searchActiveFiltersLabel}>
-            <span className="ae-active-filters__label">{CATALOG_TERMS.searchActiveFiltersLabel}:</span>
+          <div
+            className="ae-active-filters"
+            role="group"
+            aria-label={CATALOG_TERMS.searchActiveFiltersGroupAria}
+          >
+            <span className="ae-active-filters__label">{CATALOG_TERMS.searchActiveFiltersBarTitle}:</span>
             {activeFilterChips.map((chip, i) => (
               <Link
                 key={`f-${i}-${chip.label}`}
@@ -1220,7 +1242,12 @@ export default function SearchPage() {
                 <span aria-hidden> ×</span>
               </Link>
             ))}
-            <button type="button" className="ae-active-filters__clear" onClick={clearFiltersKeepQuery}>
+            <button
+              type="button"
+              className="ae-active-filters__clear"
+              onClick={clearFiltersKeepQuery}
+              title={CATALOG_TERMS.searchClearAllFiltersHint}
+            >
               {CATALOG_TERMS.searchClearAllFilters}
             </button>
           </div>
