@@ -434,7 +434,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
             numericValue: v.numericValue ? new Decimal(String(v.numericValue)) : null,
           };
         })
-        .filter(Boolean);
+        .filter((v): v is { attributeId: string; value: string; numericValue: Decimal | null } => v !== null);
 
       await prisma.product.create({
         data: {
