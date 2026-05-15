@@ -14,6 +14,7 @@ type Row = {
   createdAt: string;
   productCount: number;
   childCount: number;
+  _depth?: number;
 };
 
 function collectDescendantsUnder(rootId: string, rows: Row[]): Set<string> {
@@ -32,6 +33,41 @@ function collectDescendantsUnder(rootId: string, rows: Row[]): Set<string> {
     q.push(...(byParent.get(n.id) ?? []));
   }
   return out;
+}
+
+function getCategoryDepth(row: Row, rows: Row[], depth = 0): number {
+  if (!row.parentId) return depth;
+  const parent = rows.find((r) => r.id === row.parentId);
+  return parent ? getCategoryDepth(parent, rows, depth + 1) : depth;
+}
+
+function getCategoryLabel(row: Row, rows: Row[]): string {
+  const depth = getCategoryDepth(row, rows);
+  const indent = "　".repeat(depth);
+  return `${indent}${row.name}`;
+}
+
+function buildCategoryTree(rows: Row[]): Row[] {
+  const byParent = new Map<string | null, Row[]>();
+  for (const r of rows) {
+    const k = r.parentId;
+    const arr = byParent.get(k) ?? [];
+    arr.push(r);
+    byParent.set(k, arr);
+  }
+
+  function flatten(parentId: string | null, depth = 0): Row[] {
+    const children = byParent.get(parentId) ?? [];
+    const sorted = children.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "pt"));
+    const result: Row[] = [];
+    for (const child of sorted) {
+      result.push({ ...child, _depth: depth } as Row & { _depth: number });
+      result.push(...flatten(child.id, depth + 1));
+    }
+    return result;
+  }
+
+  return flatten(null);
 }
 
 export default function AdminCategories() {
@@ -74,6 +110,11 @@ export default function AdminCategories() {
     ban.add(editing.id);
     return rows.filter((r) => !ban.has(r.id));
   }, [editing, rows]);
+
+  const treeRows = useMemo(() => {
+    if (!rows) return [];
+    return buildCategoryTree(rows);
+  }, [rows]);
 
   async function createCat() {
     if (!token || !newName.trim()) return;
@@ -266,7 +307,7 @@ export default function AdminCategories() {
               <option value="">Raiz da árvore (categoria principal)</option>
               {parentOptionsForNew.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.parentId ? "↳ " : ""}{r.name} — {r.slug}
+                  {getCategoryLabel(r, rows ?? [])} — {r.slug}
                 </option>
               ))}
             </select>
@@ -311,8 +352,8 @@ export default function AdminCategories() {
             </tr>
           </thead>
           <tbody>
-            {(rows ?? []).map((r) => (
-              <tr key={r.id}>
+            {treeRows.map((r) => (
+              <tr key={r.id} className={r.parentId ? "ae-admin-table-row--nested" : ""}>
                 <td>
                   {r.imageUrl ? (
                     <img
@@ -326,7 +367,11 @@ export default function AdminCategories() {
                     <div className="ae-admin-cat-thumb ae-admin-cat-thumb--ph" aria-hidden />
                   )}
                 </td>
-                <td className="ae-admin-cell-title">{r.parentId ? "↳ " : ""}{r.name}</td>
+                <td className="ae-admin-cell-title">
+                  <span className={`ae-admin-cat-indent ae-admin-cat-indent--depth-${Math.min((r._depth || 0), 4)}`}>
+                    {r.parentId ? "└─ " : ""}{r.name}
+                  </span>
+                </td>
                 <td>
                   <code className="ae-admin-mono" style={{ fontSize: 12 }}>
                     {r.slug}
@@ -399,7 +444,7 @@ export default function AdminCategories() {
                 <option value="">Raiz</option>
                 {parentOptionsForEdit.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.parentId ? "↳ " : ""}{r.name}
+                    {getCategoryLabel(r, rows ?? [])}
                   </option>
                 ))}
               </select>

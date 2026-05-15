@@ -258,6 +258,239 @@ async function seedAngolaGeoCatalog() {
   }
 }
 
+async function seedDemoSmartphonesWithStructuredAttributes() {
+  /** Produtos demo para testar filtros estruturados (Marca, RAM, Armazenamento, etc.) */
+  const vendorEmail = process.env.SEED_SMARTPHONE_VENDOR_EMAIL ?? "vendor-smartphones@bazarrdobie.ao";
+  const vendorPass = process.env.SEED_SMARTPHONE_VENDOR_PASSWORD ?? "SmartphoneDemo123!";
+  try {
+    const tier1CompletedAt = new Date();
+    const passwordHash = await bcrypt.hash(vendorPass, 12);
+    const vendor = await prisma.user.upsert({
+      where: { email: vendorEmail },
+      update: { role: UserRole.VENDEDOR, blocked: false },
+      create: {
+        email: vendorEmail,
+        name: "Vendedor de smartphones demo",
+        passwordHash,
+        role: UserRole.VENDEDOR,
+      },
+    });
+
+    const shop = await prisma.shop.upsert({
+      where: { userId: vendor.id },
+      update: {
+        isApproved: true,
+        municipalityId: "geo-mun-bie-cuito",
+        province: "Bié",
+        city: "Cuito",
+        tier1CompletedAt,
+      },
+      create: {
+        userId: vendor.id,
+        name: "[DEMO] TechStore Angola",
+        ownerResponsibleName: "Operador smartphones",
+        description: "Loja demo para testar filtros estruturados de smartphones.",
+        municipalityId: "geo-mun-bie-cuito",
+        province: "Bié",
+        city: "Cuito",
+        phone: "+244 999 888 777",
+        whatsapp: "+244 999 888 777",
+        isApproved: true,
+        tier1CompletedAt,
+      },
+    });
+
+    const logisticsPartnerId = (
+      await prisma.logisticsPartner.findFirst({
+        where: {
+          OR: [{ name: "Expresso BAZAR — Bié" }, { name: "Expresso BAZAR — Bié (demo)" }],
+        },
+        select: { id: true },
+      })
+    )?.id;
+
+    const cat = await prisma.category.findUnique({ where: { slug: "smartphones-telemoveis" } });
+    if (!cat) {
+      console.warn("[seed] Categoria smartphones-telemoveis não encontrada, pulando seed de smartphones.");
+      return;
+    }
+
+    // Buscar atributos da categoria
+    const attrs = await prisma.categoryAttribute.findMany({
+      where: { categoryId: cat.id },
+      select: { id: true, key: true },
+    });
+    const attrByKey = new Map(attrs.map((a) => [a.key, a.id]));
+
+    const demoProducts = [
+      {
+        sku: "DEMO-SAMSUNG-A54",
+        name: "Samsung Galaxy A54 5G",
+        price: "150000",
+        promoPrice: "135000",
+        values: [
+          { key: "marca", value: "Samsung" },
+          { key: "modelo", value: "Galaxy A54 5G" },
+          { key: "ram", value: "8 GB" },
+          { key: "armazenamento", value: "256 GB" },
+          { key: "sistema_operativo", value: "Android" },
+          { key: "rede_5g", value: "Sim" },
+          { key: "ecra_polegadas", value: "6.4", numericValue: 6.4 },
+        ],
+      },
+      {
+        sku: "DEMO-XIAOMI-REDMI",
+        name: "Xiaomi Redmi Note 12",
+        price: "120000",
+        promoPrice: "110000",
+        values: [
+          { key: "marca", value: "Xiaomi" },
+          { key: "modelo", value: "Redmi Note 12" },
+          { key: "ram", value: "6 GB" },
+          { key: "armazenamento", value: "128 GB" },
+          { key: "sistema_operativo", value: "Android" },
+          { key: "rede_5g", value: "Não" },
+          { key: "ecra_polegadas", value: "6.67", numericValue: 6.67 },
+        ],
+      },
+      {
+        sku: "DEMO-IPHONE-13",
+        name: "Apple iPhone 13",
+        price: "350000",
+        promoPrice: null,
+        values: [
+          { key: "marca", value: "Apple" },
+          { key: "modelo", value: "iPhone 13" },
+          { key: "ram", value: "4 GB" },
+          { key: "armazenamento", value: "128 GB" },
+          { key: "sistema_operativo", value: "iOS" },
+          { key: "rede_5g", value: "Não" },
+          { key: "ecra_polegadas", value: "6.1", numericValue: 6.1 },
+        ],
+      },
+      {
+        sku: "DEMO-TECNO-SPARK",
+        name: "Tecno Spark 10 Pro",
+        price: "85000",
+        promoPrice: "75000",
+        values: [
+          { key: "marca", value: "Tecno" },
+          { key: "modelo", value: "Spark 10 Pro" },
+          { key: "ram", value: "8 GB" },
+          { key: "armazenamento", value: "256 GB" },
+          { key: "sistema_operativo", value: "Android" },
+          { key: "rede_5g", value: "Não" },
+          { key: "ecra_polegadas", value: "6.8", numericValue: 6.8 },
+        ],
+      },
+      {
+        sku: "DEMO-INFINIX-NOTE",
+        name: "Infinix Note 30 VIP",
+        price: "95000",
+        promoPrice: null,
+        values: [
+          { key: "marca", value: "Infinix" },
+          { key: "modelo", value: "Note 30 VIP" },
+          { key: "ram", value: "12 GB" },
+          { key: "armazenamento", value: "256 GB" },
+          { key: "sistema_operativo", value: "Android" },
+          { key: "rede_5g", value: "Sim" },
+          { key: "ecra_polegadas", value: "6.78", numericValue: 6.78 },
+        ],
+      },
+      {
+        sku: "DEMO-SAMSUNG-A34",
+        name: "Samsung Galaxy A34 5G",
+        price: "130000",
+        promoPrice: "115000",
+        values: [
+          { key: "marca", value: "Samsung" },
+          { key: "modelo", value: "Galaxy A34 5G" },
+          { key: "ram", value: "6 GB" },
+          { key: "armazenamento", value: "128 GB" },
+          { key: "sistema_operativo", value: "Android" },
+          { key: "rede_5g", value: "Sim" },
+          { key: "ecra_polegadas", value: "6.6", numericValue: 6.6 },
+        ],
+      },
+    ];
+
+    for (const prod of demoProducts) {
+      const existing = await prisma.product.findUnique({
+        where: { shopId_sku: { shopId: shop.id, sku: prod.sku } },
+        select: { id: true },
+      });
+      if (existing) continue;
+
+      const displayPrice = prod.promoPrice ? prod.promoPrice : prod.price;
+
+      const structuredValues = prod.values
+        .map((v) => {
+          const attrId = attrByKey.get(v.key);
+          if (!attrId) return null;
+          return {
+            attributeId: attrId,
+            value: v.value,
+            numericValue: v.numericValue ? new Decimal(String(v.numericValue)) : null,
+          };
+        })
+        .filter(Boolean);
+
+      await prisma.product.create({
+        data: {
+          shopId: shop.id,
+          categoryId: cat.id,
+          name: prod.name,
+          description: `Produto demo para testar filtros estruturados. SKU: ${prod.sku}.`,
+          sku: prod.sku,
+          price: prod.price,
+          promoPrice: prod.promoPrice,
+          displayPrice,
+          stock: 10,
+          isFeatured: true,
+          isActive: true,
+          moderationStatus: "APPROVED",
+          images: {
+            createMany: {
+              data: [{ url: "/demo/gallery-a.svg", sortOrder: 0 }],
+            },
+          },
+          variants: {
+            create: [
+              {
+                sku: prod.sku + "-STD",
+                stock: 10,
+                salePrice: displayPrice,
+                variantStructuredValues: {
+                  create: structuredValues,
+                },
+              },
+            ],
+          },
+          deliveryOptions: {
+            create: [
+              {
+                tipoEntrega: TipoEntrega.PLATAFORMA,
+                custoEntrega: "1500",
+                prazoEstimado: 5,
+                areaProvincia: "Bié",
+                areaCidade: "Cuito",
+                logisticsPartnerId: logisticsPartnerId ?? undefined,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    console.log(
+      `[seed] ${demoProducts.length} produtos smartphones demo criados com atributos estruturados. Vendedor: ${vendorEmail} / ${vendorPass}`
+    );
+  } catch (e) {
+    console.warn("Seed: produtos smartphones demo omitidos.", e);
+  }
+}
+
 async function seedDemoAeGalleryProduct() {
   /** Produto apenas para QA local: várias fotos na ficha, matriz Cor×Tamanho, imagens por variante. */
   const demoSku = "DEMO-AE-GALLERY-ZOOM";
@@ -487,6 +720,7 @@ async function main() {
     console.warn("Aviso: textos do site não foram inicializados (corra as migrações).", e);
   });
 
+  await seedDemoSmartphonesWithStructuredAttributes();
   await seedDemoAeGalleryProduct();
 
   /** Catalogo geográfico (províncias + municípios) deve existir

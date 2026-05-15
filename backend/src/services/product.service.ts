@@ -1165,7 +1165,6 @@ export const productService = {
       structuredFacets,
     };
     const productWhere = buildPublicProductListWhere(baseFilters);
-    const variantWhere: Prisma.ProductVariantWhereInput = { product: productWhere };
     const facetAttrs = await prisma.categoryAttribute.findMany({
       where: { categoryId, facetEnabled: true },
       orderBy: [{ primaryRank: "desc" }, { sortOrder: "asc" }, { label: "asc" }],
@@ -1194,7 +1193,12 @@ export const productService = {
     for (const a of facetAttrs) {
       if (a.inputType === CategoryAttributeInputType.NUMBER) {
         const agg = await prisma.variantStructuredValue.aggregate({
-          where: { attributeId: a.id, variant: variantWhere },
+          where: {
+            attributeId: a.id,
+            variant: {
+              product: productWhere,
+            },
+          },
           _min: { numericValue: true },
           _max: { numericValue: true },
           _count: { _all: true },
@@ -1213,7 +1217,12 @@ export const productService = {
       } else {
         const groups = await prisma.variantStructuredValue.groupBy({
           by: ["value"],
-          where: { attributeId: a.id, variant: variantWhere },
+          where: {
+            attributeId: a.id,
+            variant: {
+              product: productWhere,
+            },
+          },
           _count: { _all: true },
           orderBy: { _count: { value: "desc" } },
           take: 48,

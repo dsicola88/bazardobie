@@ -9496,6 +9496,27 @@ a:hover {
   font-weight: 600;
   color: var(--ae-text);
 }
+.ae-admin-cat-indent {
+  display: inline-block;
+}
+.ae-admin-cat-indent--depth-0 {
+  padding-left: 0;
+}
+.ae-admin-cat-indent--depth-1 {
+  padding-left: 20px;
+}
+.ae-admin-cat-indent--depth-2 {
+  padding-left: 40px;
+}
+.ae-admin-cat-indent--depth-3 {
+  padding-left: 60px;
+}
+.ae-admin-cat-indent--depth-4 {
+  padding-left: 80px;
+}
+.ae-admin-table-row--nested {
+  background-color: #fafafa;
+}
 .ae-admin-mono {
   font-family: ui-monospace, monospace;
   font-size: 12px;
