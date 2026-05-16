@@ -4242,7 +4242,7 @@ a:hover {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: var(--ae-deep);
+  color: #222;
   cursor: pointer;
   user-select: none;
 }
@@ -4292,7 +4292,7 @@ a:hover {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  color: var(--ae-deep);
+  color: #222;
   user-select: none;
   list-style: none;
 }
