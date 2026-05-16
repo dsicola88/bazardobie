@@ -1043,8 +1043,8 @@ export default function SearchPage() {
                         setParams={setParams}
                       />
                     </div>
-                  ),
-                })});
+                  );
+                })}
               </div>
             )}
           </section>
