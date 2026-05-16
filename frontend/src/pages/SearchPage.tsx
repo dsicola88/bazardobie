@@ -509,9 +509,13 @@ export default function SearchPage() {
     setStructuredFacetLoading(true);
     void apiFetch<StructuredFacetApiPayload>(`/products/facet-structured-attributes?${structuredFacetApiQuery}`)
       .then((r) => {
-        if (!cancelled) setStructuredAttrFacets(r.facets ?? []);
+        if (!cancelled) {
+          console.log("[Structured Facets API Response]", r);
+          setStructuredAttrFacets(r.facets ?? []);
+        }
       })
-      .catch(() => {
+      .catch((e) => {
+        console.error("[Structured Facets API Error]", e);
         if (!cancelled) setStructuredAttrFacets(null);
       })
       .finally(() => {
@@ -955,8 +959,9 @@ export default function SearchPage() {
               </p>
             ) : (
               <div className="ae-struct-facets">
-                {structuredAttrFacets.map((f) =>
-                  f.facetKind === "discrete" ? (
+                {structuredAttrFacets.map((f) => {
+                  console.log("[Rendering Facet]", f.label, f.facetKind, f.values?.length ?? 0, "values");
+                  return f.facetKind === "discrete" ? (
                     <div key={f.attributeId} className="ae-struct-facet-block">
                       <div className="ae-struct-facet-block__title">{f.label}</div>
                       <div className="ae-filters__checks ae-struct-facet-checks">
@@ -1039,7 +1044,7 @@ export default function SearchPage() {
                       />
                     </div>
                   ),
-                )}
+                })});
               </div>
             )}
           </section>

@@ -6,7 +6,6 @@ import {
   ANGOLA_PROVINCE_SEEDS,
 } from "../src/data/angolaGeoCatalog.js";
 import { siteSettingsService } from "../src/services/siteSettings.service.js";
-import { seedAngolaRetailCategories } from "./seedAngolaRetailCategories.js";
 
 const prisma = new PrismaClient();
 
@@ -653,8 +652,6 @@ async function main() {
     update: {},
     create: { name: "Geral Angola", slug: catSlug },
   });
-
-  await seedAngolaRetailCategories(prisma);
 
   /** Transportadoras exemplo (Admin → Transportadoras). Vendedores podem associá-las às opções PLATAFORMA. */
   const demoCarriers = [
