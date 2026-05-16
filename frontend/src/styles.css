@@ -4279,7 +4279,7 @@ a:hover {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: var(--ae-deep);
+  color: #222;
 }
 .ae-struct-facet-checks {
   max-height: 200px;
