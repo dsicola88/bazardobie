@@ -509,13 +509,9 @@ export default function SearchPage() {
     setStructuredFacetLoading(true);
     void apiFetch<StructuredFacetApiPayload>(`/products/facet-structured-attributes?${structuredFacetApiQuery}`)
       .then((r) => {
-        if (!cancelled) {
-          console.log("[Structured Facets API Response]", r);
-          setStructuredAttrFacets(r.facets ?? []);
-        }
+        if (!cancelled) setStructuredAttrFacets(r.facets ?? []);
       })
-      .catch((e) => {
-        console.error("[Structured Facets API Error]", e);
+      .catch(() => {
         if (!cancelled) setStructuredAttrFacets(null);
       })
       .finally(() => {
@@ -963,9 +959,8 @@ export default function SearchPage() {
                   console.log("[Rendering Facet]", f.label, f.facetKind, f.values?.length ?? 0, "values");
                   return f.facetKind === "discrete" ? (
                     <div key={f.attributeId} className="ae-struct-facet-block">
-                      <div className="ae-struct-facet-block__title">{f.label}</div>
-                      <div className="ae-filters__checks ae-struct-facet-checks">
-                        {f.values.slice(0, DISCRETE_FACET_VISIBLE).map((row) => (
+                      <div className="ae-struct-
+                 {f.values.slice(0, DISCRETE_FACET_VISIBLE).map((row) => (
                           <label key={row.value} className="ae-filters__check">
                             <input
                               type="checkbox"

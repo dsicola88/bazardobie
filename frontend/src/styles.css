@@ -4250,7 +4250,7 @@ a:hover {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  accent-color: var(--ae-deep);
+  accent-color: #222;
   cursor: inherit;
 }
 .ae-chip-list a {
