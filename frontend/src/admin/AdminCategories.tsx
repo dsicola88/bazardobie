@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { resolveMediaUrl } from "../utils/media.js";
+import { invalidatePublicCategoriesCache } from "../data/publicCategoriesCache.js";
 
 type Row = {
   id: string;
@@ -135,6 +136,7 @@ export default function AdminCategories() {
       setNewImageUrl("");
       setNewParentId("");
       setNewOrder(0);
+      invalidatePublicCategoriesCache();
       void load();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro ao criar");
@@ -166,6 +168,7 @@ export default function AdminCategories() {
       });
       setMsg("Categoria actualizada.");
       setEditing(null);
+      invalidatePublicCategoriesCache();
       void load();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Erro ao guardar");
@@ -221,6 +224,7 @@ export default function AdminCategories() {
     try {
       await apiFetch(`/admin/categories/${r.id}`, { method: "DELETE", token });
       setMsg("Categoria eliminada.");
+      invalidatePublicCategoriesCache();
       void load();
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "Não foi possível eliminar");

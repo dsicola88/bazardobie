@@ -18,3 +18,8 @@ export function getPublicCategories(): Promise<PublicCategory[]> {
   }
   return inflight;
 }
+
+/** Invalida o cache de categorias (usar após criar/editar/eliminar categoria no admin). */
+export function invalidatePublicCategoriesCache(): void {
+  inflight = null;
+}
