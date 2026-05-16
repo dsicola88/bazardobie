@@ -119,13 +119,30 @@ type ProductLoaded = {
 };
 
 function flattenCats(cats: Cat[]): { id: string; label: string }[] {
-  const byId = new Map(cats.map((c) => [c.id, c] as const));
-  return [...cats]
-    .sort((a, b) => a.name.localeCompare(b.name, "pt"))
-    .map((c) => ({
-      id: c.id,
-      label: c.parentId ? `${byId.get(c.parentId)?.name ?? "—"} › ${c.name}` : c.name,
-    }));
+  const byParent = new Map<string | null, Cat[]>();
+  for (const c of cats) {
+    const k = c.parentId ?? null;
+    const arr = byParent.get(k) ?? [];
+    arr.push(c);
+    byParent.set(k, arr);
+  }
+
+  function flatten(parentId: string | null, depth = 0): { id: string; label: string }[] {
+    const children = byParent.get(parentId) ?? [];
+    const sorted = children.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, "pt"));
+    const result: { id: string; label: string }[] = [];
+    const indent = "　".repeat(depth);
+    for (const child of sorted) {
+      result.push({
+        id: child.id,
+        label: `${indent}${child.name}`,
+      });
+      result.push(...flatten(child.id, depth + 1));
+    }
+    return result;
+  }
+
+  return flatten(null, 0);
 }
 
 const emptyVar = (): VarForm => ({
