@@ -955,12 +955,12 @@ export default function SearchPage() {
               </p>
             ) : (
               <div className="ae-struct-facets">
-                {structuredAttrFacets.map((f) => {
-                  console.log("[Rendering Facet]", f.label, f.facetKind, f.values?.length ?? 0, "values");
-                  return f.facetKind === "discrete" ? (
+                {structuredAttrFacets.map((f) =>
+                  f.facetKind === "discrete" ? (
                     <div key={f.attributeId} className="ae-struct-facet-block">
-                      <div className="ae-struct-
-                 {f.values.slice(0, DISCRETE_FACET_VISIBLE).map((row) => (
+                      <div className="ae-struct-facet-block__title">{f.label}</div>
+                      <div className="ae-filters__checks ae-struct-facet-checks">
+                        {f.values.slice(0, DISCRETE_FACET_VISIBLE).map((row) => (
                           <label key={row.value} className="ae-filters__check">
                             <input
                               type="checkbox"
@@ -1038,8 +1038,8 @@ export default function SearchPage() {
                         setParams={setParams}
                       />
                     </div>
-                  );
-                })}
+                  )
+                )}
               </div>
             )}
           </section>
