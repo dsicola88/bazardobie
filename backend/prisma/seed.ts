@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { Decimal } from "@prisma/client/runtime/library";
 import { PrismaClient, TipoEntrega, UserRole } from "@prisma/client";
 import {
   ANGOLA_MUNICIPALITY_SEEDS,
@@ -259,7 +260,18 @@ async function seedAngolaGeoCatalog() {
 }
 
 async function seedDemoSmartphonesWithStructuredAttributes() {
-  /** Produtos demo para testar filtros estruturados (Marca, RAM, Armazenamento, etc.) */
+  /** Produtos demo para testar filtros estruturados (Marca, RAM, Armazenamento, etc.).
+   *  Só executa em desenvolvimento (NODE_ENV=development) ou se SEED_DEMO_PRODUCTS=true.
+   *  Produtos têm prefixo "[DEMO]" para fácil identificação e remoção.
+   */
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const forceSeed = process.env.SEED_DEMO_PRODUCTS === "true";
+
+  if (!isDevelopment && !forceSeed) {
+    console.log("[seed] Pulando seed de produtos demo (NODE_ENV não é development e SEED_DEMO_PRODUCTS não é true).");
+    return;
+  }
+
   const vendorEmail = process.env.SEED_SMARTPHONE_VENDOR_EMAIL ?? "vendor-smartphones@bazarrdobie.ao";
   const vendorPass = process.env.SEED_SMARTPHONE_VENDOR_PASSWORD ?? "SmartphoneDemo123!";
   try {
@@ -270,7 +282,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       update: { role: UserRole.VENDEDOR, blocked: false },
       create: {
         email: vendorEmail,
-        name: "Vendedor de smartphones demo",
+        name: "[DEMO] Vendedor de smartphones",
         passwordHash,
         role: UserRole.VENDEDOR,
       },
@@ -287,9 +299,9 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       create: {
         userId: vendor.id,
-        name: "[DEMO] TechStore Angola",
+        name: "[DEMO] TechStore Angola - Apenas para testes",
         ownerResponsibleName: "Operador smartphones",
-        description: "Loja demo para testar filtros estruturados de smartphones.",
+        description: "[DEMO] Loja apenas para desenvolvimento/testes de filtros estruturados. NÃO usar em produção.",
         municipalityId: "geo-mun-bie-cuito",
         province: "Bié",
         city: "Cuito",
@@ -325,7 +337,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
     const demoProducts = [
       {
         sku: "DEMO-SAMSUNG-A54",
-        name: "Samsung Galaxy A54 5G",
+        name: "[DEMO] Samsung Galaxy A54 5G",
         price: "150000",
         promoPrice: "135000",
         values: [
@@ -340,7 +352,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       {
         sku: "DEMO-XIAOMI-REDMI",
-        name: "Xiaomi Redmi Note 12",
+        name: "[DEMO] Xiaomi Redmi Note 12",
         price: "120000",
         promoPrice: "110000",
         values: [
@@ -355,7 +367,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       {
         sku: "DEMO-IPHONE-13",
-        name: "Apple iPhone 13",
+        name: "[DEMO] Apple iPhone 13",
         price: "350000",
         promoPrice: null,
         values: [
@@ -370,7 +382,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       {
         sku: "DEMO-TECNO-SPARK",
-        name: "Tecno Spark 10 Pro",
+        name: "[DEMO] Tecno Spark 10 Pro",
         price: "85000",
         promoPrice: "75000",
         values: [
@@ -385,7 +397,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       {
         sku: "DEMO-INFINIX-NOTE",
-        name: "Infinix Note 30 VIP",
+        name: "[DEMO] Infinix Note 30 VIP",
         price: "95000",
         promoPrice: null,
         values: [
@@ -400,7 +412,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
       },
       {
         sku: "DEMO-SAMSUNG-A34",
-        name: "Samsung Galaxy A34 5G",
+        name: "[DEMO] Samsung Galaxy A34 5G",
         price: "130000",
         promoPrice: "115000",
         values: [
@@ -441,7 +453,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
           shopId: shop.id,
           categoryId: cat.id,
           name: prod.name,
-          description: `Produto demo para testar filtros estruturados. SKU: ${prod.sku}.`,
+          description: `[DEMO] Produto apenas para desenvolvimento/testes de filtros estruturados. NÃO usar em produção. SKU: ${prod.sku}.`,
           sku: prod.sku,
           price: prod.price,
           promoPrice: prod.promoPrice,
@@ -486,6 +498,7 @@ async function seedDemoSmartphonesWithStructuredAttributes() {
     console.log(
       `[seed] ${demoProducts.length} produtos smartphones demo criados com atributos estruturados. Vendedor: ${vendorEmail} / ${vendorPass}`
     );
+    console.log("[seed] Para remover produtos demo, execute: DELETE FROM \"Product\" WHERE name LIKE '[DEMO]%'");
   } catch (e) {
     console.warn("Seed: produtos smartphones demo omitidos.", e);
   }
