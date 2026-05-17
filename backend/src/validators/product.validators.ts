@@ -320,6 +320,8 @@ const productListQueryFields = z.object({
   featured: z.enum(["true", "false"]).optional(),
   /** Só artigos com `promoPrice` activo (abaixo do preço listado). */
   onSale: z.enum(["true", "false"]).optional(),
+  /** Só artigos com pelo menos uma opção de envio gratuita (custoEntrega = 0). */
+  freeShipping: z.enum(["true", "false"]).optional(),
   condition: productConditionSchema.optional(),
   shopId: z.string().optional(),
   sort: z
@@ -355,6 +357,7 @@ export const structuredAttributeFacetQuerySchema = productListQueryFields
     minRating: true,
     featured: true,
     onSale: true,
+    freeShipping: true,
     condition: true,
     shopId: true,
     structuredFacets: true,

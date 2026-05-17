@@ -1045,6 +1045,7 @@ export const productService = {
       minRating: query.minRating ?? undefined,
       featuredOnly: query.featured === "true",
       onSaleOnly: query.onSale === "true",
+      freeShippingOnly: query.freeShipping === "true",
       shopId: query.shopId,
       /** Sem envio pela loja, a vitrinha só pode mostrar anúncios com envio BAZAR DO BIÉ (PLATAFORMA). */
       requirePlatformDelivery: !allowSeller,
@@ -1134,6 +1135,7 @@ export const productService = {
       minRating: query.minRating ?? undefined,
       featuredOnly: query.featured === "true",
       onSaleOnly: query.onSale === "true",
+      freeShippingOnly: query.freeShipping === "true",
       shopId: query.shopId,
       requirePlatformDelivery: !allowSeller,
       structuredFacets,
@@ -1160,6 +1162,7 @@ export const productService = {
       minRating: query.minRating ?? undefined,
       featuredOnly: query.featured === "true",
       onSaleOnly: query.onSale === "true",
+      freeShippingOnly: query.freeShipping === "true",
       shopId: query.shopId,
       requirePlatformDelivery: !allowSeller,
       structuredFacets,

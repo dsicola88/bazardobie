@@ -14,6 +14,8 @@ export interface ProductListFilters {
   featuredOnly?: boolean;
   /** `promoPrice` preenchido (produto em promoção). */
   onSaleOnly?: boolean;
+  /** Produtos com pelo menos uma opção de envio gratuita (custoEntrega = 0). */
+  freeShippingOnly?: boolean;
   shopId?: string;
   /** Com `public.allow_seller_delivery` desactivado: só produtos com envio pela plataforma. */
   requirePlatformDelivery?: boolean;
@@ -166,6 +168,9 @@ function buildWhere(filters: ProductListFilters): Prisma.ProductWhereInput {
   if (filters.requirePlatformDelivery) {
     where.deliveryOptions = { some: { tipoEntrega: "PLATAFORMA" } };
   }
+  if (filters.freeShippingOnly) {
+    where.deliveryOptions = { some: { custoEntrega: 0 } };
+  }
   const facetClauses: Prisma.ProductWhereInput[] = [];
   if (filters.structuredFacets?.length) {
     for (const sf of filters.structuredFacets) facetClauses.push(structuredFacetWhereClause(sf));
@@ -250,6 +255,7 @@ export function productRepo() {
         minRating: filters.minRating,
         featuredOnly: filters.featuredOnly,
         onSaleOnly: filters.onSaleOnly,
+        freeShippingOnly: filters.freeShippingOnly,
         shopId: filters.shopId,
         requirePlatformDelivery: filters.requirePlatformDelivery,
         ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),

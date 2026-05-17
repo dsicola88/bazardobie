@@ -4,6 +4,7 @@ import { apiFetch, uploadAdminFile } from "../api.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { resolveMediaUrl } from "../utils/media.js";
 import { invalidatePublicCategoriesCache } from "../data/publicCategoriesCache.js";
+import CategoryTreeSelect from "../components/CategoryTreeSelect.js";
 
 type Row = {
   id: string;
@@ -303,18 +304,12 @@ export default function AdminCategories() {
           </label>
           <label className="ae-admin-field">
             Dentro da categoria pai (opcional)
-            <select
-              className="ae-input"
+            <CategoryTreeSelect
+              categories={rows ?? []}
               value={newParentId}
-              onChange={(e) => setNewParentId(e.target.value)}
-            >
-              <option value="">Raiz da árvore (categoria principal)</option>
-              {parentOptionsForNew.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {getCategoryLabel(r, rows ?? [])} — {r.slug}
-                </option>
-              ))}
-            </select>
+              onChange={setNewParentId}
+              placeholder="Raiz da árvore (categoria principal)"
+            />
           </label>
           <label className="ae-admin-field">
             Ordem (numérico, menor aparece primeiro)
@@ -440,18 +435,12 @@ export default function AdminCategories() {
             </label>
             <label className="ae-admin-field">
               Pai (reorganizar hierarquia)
-              <select
-                className="ae-input"
+              <CategoryTreeSelect
+                categories={rows ?? []}
                 value={editParentId}
-                onChange={(e) => setEditParentId(e.target.value)}
-              >
-                <option value="">Raiz</option>
-                {parentOptionsForEdit.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {getCategoryLabel(r, rows ?? [])}
-                  </option>
-                ))}
-              </select>
+                onChange={setEditParentId}
+                placeholder="Raiz"
+              />
             </label>
             <label className="ae-admin-field">
               Ordem
