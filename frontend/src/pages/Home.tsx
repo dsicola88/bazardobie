@@ -318,6 +318,9 @@ export default function Home() {
           <Link className="ae-home-quick__pill" to="/search?onSale=true&sort=preco_asc">
             Promoções
           </Link>
+          <Link className="ae-home-quick__pill" to="/search?freeShipping=true">
+            Frete grátis
+          </Link>
           <Link className="ae-home-quick__pill" to="/search?featured=true">
             Em destaque
           </Link>
