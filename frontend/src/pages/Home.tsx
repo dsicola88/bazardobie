@@ -257,6 +257,26 @@ export default function Home() {
 
   return (
     <>
+      <section className="ae-shell ae-home-quick" aria-label="Atalhos rápidos">
+        <nav className="ae-home-quick__track">
+          <Link className="ae-home-quick__pill ae-home-quick__pill--accent" to="/search?sort=recentes">
+            Novidades
+          </Link>
+          <Link className="ae-home-quick__pill" to="/search?onSale=true&sort=preco_asc">
+            Promoções
+          </Link>
+          <Link className="ae-home-quick__pill" to="/search?freeShipping=true">
+            Frete grátis
+          </Link>
+          <Link className="ae-home-quick__pill" to="/search?featured=true">
+            Em destaque
+          </Link>
+          <Link className="ae-home-quick__pill" to="/search?sort=mais_vendidos">
+            Mais vendidos
+          </Link>
+        </nav>
+      </section>
+
       <div className="ae-home-bleed-wrap">
         <div className="ae-home-stage ae-home-stage--bleed">
           <div className="ae-hero ae-hero--home-top ae-hero--premium ae-hero--fullbleed">
@@ -309,26 +329,6 @@ export default function Home() {
         </div>
         </div>
       </div>
-
-      <section className="ae-shell ae-home-quick" aria-label="Atalhos rápidos">
-        <nav className="ae-home-quick__track">
-          <Link className="ae-home-quick__pill ae-home-quick__pill--accent" to="/search?sort=recentes">
-            Novidades
-          </Link>
-          <Link className="ae-home-quick__pill" to="/search?onSale=true&sort=preco_asc">
-            Promoções
-          </Link>
-          <Link className="ae-home-quick__pill" to="/search?freeShipping=true">
-            Frete grátis
-          </Link>
-          <Link className="ae-home-quick__pill" to="/search?featured=true">
-            Em destaque
-          </Link>
-          <Link className="ae-home-quick__pill" to="/search?sort=mais_vendidos">
-            Mais vendidos
-          </Link>
-        </nav>
-      </section>
 
       {flashEnabled ? (
         <section
