@@ -11,6 +11,7 @@ import { CATALOG_TERMS } from "../catalog/catalogTerminology.js";
 import { resolveNichePack } from "../catalog/categoryNichePacks.js";
 import { structuredRequiredProgress, vendorCopilotTips } from "./vendorCopilot.js";
 import { listingQualityGradeCssSuffix } from "../utils/listingGradeUi.js";
+import CategoryTreeSelect from "../components/CategoryTreeSelect.js";
 
 function allowSellerFromContent(raw: string | undefined): boolean {
   const v = (raw ?? "false").trim().toLowerCase();
@@ -117,33 +118,6 @@ type ProductLoaded = {
     logisticsPartner?: { id: string; name: string } | null;
   }[];
 };
-
-function flattenCats(cats: Cat[]): { id: string; label: string }[] {
-  const byParent = new Map<string | null, Cat[]>();
-  for (const c of cats) {
-    const k = c.parentId ?? null;
-    const arr = byParent.get(k) ?? [];
-    arr.push(c);
-    byParent.set(k, arr);
-  }
-
-  function flatten(parentId: string | null, depth = 0): { id: string; label: string }[] {
-    const children = byParent.get(parentId) ?? [];
-    const sorted = children.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, "pt"));
-    const result: { id: string; label: string }[] = [];
-    const indent = "　".repeat(depth);
-    for (const child of sorted) {
-      result.push({
-        id: child.id,
-        label: `${indent}${child.name}`,
-      });
-      result.push(...flatten(child.id, depth + 1));
-    }
-    return result;
-  }
-
-  return flatten(null, 0);
-}
 
 const emptyVar = (): VarForm => ({
   sku: "",
@@ -257,8 +231,6 @@ export default function VendorProductEditor() {
   /** Sugestões do assistente: recolhidas por defeito para o editor ficar visível primeiro. */
   const [assistantHintsOpen, setAssistantHintsOpen] = useState(false);
   const [vendorCopilotOpen, setVendorCopilotOpen] = useState(true);
-
-  const catOptions = useMemo(() => flattenCats(cats), [cats]);
 
   const selectedVendorCategory = useMemo(
     () => (categoryId.trim() ? cats.find((c) => c.id === categoryId) ?? null : null),
@@ -1039,23 +1011,16 @@ export default function VendorProductEditor() {
           ) : null}
           <div>
             <label htmlFor="pcat">Categoria comercial</label>
-            <select
-              id="pcat"
+            <CategoryTreeSelect
+              categories={cats}
               value={categoryId}
-              onChange={(e) => {
-                const next = e.target.value;
+              onChange={(next) => {
                 if (next === categoryId) return;
                 setCategoryId(next);
                 setVariants((prev) => prev.map((row) => ({ ...row, categoryValues: {} })));
               }}
-            >
-              <option value="">Seleccionar categoria…</option>
-              {catOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              placeholder="Seleccionar categoria…"
+            />
             <p className="ae-field-hint">{CATALOG_TERMS.vendorCategoryPickHint}</p>
           </div>
 

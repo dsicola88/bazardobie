@@ -376,6 +376,7 @@ export default function SearchPage() {
   const visualMode = params.get("visual") === "1";
   const featured = params.get("featured") === "true";
   const onSale = params.get("onSale") === "true";
+  const freeShipping = params.get("freeShipping") === "true";
   const q = params.get("q") ?? "";
   const categoryId = params.get("categoryId") ?? "";
   const sort = params.get("sort") ?? "recentes";
@@ -414,20 +415,24 @@ export default function SearchPage() {
     ? `Pesquisar "${q.trim()}" — BAZAR DO BIÉ`
     : onSale
       ? "Promoções no catálogo — BAZAR DO BIÉ"
-      : featured
-        ? "Seleção em destaque — BAZAR DO BIÉ"
-        : shopId && shopLabel
-          ? `Artigos de ${shopLabel} — BAZAR DO BIÉ`
-          : shopId
-            ? "Catálogo da loja — BAZAR DO BIÉ"
-            : "Pesquisar produtos — BAZAR DO BIÉ";
+      : freeShipping
+        ? "Frete grátis no catálogo — BAZAR DO BIÉ"
+        : featured
+          ? "Seleção em destaque — BAZAR DO BIÉ"
+          : shopId && shopLabel
+            ? `Artigos de ${shopLabel} — BAZAR DO BIÉ`
+            : shopId
+              ? "Catálogo da loja — BAZAR DO BIÉ"
+              : "Pesquisar produtos — BAZAR DO BIÉ";
   const seoDescription = q.trim()
     ? `Resultados para "${q.trim()}" no marketplace BAZAR DO BIÉ. Compare preços, avaliações e prazos de envio em Angola.`
     : onSale
       ? "Filtro activo: produtos em promoção. Compare preços e condições no BAZAR DO BIÉ."
-      : featured
-        ? "Seleção oficial em destaque no BAZAR DO BIÉ."
-        : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
+      : freeShipping
+        ? "Filtro activo: produtos com frete grátis. Encontre artigos com envio gratuito no BAZAR DO BIÉ."
+        : featured
+          ? "Seleção oficial em destaque no BAZAR DO BIÉ."
+          : "Pesquise produtos, filtre por preço, avaliação e categoria no marketplace BAZAR DO BIÉ.";
   useSeo({
     title: visualMode ? "Pesquisa por imagem — BAZAR DO BIÉ" : seoTitle,
     description: visualMode
@@ -463,10 +468,11 @@ export default function SearchPage() {
     if (maxP != null) p.set("maxPrice", String(maxP));
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
+    if (freeShipping) p.set("freeShipping", "true");
     if (shopId) p.set("shopId", shopId);
     if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
     return p.toString();
-  }, [debouncedQ, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, shopId, structuredFacetsParam]);
+  }, [debouncedQ, condition, minRating, minPriceParam, maxPriceParam, featured, onSale, freeShipping, shopId, structuredFacetsParam]);
 
   const structuredFacetApiQuery = useMemo(() => {
     if (!categoryId || visualMode) return "";
@@ -483,6 +489,7 @@ export default function SearchPage() {
     if (maxP != null) p.set("maxPrice", String(maxP));
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
+    if (freeShipping) p.set("freeShipping", "true");
     if (shopId) p.set("shopId", shopId);
     if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
     return p.toString();
@@ -496,6 +503,7 @@ export default function SearchPage() {
     maxPriceParam,
     featured,
     onSale,
+    freeShipping,
     shopId,
     structuredFacetsParam,
   ]);
@@ -580,6 +588,7 @@ export default function SearchPage() {
     if (maxP != null) p.set("maxPrice", String(maxP));
     if (featured) p.set("featured", "true");
     if (onSale) p.set("onSale", "true");
+    if (freeShipping) p.set("freeShipping", "true");
     if (shopId) p.set("shopId", shopId);
     if (structuredFacetsParam.trim()) p.set("structuredFacets", structuredFacetsParam.trim());
     p.set("take", String(PAGE_SIZE));
@@ -594,6 +603,7 @@ export default function SearchPage() {
     maxPriceParam,
     featured,
     onSale,
+    freeShipping,
     shopId,
     structuredFacetsParam,
   ]);
@@ -740,6 +750,7 @@ export default function SearchPage() {
     if (categoryId && categoryLabel) out.push({ label: categoryLabel, patch: { categoryId: null } });
     if (featured) out.push({ label: "Em destaque", patch: { featured: null } });
     if (onSale) out.push({ label: "Em promoção", patch: { onSale: null } });
+    if (freeShipping) out.push({ label: "Frete grátis", patch: { freeShipping: null } });
     if (condition) out.push({ label: conditionShortLabel(condition), patch: { condition: null } });
     if (minRating)
       out.push({
@@ -773,6 +784,7 @@ export default function SearchPage() {
     categoryLabel,
     featured,
     onSale,
+    freeShipping,
     condition,
     minRating,
     minPriceParam,
@@ -796,6 +808,7 @@ export default function SearchPage() {
     if (mn >= 1 && mn <= 5) constraints.push("avaliação mínima");
     if (featured) constraints.push("só artigos em destaque");
     if (onSale) constraints.push("só artigos em promoção");
+    if (freeShipping) constraints.push("só artigos com frete grátis");
     if (shopId) constraints.push("uma loja específica");
     if (structuredClausesParsed.length > 0) constraints.push("filtros da ficha técnica");
 
@@ -821,6 +834,7 @@ export default function SearchPage() {
     minRating,
     featured,
     onSale,
+    freeShipping,
     shopId,
     structuredClausesParsed.length,
   ]);
