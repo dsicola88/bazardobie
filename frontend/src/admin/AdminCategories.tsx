@@ -88,6 +88,7 @@ export default function AdminCategories() {
   const [editOrder, setEditOrder] = useState(0);
   const [newUploadBusy, setNewUploadBusy] = useState(false);
   const [editUploadBusy, setEditUploadBusy] = useState(false);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -117,6 +118,40 @@ export default function AdminCategories() {
     if (!rows) return [];
     return buildCategoryTree(rows);
   }, [rows]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedCategoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const visibleRows = useMemo(() => {
+    if (!treeRows.length) return [];
+    const result: Row[] = [];
+    const byParent = new Map<string | null, Row[]>();
+    for (const r of treeRows) {
+      const k = r.parentId ?? null;
+      const arr = byParent.get(k) ?? [];
+      arr.push(r);
+      byParent.set(k, arr);
+    }
+
+    function isVisible(row: Row): boolean {
+      if (!row.parentId) return true;
+      const parent = treeRows.find((r) => r.id === row.parentId);
+      if (!parent) return true;
+      if (!expandedCategoryIds.has(parent.id)) return false;
+      return isVisible(parent);
+    }
+
+    return treeRows.filter(isVisible);
+  }, [treeRows, expandedCategoryIds]);
 
   async function createCat() {
     if (!token || !newName.trim()) return;
@@ -351,7 +386,7 @@ export default function AdminCategories() {
             </tr>
           </thead>
           <tbody>
-            {treeRows.map((r) => (
+            {visibleRows.map((r) => (
               <tr key={r.id} className={r.parentId ? "ae-admin-table-row--nested" : ""}>
                 <td>
                   {r.imageUrl ? (
@@ -368,6 +403,27 @@ export default function AdminCategories() {
                 </td>
                 <td className="ae-admin-cell-title">
                   <span className={`ae-admin-cat-indent ae-admin-cat-indent--depth-${Math.min((r._depth || 0), 4)}`}>
+                    {r.childCount > 0 && (
+                      <button
+                        type="button"
+                        className="ae-admin-cat-expand"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(r.id);
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "0 4px",
+                          fontSize: "12px",
+                          color: "var(--ae-primary)",
+                        }}
+                      >
+                        {expandedCategoryIds.has(r.id) ? "▼" : "▶"}
+                      </button>
+                    )}
+                    {r.childCount === 0 && <span style={{ display: "inline-block", width: "16px" }} />}
                     {r.parentId ? "└─ " : ""}{r.name}
                   </span>
                 </td>
