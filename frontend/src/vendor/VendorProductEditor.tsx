@@ -213,6 +213,7 @@ export default function VendorProductEditor() {
   const [conditionDetail, setConditionDetail] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [categoryAttrs, setCategoryAttrs] = useState<CategoryAttrDefPublic[]>([]);
+  const [categoryValues, setCategoryValues] = useState<Record<string, string>>({});
   const [categoryPresets, setCategoryPresets] = useState<CategoryPresetPublic[]>([]);
   const [presetSortId, setPresetSortId] = useState("");
   const [price, setPrice] = useState("");
@@ -231,6 +232,8 @@ export default function VendorProductEditor() {
   /** Sugestões do assistente: recolhidas por defeito para o editor ficar visível primeiro. */
   const [assistantHintsOpen, setAssistantHintsOpen] = useState(false);
   const [vendorCopilotOpen, setVendorCopilotOpen] = useState(true);
+  const [productType, setProductType] = useState<"SIMPLE" | "VARIANT">("SIMPLE");
+  const [technicalSectionOpen, setTechnicalSectionOpen] = useState(false);
 
   const selectedVendorCategory = useMemo(
     () => (categoryId.trim() ? cats.find((c) => c.id === categoryId) ?? null : null),
@@ -385,15 +388,22 @@ export default function VendorProductEditor() {
   useEffect(() => {
     if (!categoryId.trim()) {
       setCategoryAttrs([]);
+      setCategoryValues({});
       return;
     }
     let cancelled = false;
     void apiFetch<CategoryAttrDefPublic[]>(`/categories/${encodeURIComponent(categoryId.trim())}/attributes`)
       .then((rows) => {
-        if (!cancelled) setCategoryAttrs(rows);
+        if (!cancelled) {
+          setCategoryAttrs(rows);
+          setCategoryValues({});
+        }
       })
       .catch(() => {
-        if (!cancelled) setCategoryAttrs([]);
+        if (!cancelled) {
+          setCategoryAttrs([]);
+          setCategoryValues({});
+        }
       });
     return () => {
       cancelled = true;
@@ -462,6 +472,20 @@ export default function VendorProductEditor() {
         setPromoPrice(p.promoPrice != null && Number(p.promoPrice) > 0 ? String(p.promoPrice) : "");
         setStock(String(p.stock));
         setImages(p.images.length ? p.images.map((i) => i.url) : [""]);
+        
+        // Determine product type based on variants
+        const hasVariants = p.variants.length > 0;
+        setProductType(hasVariants ? "VARIANT" : "SIMPLE");
+        
+        // Load category values for simple products
+        if (!hasVariants && p.categoryId) {
+          void apiFetch<{ attributeId: string; value: string }[]>(`/vendor/product/${productId}/category-attributes`, { token })
+            .then((attrs) => {
+              setCategoryValues(Object.fromEntries(attrs.map((a) => [a.attributeId, a.value])));
+            })
+            .catch(() => setCategoryValues({}));
+        }
+        
         setVariants(
           p.variants.length
             ? p.variants.map((v) => ({
@@ -555,6 +579,14 @@ export default function VendorProductEditor() {
     const promoRaw = promoPrice.trim();
     const promoN = promoRaw === "" ? null : Number(promoRaw);
 
+    // Build category attribute values for simple products
+    const simpleCatVals =
+      productType === "SIMPLE" && categoryId.trim() !== ""
+        ? Object.entries(categoryValues ?? {})
+            .map(([attributeId, value]) => ({ attributeId, value: value.trim() }))
+            .filter((x) => x.value.length > 0)
+        : [];
+
     const varPayload = variants
       .filter((v) => v.sku.trim())
       .map((v) => {
@@ -614,6 +646,7 @@ export default function VendorProductEditor() {
       images: imgList,
       variants: varPayload,
       deliveryOptions: delPayload,
+      ...(simpleCatVals.length ? { categoryAttributeValues: simpleCatVals } : {}),
     };
   }
 
@@ -971,17 +1004,6 @@ export default function VendorProductEditor() {
               />
             </div>
             <div>
-              <label htmlFor="psku">SKU · código interno (único na loja)</label>
-              <input
-                id="psku"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                required
-                minLength={1}
-                placeholder="Ex.: USB-128-MET-01"
-              />
-            </div>
-            <div>
               <label htmlFor="pcondition">Condição do artigo</label>
               <select
                 id="pcondition"
@@ -1017,12 +1039,61 @@ export default function VendorProductEditor() {
               onChange={(next) => {
                 if (next === categoryId) return;
                 setCategoryId(next);
+                setCategoryValues({});
                 setVariants((prev) => prev.map((row) => ({ ...row, categoryValues: {} })));
+                setProductType("SIMPLE");
               }}
               placeholder="Seleccionar categoria…"
             />
             <p className="ae-field-hint">{CATALOG_TERMS.vendorCategoryPickHint}</p>
           </div>
+
+          {categoryId.trim() ? (
+            <div>
+              <label>Tipo de produto</label>
+              <div className="ae-field-grid-2">
+                <div>
+                  <input
+                    type="radio"
+                    id="ptype-simple"
+                    name="productType"
+                    value="SIMPLE"
+                    checked={productType === "SIMPLE"}
+                    onChange={() => {
+                      setProductType("SIMPLE");
+                      setVariants([]);
+                    }}
+                  />
+                  <label htmlFor="ptype-simple" style={{ marginLeft: 8, cursor: "pointer" }}>
+                    Produto simples (sem variantes)
+                  </label>
+                </div>
+                <div>
+                  <input
+                    type="radio"
+                    id="ptype-variant"
+                    name="productType"
+                    value="VARIANT"
+                    checked={productType === "VARIANT"}
+                    onChange={() => {
+                      setProductType("VARIANT");
+                      if (variants.length === 0) {
+                        setVariants([emptyVar()]);
+                      }
+                    }}
+                  />
+                  <label htmlFor="ptype-variant" style={{ marginLeft: 8, cursor: "pointer" }}>
+                    Produto com variantes
+                  </label>
+                </div>
+              </div>
+              <p className="ae-field-hint">
+                {productType === "SIMPLE"
+                  ? "Produto único: define um SKU, preço e stock globais."
+                  : "Produto com variantes: define SKU, preço e stock por cada variante (cor, tamanho, etc.)."}
+              </p>
+            </div>
+          ) : null}
 
           {categoryId.trim() && categoryAttrs.length > 0 ? (
             <div className="ae-v-copilot">
@@ -1144,6 +1215,7 @@ export default function VendorProductEditor() {
         </section>
 
         <section className="ae-v-prod-sec ae-panel" id="vstep-2">
+          <h2 className="ae-v-prod-sec__h">02 · Imagens</h2>
           <p className="ae-v-prod-sec__lede">
             Até 15 imagens. A primeira é utilizada como imagem principal nas grelhas de catálogo. Prefira fundo neutro,
             iluminação uniforme e foco nítido sobre o artigo. A primeira imagem deve representar fielmente o produto
@@ -1201,71 +1273,71 @@ export default function VendorProductEditor() {
           </button>
         </section>
 
-        <section className="ae-v-prod-sec ae-panel" id="vstep-3">
-          <p className="ae-v-prod-sec__lede">
-            Valores em kwanzas angolanos (Kz). O preço promocional, quando utilizado, deve ser estritamente inferior ao
-            preço de referência.
-          </p>
-          <div className="ae-field-grid-2">
-            <div>
-              <label htmlFor="pprice">Preço de referência (Kz)</label>
-              <input
-                id="pprice"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required
-              />
+        {categoryId.trim() && productType === "SIMPLE" ? (
+          <section className="ae-v-prod-sec ae-panel" id="vstep-3">
+            <h2 className="ae-v-prod-sec__h">03 · Inventário</h2>
+            <p className="ae-v-prod-sec__lede">
+              Valores em kwanzas angolanos (Kz). O preço promocional, quando utilizado, deve ser estritamente inferior ao
+              preço de referência.
+            </p>
+            <div className="ae-field-grid-2">
+              <div>
+                <label htmlFor="psku">SKU · código interno (único na loja)</label>
+                <input
+                  id="psku"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  required
+                  minLength={1}
+                  placeholder="Ex.: USB-128-MET-01"
+                />
+              </div>
+              <div>
+                <label htmlFor="pprice">Preço de referência (Kz)</label>
+                <input
+                  id="pprice"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="ppromo">Preço promocional (opcional, Kz)</label>
+                <input
+                  id="ppromo"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={promoPrice}
+                  onChange={(e) => setPromoPrice(e.target.value)}
+                  placeholder="Em branco se não aplicável"
+                />
+              </div>
+              <div>
+                <label htmlFor="pstock">Stock (unidades)</label>
+                <input
+                  id="pstock"
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="ppromo">Preço promocional (opcional, Kz)</label>
-              <input
-                id="ppromo"
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={promoPrice}
-                onChange={(e) => setPromoPrice(e.target.value)}
-                placeholder="Em branco se não aplicável"
-              />
-            </div>
-            <div>
-              <label htmlFor="pstock">Stock global (unidades)</label>
-              <input
-                id="pstock"
-                type="number"
-                min="0"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                required
-              />
-              <p className="ae-field-hint">
-                {variants.some((v) => v.sku.trim()) ? (
-                  <>
-                    Com variantes activas, o stock do artigo no catálogo corresponde à <strong>soma</strong> dos stocks
-                    por SKU (actualizado no servidor). O valor acima deve acompanhar essa soma para evitar confusão ao
-                    editar.
-                  </>
-                ) : (
-                  <>
-                    Se definir variantes abaixo, o stock passa a ser controlado por SKU de variante; este campo serve
-                    como stock total quando não há variantes.
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <section className="ae-v-prod-sec ae-panel" id="vstep-4">
-          <h2 className="ae-v-prod-sec__h">04 · Variantes (opcional)</h2>
-          <p className="ae-v-prod-sec__lede">
-            Cada variante tem o seu <strong>SKU</strong> e <strong>stock</strong>. O método preferido é definir um{" "}
-            <strong>preço final (Kz)</strong> por variante; o campo «ajuste ±» mantém-se só para fichas antigas compatíveis.
-            As opções de envio do artigo (taxa, prazo, zona) continuam a ser as da secção 05.
-          </p>
+        {categoryId.trim() && productType === "VARIANT" ? (
+          <section className="ae-v-prod-sec ae-panel" id="vstep-4">
+            <h2 className="ae-v-prod-sec__h">03 · Variantes</h2>
+            <p className="ae-v-prod-sec__lede">
+              Cada variante tem o seu <strong>SKU</strong>, <strong>preço</strong> e <strong>stock</strong>. Defina as
+              diferenças entre as versões do produto (cor, tamanho, capacidade, etc.).
+            </p>
           {categoryAttrs.length > 0 ? (
             <div className="ae-v-prod-suggest">
               <strong>Sugestões inteligentes para esta categoria</strong>
@@ -1620,8 +1692,96 @@ export default function VendorProductEditor() {
             + Incluir variante
           </button>
         </section>
+        ) : null}
+
+        {categoryId.trim() && productType === "SIMPLE" && categoryAttrs.length > 0 ? (
+          <section className="ae-v-prod-sec ae-panel" id="vstep-4">
+            <h2 className="ae-v-prod-sec__h">04 · Características técnicas</h2>
+            <button
+              type="button"
+              className="ae-v-prod-sec__toggle"
+              aria-expanded={technicalSectionOpen}
+              onClick={() => setTechnicalSectionOpen((x) => !x)}
+            >
+              {technicalSectionOpen ? "Recolher" : "Expandir"}
+            </button>
+            {technicalSectionOpen ? (
+              <>
+                <p className="ae-v-prod-sec__lede">
+                  Preencha os atributos específicos da categoria seleccionada. Campos marcados com * são obrigatórios.
+                </p>
+                {categoryAttrsSorted.map((a) => (
+                  <div key={a.id} style={{ marginBottom: 12 }}>
+                    <label style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                      <span>
+                        {categoryAttrFieldLabel(a)}
+                        {a.isRequired ? " *" : ""}
+                      </span>
+                      {a.autoSuggest ? (
+                        <span className="ae-badge ae-badge--feat" style={{ fontSize: 10, fontWeight: 600 }}>
+                          Sugerido
+                        </span>
+                      ) : null}
+                    </label>
+                    {a.synonyms?.length ? (
+                      <p className="ae-field-hint" style={{ margin: "4px 0 6px" }}>
+                        Também conhecido por: {a.synonyms.join(", ")}
+                      </p>
+                    ) : null}
+                    {a.inputType === "SELECT" && a.options && a.options.length > 0 ? (
+                      <>
+                        <select
+                          value={categoryValues[a.id] ?? ""}
+                          onChange={(e) => setCategoryValues((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                        >
+                          <option value="">— seleccionar —</option>
+                          {a.options.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                        {a.options.length <= 12 ? (
+                          <div className="ae-v-attr-quickpick" role="group" aria-label={`Valores rápidos: ${a.label}`}>
+                            {a.options.map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                className={
+                                  "ae-v-attr-quickpick__chip" +
+                                  ((categoryValues[a.id] ?? "") === opt ? " ae-v-attr-quickpick__chip--on" : "")
+                                }
+                                onClick={() => setCategoryValues((prev) => ({ ...prev, [a.id]: opt }))}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="ae-field-hint" style={{ marginTop: 6 }}>
+                            Muitas opções neste campo — use o menu acima para escolher com precisão.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        inputMode={a.inputType === "NUMBER" ? "decimal" : "text"}
+                        value={categoryValues[a.id] ?? ""}
+                        onChange={(e) => setCategoryValues((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                        placeholder={a.inputType === "NUMBER" ? "Ex.: 8" : ""}
+                      />
+                    )}
+                    {a.helpText ? <p className="ae-field-hint">{a.helpText}</p> : null}
+                  </div>
+                ))}
+              </>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="ae-v-prod-sec ae-panel" id="vstep-5">
+          <h2 className="ae-v-prod-sec__h">{productType === "VARIANT" ? "04 · Envio" : "05 · Envio"}</h2>
           <p className="ae-v-prod-sec__lede">
             Indique pelo menos uma modalidade. Por defeito, seleccione a logística operada pela plataforma (BAZAR DO
             BIÉ). Para cada expedición da plataforma pode associar uma transportadora activa já registada pelo
