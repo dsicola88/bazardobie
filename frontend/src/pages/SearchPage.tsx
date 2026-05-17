@@ -706,6 +706,7 @@ export default function SearchPage() {
           const promo = p.promoPrice != null ? Number(p.promoPrice) : NaN;
           if (!Number.isFinite(promo) || promo <= 0) return false;
         }
+        if (freeShipping && !p.freeShipping) return false;
         return true;
       })
       .sort((a, b) => {
@@ -1197,6 +1198,19 @@ export default function SearchPage() {
                   }}
                 />
                 {CATALOG_TERMS.searchPromoOnly}
+              </label>
+              <label className="ae-filters__check">
+                <input
+                  type="checkbox"
+                  checked={freeShipping}
+                  onChange={(e) => {
+                    const n = new URLSearchParams(params);
+                    if (e.target.checked) n.set("freeShipping", "true");
+                    else n.delete("freeShipping");
+                    setParams(n);
+                  }}
+                />
+                Frete grátis
               </label>
             </div>
           </section>
