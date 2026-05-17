@@ -323,6 +323,7 @@ export default function VendorProductEditor() {
         variants,
         categoryAttrs: categoryAttrs.map((a) => ({ id: a.id, isRequired: a.isRequired })),
         deliveries,
+        productType,
       }),
     [
       name,
@@ -337,6 +338,7 @@ export default function VendorProductEditor() {
       variants,
       categoryAttrs,
       deliveries,
+      productType,
     ],
   );
 

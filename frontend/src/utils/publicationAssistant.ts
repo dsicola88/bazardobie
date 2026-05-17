@@ -24,6 +24,7 @@ export function computePublicationSteps(input: {
   variants: Array<{ sku: string; categoryValues: Record<string, string> }>;
   categoryAttrs: Array<{ id: string; isRequired: boolean }>;
   deliveries: Array<{ areaProvincia: string; areaCidade: string }>;
+  productType?: "SIMPLE" | "VARIANT";
 }): PublicationStep[] {
   const descLen = input.description.trim().length;
   const nImg = input.images.filter((u) => u.trim()).length;
@@ -89,12 +90,14 @@ export function computePublicationSteps(input: {
   );
   const s5 = delOk ? 100 : 18;
 
+  const isVariant = input.productType === "VARIANT" || input.variants.length > 0;
+  
   return [
     { id: "1", label: "Identificação e classificação", pct: s1 },
     { id: "2", label: "Recursos visuais", pct: s2 },
-    { id: "3", label: "Preçário e inventário", pct: s3 },
-    { id: "4", label: "Variantes e ficha técnica", pct: s4 },
-    { id: "5", label: "Expedição", pct: s5 },
+    { id: "3", label: isVariant ? "Variantes" : "Inventário", pct: isVariant ? s4 : s3 },
+    ...(isVariant ? [] : [{ id: "4", label: "Características técnicas", pct: s4 }]),
+    { id: isVariant ? "4" : "5", label: "Expedição", pct: s5 },
   ];
 }
 
