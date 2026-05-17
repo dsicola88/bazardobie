@@ -910,32 +910,6 @@ export function Header() {
           </div>
         </div>
       ) : null}
-
-      {categoryBarEnabled ? (
-        <nav className="ae-catnav" aria-label="Categorias">
-          <div className="ae-shell ae-catnav__inner">
-            <Link to={buildSearchPath(loc.pathname, searchParams, { categoryId: null })} className="ae-catnav__all">
-              Catálogo completo
-            </Link>
-            <button
-              type="button"
-              className="ae-catnav__toggle"
-              aria-expanded={mobileCatsOpen}
-              onClick={() => setMobileCatsOpen((v) => !v)}
-            >
-              Categorias
-            </button>
-            <div className={`ae-catnav__strip ${mobileCatsOpen ? "ae-catnav__strip--open" : ""}`}>
-              {roots.map((c) => (
-                <Link key={c.id} to={buildSearchPath(loc.pathname, searchParams, { categoryId: c.id })}>
-                  {c.name}
-                </Link>
-              ))}
-              <Link to={buildSearchPath(loc.pathname, searchParams, { sort: "mais_vendidos" })}>Mais vendidos</Link>
-            </div>
-          </div>
-        </nav>
-      ) : null}
     </header>
   );
 }

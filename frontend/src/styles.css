@@ -2537,6 +2537,7 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px 10px;
 }
 .ae-home-quick__pill {
