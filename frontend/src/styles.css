@@ -1208,9 +1208,11 @@ a:hover {
   border: 1px solid rgb(226 232 240 / 0.92);
   overflow: hidden;
   transition: box-shadow var(--ae-motion-fast), border-color var(--ae-motion-fast), transform var(--ae-motion-soft);
-  display: block;
+  display: flex;
+  flex-direction: column;
   color: inherit;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  height: 100%;
 }
 .ae-pcard:hover,
 .card-product:hover {
@@ -1265,6 +1267,7 @@ a:hover {
   border-radius: var(--ae-radius-md) var(--ae-radius-md) 0 0;
   padding: 10px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 .ae-pcard__img,
 .card-product img {
@@ -1431,14 +1434,14 @@ a:hover {
   padding: 12px 13px 14px;
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  flex: 1;
+  min-height: 0;
 }
 .ae-pcard__title {
   font-size: 13px;
   font-weight: 600;
   margin: 0 0 6px;
   line-height: 1.4;
-  min-height: 2.8em;
   max-height: 2.8em;
   overflow: hidden;
   display: -webkit-box;
@@ -1449,6 +1452,7 @@ a:hover {
   color: #0f172a;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  flex-shrink: 0;
 }
 .ae-pcard__badges {
   display: flex;
@@ -1456,6 +1460,7 @@ a:hover {
   gap: 4px;
   margin: 0 0 5px;
   align-items: flex-start;
+  flex-shrink: 0;
 }
 .ae-listing-badge {
   display: inline-flex;
@@ -1530,6 +1535,7 @@ a:hover {
   min-height: 1.4em;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .ae-pcard__rate {
   display: inline-flex;
@@ -2437,6 +2443,7 @@ a:hover {
   gap: 4px 6px;
   margin-top: auto;
   padding-top: 4px;
+  flex-shrink: 0;
 }
 .ae-pcard__price,
 .price {
